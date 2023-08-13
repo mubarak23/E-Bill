@@ -11,7 +11,6 @@ const IMAGE_FOLDER_PATH: &str = "image";
 const TEMPLATES_FOLDER_PATH: &str = "templates";
 pub const BOOTSTRAP_FOLDER_PATH: &str = "bootstrap";
 const BILLS_KEYS_FOLDER_PATH: &str = "bills_keys";
-const FRONTEND_FOLDER_PATH: &str = "frontend";
 const COPY_DIR: [&str; 9] = [
     IDENTITY_FOLDER_PATH,
     BILLS_FOLDER_PATH,
@@ -21,7 +20,6 @@ const COPY_DIR: [&str; 9] = [
     TEMPLATES_FOLDER_PATH,
     BOOTSTRAP_FOLDER_PATH,
     BILLS_KEYS_FOLDER_PATH,
-    FRONTEND_FOLDER_PATH,
 ];
 
 /// A helper function for recursively copying a directory.
@@ -85,8 +83,5 @@ fn init_folders() {
     }
     if !Path::new(BILLS_KEYS_FOLDER_PATH).exists() {
         fs::create_dir(BILLS_KEYS_FOLDER_PATH).expect("Can't create folder bills_keys.");
-    }
-    if !Path::new(FRONTEND_FOLDER_PATH).exists() {
-        fs::create_dir(FRONTEND_FOLDER_PATH).expect("Can't create folder frontend.");
     }
 }

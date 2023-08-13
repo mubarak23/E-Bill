@@ -78,7 +78,6 @@ fn rocket_main(dht: dht::network::Client) -> Rocket<Build> {
         )
         .mount("/bills", routes![web::bills_list])
         .mount("/info", routes![web::info])
-        .mount("/issue_bill", FileServer::from(relative!("frontend/build")))
         .mount(
             "/contacts",
             routes![
@@ -101,6 +100,7 @@ fn rocket_main(dht: dht::network::Client) -> Rocket<Build> {
                 web::get_bill_history,
                 web::get_bill_chain,
                 web::get_block,
+                web::new_bill,
             ],
         )
         .attach(Template::custom(|engines| {
