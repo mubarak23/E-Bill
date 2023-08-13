@@ -11,7 +11,7 @@ const IMAGE_FOLDER_PATH: &str = "image";
 const TEMPLATES_FOLDER_PATH: &str = "templates";
 pub const BOOTSTRAP_FOLDER_PATH: &str = "bootstrap";
 const BILLS_KEYS_FOLDER_PATH: &str = "bills_keys";
-const COPY_DIR: [&str; 9] = [
+const COPY_DIR: [&str; 8] = [
     IDENTITY_FOLDER_PATH,
     BILLS_FOLDER_PATH,
     CONTACT_MAP_FOLDER_PATH,
