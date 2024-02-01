@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use moksha_core::model::Proofs;
+use moksha_core::model::{Keysets, Proofs};
+use serde::{Deserialize, Serialize};
 
 use crate::error::MokshaWalletError;
 
@@ -11,11 +12,21 @@ pub mod memory;
 #[cfg(target_arch = "wasm32")]
 pub mod rexie;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WalletKeyset {
     pub id: String,
     pub mint_url: String,
 }
+
+impl WalletKeyset {
+    pub fn new(id: String, mint_url: String) -> Self {
+        Self {
+            id,
+            mint_url,
+        }
+    }
+}
+
 
 #[async_trait(?Send)]
 pub trait LocalStore {

@@ -24,7 +24,7 @@ mod test {
     use crate::numbers_to_words::encode;
     use crate::{
         byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        generation_rsa_key, structure_as_u8_slice,
+        generation_rsa_key, read_identity_from_file, structure_as_u8_slice, Identity,
     };
 
     //TODO: Change. Because we create new bill every time we run tests
@@ -238,13 +238,18 @@ mod test {
         let localstore = SqliteLocalStore::with_path(db_path.clone())
             .await
             .expect("Cannot parse local store");
+        localstore.migrate().await;
         let client = HttpClient::default();
         let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+        let identity: Identity = read_identity_from_file();
+        let bitcoin_key = identity.bitcoin_public_key.clone();
 
         let wallet = WalletBuilder::default()
             .with_client(client)
             .with_localstore(localstore)
             .with_mint_url(mint_url)
+            .with_key(bitcoin_key)
             .build()
             .await
             .expect("Could not create wallet");
@@ -256,7 +261,7 @@ mod test {
             .await;
 
             let req = wallet
-                .get_mint_payment_request(50, "test12".to_string())
+                .get_mint_payment_request(51, "test12".to_string())
                 .await
                 .expect("Cannot get mint payment request");
 
@@ -267,7 +272,7 @@ mod test {
 
             // let mint_result = wallet.mint_tokens(50.into(), req.hash.clone()).await;
             //hash must return pr
-            let mint_result = wallet.mint_tokens(50.into(), "test12".to_string()).await;
+            let mint_result = wallet.mint_tokens(51.into(), "test12".to_string()).await;
 
             match mint_result {
                 Ok(_) => {
@@ -340,10 +345,14 @@ mod test {
 
         let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
+        let identity: Identity = read_identity_from_file();
+        let bitcoin_key = identity.bitcoin_public_key.clone();
+
         let wallet = WalletBuilder::default()
             .with_client(client)
             .with_localstore(localstore)
             .with_mint_url(mint_url)
+            .with_key(bitcoin_key)
             .build()
             .await
             .expect("Could not create wallet");

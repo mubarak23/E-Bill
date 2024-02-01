@@ -33,6 +33,7 @@ pub struct WalletBuilder<C: Client, L: LocalStore> {
     client: Option<C>,
     localstore: Option<L>,
     mint_url: Option<Url>,
+    key: Option<String>
 }
 
 impl<C: Client, L: LocalStore> WalletBuilder<C, L> {
@@ -41,6 +42,7 @@ impl<C: Client, L: LocalStore> WalletBuilder<C, L> {
             client: None,
             localstore: None,
             mint_url: None,
+            key: None
         }
     }
 
@@ -59,27 +61,24 @@ impl<C: Client, L: LocalStore> WalletBuilder<C, L> {
         self
     }
 
+    pub fn with_key(mut self, key: String) -> Self {
+        self.key = Some(key);
+        self
+    }
+
     pub async fn build(self) -> Result<Wallet<C, L>, MokshaWalletError> {
         let client = self.client.expect("client is required");
         let localstore = self.localstore.expect("localstore is required");
         let mint_url = self.mint_url.expect("mint_url is required");
+        let key = self.key.expect("key is required");
 
-        let load_keysets = localstore.get_keysets().await?;
+        let mut load_keysets = localstore.get_keysets().await?;
 
         let mint_keysets = client.get_mint_keysets(&mint_url).await?;
         if load_keysets.is_empty() {
-            let wallet_keysets = mint_keysets
-                .keysets
-                .iter()
-                .map(|m| WalletKeyset {
-                    id: m.to_owned(),
-                    mint_url: mint_url.to_string(),
-                })
-                .collect::<Vec<WalletKeyset>>();
-
-            for wkeyset in wallet_keysets {
-                localstore.add_keyset(&wkeyset).await?;
-            }
+            let keyset = WalletKeyset::new(key.clone(), mint_url.to_string().clone());
+            localstore.add_keyset(&keyset).await?;
+            load_keysets.push(keyset);
         }
 
         let keys = client.get_mint_keys(&mint_url).await?;

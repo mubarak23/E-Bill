@@ -4,7 +4,7 @@ extern crate rocket;
 
 use std::collections::HashMap;
 use std::fs::DirEntry;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{env, fs, mem, path};
 
 use bitcoin::PublicKey;
@@ -12,6 +12,10 @@ use borsh::{self, BorshDeserialize, BorshSerialize};
 use chrono::Utc;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
+use moksha_wallet::client::reqwest::HttpClient;
+use moksha_wallet::localstore::sqlite::SqliteLocalStore;
+use moksha_wallet::localstore::LocalStore;
+use moksha_wallet::wallet::WalletBuilder;
 use openssl::pkey::{Private, Public};
 use openssl::rsa;
 use openssl::rsa::{Padding, Rsa};
@@ -21,6 +25,7 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::yansi::Paint;
 use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
+use url::Url;
 
 use crate::blockchain::{
     start_blockchain_for_new_bill, Block, Chain, ChainToReturn, OperationCode,
@@ -53,6 +58,8 @@ async fn main() {
     env_logger::init();
 
     init_folders();
+
+    init_wallet;
 
     let mut dht = dht::dht_main().await.expect("DHT failed to start");
 
@@ -162,6 +169,33 @@ fn init_folders() {
     if !Path::new(BOOTSTRAP_FOLDER_PATH).exists() {
         fs::create_dir(BOOTSTRAP_FOLDER_PATH).expect("Can't create folder bootstrap.");
     }
+}
+
+async fn init_wallet() {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    fs::create_dir_all(dir.clone()).unwrap();
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+    localstore.migrate().await;
+    let client = HttpClient::default();
+
+    //take from params
+    let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+    let identity: Identity = read_identity_from_file();
+    let bitcoin_key = identity.bitcoin_public_key.clone();
+
+    let wallet = WalletBuilder::default()
+        .with_client(client)
+        .with_localstore(localstore)
+        .with_mint_url(mint_url)
+        .with_key(bitcoin_key)
+        .build()
+        .await
+        .expect("Could not create wallet");
 }
 
 //-------------------------Contacts map-------------------------

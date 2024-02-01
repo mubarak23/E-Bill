@@ -71,9 +71,7 @@ pub async fn mint(
     amount: u64,
     bill_id: String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    //TODO change to my wallet
     let dir = PathBuf::from("./data/wallet".to_string());
-    fs::create_dir_all(dir.clone()).unwrap();
     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
     let localstore = SqliteLocalStore::with_path(db_path.clone())
         .await
