@@ -12,10 +12,12 @@ use rocket::http::{Header, Status};
 use rocket::serde::json::Json;
 use rocket::{Request, Response, State};
 use rocket_dyn_templates::{context, handlebars, Template};
+use tokio::runtime::Handle;
 
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, BILL_VALIDITY_PERIOD, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
+use crate::work_with_mint::mint;
 use crate::{
     accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht,
     change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
@@ -270,6 +272,23 @@ pub async fn return_chain_of_blocks(id: String) -> Json<Chain> {
 #[get("/return")]
 pub async fn return_operation_codes() -> Json<Vec<OperationCode>> {
     Json(OperationCode::get_all_operation_codes())
+}
+
+//PUT
+#[get("/mint/<id>")]
+pub async fn mint_bill(id: String) -> Status {
+    let bill: BitcreditBill = read_bill_from_file(&id);
+    let amount = bill.amount_numbers.clone();
+    let bill_id = bill.name.clone();
+
+    // let handle = Handle::current();
+    tokio::task::spawn_blocking(|| {
+        let _ = mint(21, "bill_id".to_string());
+    })
+    .await
+    .expect("Task panicked");
+
+    Status::Ok
 }
 
 #[get("/return/<id>")]
@@ -718,6 +737,7 @@ pub async fn get_identity_public_data(
     identity
 }
 
+//PUT
 #[post("/endorse", data = "<endorse_bill_form>")]
 pub async fn endorse_bill(
     state: &State<Client>,

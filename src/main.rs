@@ -41,6 +41,7 @@ mod dht;
 mod numbers_to_words;
 mod test;
 mod web;
+mod work_with_mint;
 
 // MAIN
 // #[rocket::main]
@@ -121,6 +122,7 @@ fn rocket_main(dht: dht::network::Client) -> Rocket<Build> {
                 web::return_bill,
                 web::return_chain_of_blocks,
                 web::return_basic_bill,
+                web::mint_bill,
             ],
         )
         .mount("/bills", routes![web::return_bills_list,])

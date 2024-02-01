@@ -17,6 +17,7 @@ import ReqAcceptPage from "../pages/ReqAcceptPage";
 import ReqPaymentPage from "../pages/ReqPaymentPage";
 import Key from "../Key";
 import Bill from "../pages/Bill";
+import MintPage from "../pages/MintPage";
 
 export default function SingleBillDetail({item}) {
     const {peer_id, showPopUp, showPopUpSecondary} = useContext(MainContext);
@@ -118,8 +119,11 @@ export default function SingleBillDetail({item}) {
             case "ACCEPT":
                 showPopUpSecondary(true, <AcceptPage data={singleBill}/>);
                 break;
+            // case "ENDORSE":
+            //     showPopUpSecondary(true, <EndorsePage data={singleBill}/>);
+            //     break;
             case "ENDORSE":
-                showPopUpSecondary(true, <EndorsePage data={singleBill}/>);
+                showPopUpSecondary(true, <MintPage data={singleBill}/>);
                 break;
             case "REQUEST TO ACCEPT":
                 showPopUpSecondary(true, <ReqAcceptPage data={singleBill}/>);
