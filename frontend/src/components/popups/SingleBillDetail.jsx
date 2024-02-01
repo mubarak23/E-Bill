@@ -123,7 +123,8 @@ export default function SingleBillDetail({item}) {
             //     showPopUpSecondary(true, <EndorsePage data={singleBill}/>);
             //     break;
             case "ENDORSE":
-                showPopUpSecondary(true, <MintPage data={singleBill}/>);
+                showPopUpSecondary(true, <EndorsePage data={singleBill}/>);
+                // showPopUpSecondary(true, <MintPage data={singleBill}/>);
                 break;
             case "REQUEST TO ACCEPT":
                 showPopUpSecondary(true, <ReqAcceptPage data={singleBill}/>);

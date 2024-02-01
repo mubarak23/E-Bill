@@ -698,7 +698,7 @@ dependencies = [
  "hex",
  "libp2p",
  "log",
- "moksha-core",
+ "moksha-core 0.1.2",
  "moksha-mint",
  "moksha-wallet",
  "open",
@@ -3106,6 +3106,25 @@ dependencies = [
 [[package]]
 name = "moksha-core"
 version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "base64 0.21.7",
+ "bitcoin_hashes 0.12.0",
+ "getrandom 0.2.12",
+ "hex",
+ "itertools 0.11.0",
+ "rand",
+ "secp256k1 0.27.0",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "thiserror",
+ "url",
+]
+
+[[package]]
+name = "moksha-core"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a1f9af10be82ae519e9a056cf47ee6d45388edd04ebb9ebaf15f7c025d6757e"
 dependencies = [
@@ -3127,8 +3146,6 @@ dependencies = [
 [[package]]
 name = "moksha-mint"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b53cff6038e4d1ce46d21b4d9fa46459c57e31697c3786b337f49c44e90e78a0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3139,7 +3156,7 @@ dependencies = [
  "hex",
  "hyper",
  "lightning-invoice",
- "moksha-core",
+ "moksha-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest",
  "rocksdb",
  "secp256k1 0.27.0",
@@ -3167,7 +3184,7 @@ dependencies = [
  "dirs",
  "gloo-net",
  "lightning-invoice",
- "moksha-core",
+ "moksha-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "reqwest",
  "rexie",

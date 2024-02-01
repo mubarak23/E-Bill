@@ -267,7 +267,7 @@ mod test {
 
             // let mint_result = wallet.mint_tokens(50.into(), req.hash.clone()).await;
             //hash must return pr
-            let mint_result = wallet.mint_tokens(50.into(), req.hash.clone()).await;
+            let mint_result = wallet.mint_tokens(50.into(), "test12".to_string()).await;
 
             match mint_result {
                 Ok(_) => {

@@ -71,17 +71,18 @@ pub async fn mint(
     amount: u64,
     bill_id: String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    //TODO change to my wallet
     let dir = PathBuf::from("./data/wallet".to_string());
     fs::create_dir_all(dir.clone()).unwrap();
     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
-
     let localstore = SqliteLocalStore::with_path(db_path.clone())
         .await
         .expect("Cannot parse local store");
     let client = HttpClient::default();
+
+    //TODO change to some conf in settings
     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
-    // block_on(async {
     let wallet = WalletBuilder::default()
         .with_client(client)
         .with_localstore(localstore)
@@ -97,11 +98,13 @@ pub async fn mint(
         .await;
 
         let req = wallet
-            .get_mint_payment_request(50, "test".to_string())
+            .get_mint_payment_request(amount.clone(), bill_id.clone())
             .await
             .expect("Cannot get mint payment request");
 
-        let mint_result = wallet.mint_tokens(50.into(), req.hash.clone()).await;
+        let mint_result = wallet
+            .mint_tokens(amount.clone().into(), bill_id.clone())
+            .await;
 
         match mint_result {
             Ok(_) => {
@@ -120,7 +123,6 @@ pub async fn mint(
             }
         }
     }
-    // });
 
     Ok(())
 }

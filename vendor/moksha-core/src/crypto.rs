@@ -11,6 +11,7 @@ use crate::error::MokshaCoreError;
 const MAX_ORDER: u64 = 64;
 
 pub fn generate_hash() -> String {
+    //TODO get hash from transaction
     let mut rng = rand::thread_rng();
     let mut random = [0u8; 32];
     rng.fill_bytes(&mut random);

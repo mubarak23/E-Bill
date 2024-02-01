@@ -107,10 +107,11 @@ impl Mint {
     ///IMPORTANT!!!
     pub async fn create_invoice(&self, amount: u64, key: String) -> Result<(String, String), MokshaMintError> {
         // let pr = self.lightning.create_invoice(amount).await?.payment_request;
+        //TODO generate hash
         // let key = crypto::generate_hash();
         self.db
             .add_pending_invoice(key.clone(), Invoice::new(amount, key.clone()))?;
-        Ok((key, key))
+        Ok((key.clone(), key.clone()))
     }
 
     ///IMPORTANT!!!
