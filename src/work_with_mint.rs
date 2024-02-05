@@ -6,6 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use tokio::runtime::Handle;
 use url::Url;
+use crate::{Identity, read_identity_from_file};
 
 // pub fn mint_with_handle(handle: Handle, amount: u64, bill_id: String) {
 //     block_on(async {
@@ -81,10 +82,14 @@ pub async fn mint(
     //TODO change to some conf in settings
     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
+    let identity: Identity = read_identity_from_file();
+    let bitcoin_key = identity.bitcoin_public_key.clone();
+
     let wallet = WalletBuilder::default()
         .with_client(client)
         .with_localstore(localstore)
         .with_mint_url(mint_url)
+        .with_key(bitcoin_key)
         .build()
         .await
         .expect("Could not create wallet");

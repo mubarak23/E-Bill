@@ -59,7 +59,7 @@ async fn main() {
 
     init_folders();
 
-    init_wallet;
+    init_wallet().await;
 
     let mut dht = dht::dht_main().await.expect("DHT failed to start");
 
@@ -173,7 +173,9 @@ fn init_folders() {
 
 async fn init_wallet() {
     let dir = PathBuf::from("./data/wallet".to_string());
-    fs::create_dir_all(dir.clone()).unwrap();
+    if !dir.exists() {
+        fs::create_dir_all(dir.clone()).unwrap();
+    }
     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
 
     let localstore = SqliteLocalStore::with_path(db_path.clone())
