@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext } from "react";
 import IconHolder from "./IconHolder";
 import { MainContext } from "../../context/MainContext";
 import SingleBillDetail from "../popups/SingleBillDetail";
@@ -8,8 +8,9 @@ const signCalculation = (peer_id, items) => {
     //   name = `${items?.drawee?.name} has to pay ${items?.payee?.name}`;
     return "-";
   } else if (
-    peer_id == items.drawer.peer_id &&
-    peer_id != items.endorsee.peer_id
+    peer_id != items.payee.peer_id &&
+    peer_id != items.endorsee.peer_id &&
+    peer_id != items.drawee.peer_id
   ) {
     //   name = `${items.drawee.name} ${items.payee.name}`;
     return "x";

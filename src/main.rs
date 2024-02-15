@@ -1072,7 +1072,7 @@ pub fn issue_new_bill_drawer_is_payee(
         private_key: private_key_bitcoin,
         language,
         drawee: public_data_drawee,
-        drawer: IdentityPublicData::new_empty(),
+        drawer: public_data_payee.clone(),
         payee: public_data_payee,
         endorsee: IdentityPublicData::new_empty(),
     };
@@ -1157,8 +1157,8 @@ pub fn issue_new_bill_drawer_is_drawee(
         public_key: public_key_bitcoin,
         private_key: private_key_bitcoin,
         language,
-        drawee: public_data_drawee,
-        drawer: IdentityPublicData::new_empty(),
+        drawee: public_data_drawee.clone(),
+        drawer: public_data_drawee,
         payee: public_data_payee,
         endorsee: IdentityPublicData::new_empty(),
     };
