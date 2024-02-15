@@ -15,29 +15,10 @@ export default function IdentityPage() {
     setToast,
     copytoClip,
   } = useContext(MainContext);
-  // Set the minimum and maximum age
-  const minAge = 18;
-  const maxAge = 100;
-  // Set the minimum and maximum date states
-  const [minDate, setMinDate] = useState("");
-  const [maxDate, setMaxDate] = useState("");
+
   const [image, setImage] = useState();
   const [uneditable, setunEditable] = useState(true);
-  useEffect(() => {
-    // Calculate the minimum date (18 years ago)
-    const minDateObj = new Date();
-    minDateObj.setFullYear(minDateObj.getFullYear() - minAge);
-    const minDateStr = minDateObj.toISOString().split("T")[0];
 
-    // Calculate the maximum date (100 years ago)
-    const maxDateObj = new Date();
-    maxDateObj.setFullYear(maxDateObj.getFullYear() - maxAge);
-    const maxDateStr = maxDateObj.toISOString().split("T")[0];
-
-    // Set the state variables
-    setMinDate(minDateStr);
-    setMaxDate(maxDateStr);
-  }, []);
   const [userData, setUserData] = useState({
     name: identity.name || "",
     email: identity.email || "",
@@ -53,10 +34,25 @@ export default function IdentityPage() {
     close: false,
     sign: true,
   });
+  const minDateObj = new Date();
+  minDateObj.setFullYear(minDateObj.getFullYear() - 18);
+  const minDateStr = minDateObj.toISOString().split("T")[0];
+
+  // Calculate the maximum date (100 years ago)
+  const maxDateObj = new Date();
+  maxDateObj.setFullYear(maxDateObj.getFullYear() - 100);
+  const maxDateStr = maxDateObj.toISOString().split("T")[0];
   const onChangeHandler = (e) => {
     let value = e.target.value;
     let name = e.target.name;
-    setUserData({ ...userData, [name]: value });
+    console.log(value, maxDateStr);
+    if (name === "date_of_birth") {
+      if (value <= minDateStr && value >= maxDateStr) {
+        setUserData({ ...userData, [name]: value });
+      }
+    } else {
+      setUserData({ ...userData, [name]: value });
+    }
   };
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -68,6 +64,8 @@ export default function IdentityPage() {
       }
     }
   };
+
+  // Set the minimum and maximum date states
   const peerIdLength = peer_id?.length;
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -163,6 +161,7 @@ export default function IdentityPage() {
             >
               <label htmlFor="name">Full Name</label>
               <input
+                required
                 id="name"
                 name="name"
                 value={userData.name}
@@ -194,6 +193,7 @@ export default function IdentityPage() {
             >
               <label htmlFor="email">Email Address</label>
               <input
+                required
                 id="email"
                 name="email"
                 value={userData.email}
@@ -212,11 +212,12 @@ export default function IdentityPage() {
             >
               <label htmlFor="date_of_birth">Date Of Birth</label>
               <input
+                required
                 id="date_of_birth"
                 name="date_of_birth"
                 value={userData.date_of_birth}
-                min={minDate}
-                max={maxDate}
+                min={maxDateStr}
+                max={minDateStr}
                 disabled={uneditable}
                 onChange={onChangeHandler}
                 placeholder=""
@@ -228,6 +229,7 @@ export default function IdentityPage() {
             <div className="create-body-form-input-in">
               <label htmlFor="country_of_birth">Country Of Birth</label>
               <input
+                required
                 id="country_of_birth"
                 name="country_of_birth"
                 value={userData.country_of_birth}
@@ -240,6 +242,7 @@ export default function IdentityPage() {
             <div className="create-body-form-input-in">
               <label htmlFor="city_of_birth">City Of Birth</label>
               <input
+                required
                 id="city_of_birth"
                 name="city_of_birth"
                 value={userData.city_of_birth}
@@ -252,6 +255,7 @@ export default function IdentityPage() {
             <div className="create-body-form-input-in">
               <label htmlFor="postal_address">Postal Address</label>
               <input
+                required
                 id="postal_address"
                 name="postal_address"
                 value={userData.postal_address}
@@ -263,7 +267,7 @@ export default function IdentityPage() {
             </div>
           </div>
 
-          <div
+          {/* <div
             className={
               toast != "" && userData?.email === ""
                 ? "create-body-form-input-in invalid"
@@ -280,8 +284,8 @@ export default function IdentityPage() {
               placeholder="Email Address"
               type="text"
             />
-          </div>
-          <div
+          </div> */}
+          {/* <div
             className={
               toast != "" && userData?.date_of_birth === "Invalid Date"
                 ? "create-body-form-input-in invalid"
@@ -298,9 +302,9 @@ export default function IdentityPage() {
               placeholder=""
               type="date"
             />
-          </div>
+          </div> */}
         </div>
-        <div className="create-body-form-input">
+        {/* <div className="create-body-form-input">
           <div className="create-body-form-input-in">
             <label htmlFor="country_of_birth">Country Of Birth</label>
             <input
@@ -349,7 +353,7 @@ export default function IdentityPage() {
               type="text"
             />
           </div>
-        </div>
+        </div> */}
 
         {content.sign && (
           <div className="flex justify-space">

@@ -1412,6 +1412,7 @@ input {
         &-in {
           display: flex;
           flex-direction: column;
+          gap: calcView(6);
           label {
             margin-top: calcView(5);
             font-size: calcView(12);
