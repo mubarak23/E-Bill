@@ -311,6 +311,7 @@ mod test {
             .with_client(client)
             .with_localstore(localstore)
             .with_mint_url(mint_url)
+            .with_key("bitcoin_key".to_string())
             .build()
             .await
             .expect("Could not create wallet");
