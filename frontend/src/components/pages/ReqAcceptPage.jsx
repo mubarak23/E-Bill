@@ -39,11 +39,11 @@ export default function ReqAcceptPage({ data }) {
         <div className="accept-container-content">
           <div className="block mt">
             <span className="accept-heading">please accept to</span>
-            <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">pay on </span>
               <span className="detail">{data.date_of_issue}</span>
             </span>
-            <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">the sum of </span>
               <span className="detail" style={{ textTransform: "uppercase" }}>
                 {data.currency_code}, {data.amount_numbers}

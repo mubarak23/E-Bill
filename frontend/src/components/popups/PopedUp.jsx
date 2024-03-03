@@ -7,7 +7,7 @@ export default function PopedUp({filter, changleHandler}) {
             <div className="filter-box">
                 <CheckBox
                     name="imPayee"
-                    text="If i am Payee"
+                    text="If I am Payee"
                     checkCheck={filter?.imPayee}
                     changeListener={changleHandler}
                 />
@@ -16,7 +16,7 @@ export default function PopedUp({filter, changleHandler}) {
             <div className="filter-box">
                 <CheckBox
                     name="imDrawer"
-                    text="If i am Drawer"
+                    text="If I am Drawer"
                     checkCheck={filter?.imDrawer}
                     changeListener={changleHandler}
                 />
@@ -25,7 +25,7 @@ export default function PopedUp({filter, changleHandler}) {
             <div className="filter-box">
                 <CheckBox
                     name="imDrawee"
-                    text="If i am Drawee"
+                    text="If I am Payer"
                     checkCheck={filter?.imDrawee}
                     changeListener={changleHandler}
                 />

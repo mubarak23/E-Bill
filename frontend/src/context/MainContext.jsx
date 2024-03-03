@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, {createContext, useEffect, useState} from "react";
 
 const MainContext = createContext();
 
@@ -49,7 +49,7 @@ function MainProvider({ children }) {
   // Set contacts
   useEffect(() => {
     fetch("http://localhost:8000/contacts/return", {
-        mode: "cors",
+      mode: "cors",
     })
       .then((res) => res.json())
       .then((data) => {
@@ -84,26 +84,8 @@ function MainProvider({ children }) {
     const form_data = new FormData();
     form_data.append("old_name", old_contact_id);
     form_data.append("name", newContact.name);
-    form_data.append("node_id", newContact.peer_id);
-    const response = await fetch("http://localhost:8000/contacts/edit", {
-        method: "POST",
-        body: form_data,
-        mode: "cors",
-    })
-    .then((res) => res.json())
-    .then((data) => {
-        setContacts(data);
-        hidePop(false, "");
-        setToast("Contact Changed");
-    })
-    .catch((err) => console.log(err));
-  };
-
-  const handleAddContact = async (newContact, hidePop) => {
-    const form_data = new FormData();
-    form_data.append("name", newContact.name);
-    form_data.append("node_id", newContact.peer_id);
-    await fetch("http://localhost:8000/contacts/new", {
+    form_data.append("node_id", newContact.node_id);
+    await fetch("http://localhost:8000/contacts/edit", {
       method: "POST",
       body: form_data,
       mode: "cors",
@@ -112,19 +94,40 @@ function MainProvider({ children }) {
       .then((data) => {
         setContacts(data);
         hidePop(false, "");
-        setToast("Your Contact is Added");
-        // } else {
-        //   setToast("Oops! there is an error please try again later");
-        // }
+        setToast("Contact Changed");
       })
       .catch((err) => console.log(err));
   };
 
+  const handleAddContact = async (newContact) => {
+    const form_data = new FormData();
+    form_data.append("name", newContact.name);
+    form_data.append("node_id", newContact.peer_id);
+    await fetch("http://localhost:8000/contacts/new", {
+      method: "POST",
+      body: form_data,
+      mode: "cors",
+    })
+      .then((res) => {
+        if (res.status === 200) {
+          setContacts((prev) => [
+            ...prev,
+            { name: newContact.name, peer_id: newContact.peer_id },
+          ]);
+          showPopUp(false, "");
+          setToast("Your Contact is Added");
+        } else {
+          setToast("Oops there is an Error adding your contact");
+        }
+      })
+      .catch((err) => console.log(err));
+  };
   const [identity, setIdentity] = useState({
     name: "",
     date_of_birth: "",
     city_of_birth: "",
     country_of_birth: "",
+    company: "",
     email: "",
     postal_address: "",
     public_key_pem: "",
@@ -137,7 +140,7 @@ function MainProvider({ children }) {
   useEffect(() => {
     setLoading(true);
     fetch("http://localhost:8000/identity/return", {
-        mode: "cors",
+      mode: "cors",
     })
       .then((res) => res.json())
       .then((response) => {
@@ -159,7 +162,7 @@ function MainProvider({ children }) {
   // Set bills
   useEffect(() => {
     fetch("http://localhost:8000/bills/return", {
-        mode: "cors",
+      mode: "cors",
     })
       .then((res) => res.json())
       .then((data) => {
@@ -176,7 +179,7 @@ function MainProvider({ children }) {
   useEffect(() => {
     setLoading(true);
     fetch("http://localhost:8000/identity/peer_id/return", {
-        mode: "cors",
+      mode: "cors",
     })
       .then((res) => res.json())
       .then((data) => {
@@ -196,12 +199,6 @@ function MainProvider({ children }) {
         ...prev,
         iou: prev.iou + items.amount_numbers,
       }));
-    } else if (peer_id == items.drawer.peer_id && peer_id != items.endorsee.peer_id) {
-      //   name = `${items.drawee.name} ${items.payee.name}`;
-      setAmount((prev) => ({
-        ...prev,
-        endors: prev.endors + items.amount_numbers,
-      }));
     } else if (peer_id == items.payee.peer_id) {
       //   name = `${items.drawee.name} ${items.payee.name}`;
       setAmount((prev) => ({
@@ -215,11 +212,11 @@ function MainProvider({ children }) {
         bill: prev.bill + items.amount_numbers,
       }));
     } else {
-        //   name = `${items.drawee.name} ${items.payee.name}`;
-        setAmount((prev) => ({
-            ...prev,
-            endors: prev.endors + items.amount_numbers,
-        }));
+      //   name = `${items.drawee.name} ${items.payee.name}`;
+      setAmount((prev) => ({
+        ...prev,
+        endors: prev.endors + items.amount_numbers,
+      }));
     }
     setCurrency(items.currency_code);
   };

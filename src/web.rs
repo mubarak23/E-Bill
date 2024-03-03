@@ -108,8 +108,8 @@ pub async fn return_contacts() -> Json<Vec<Contact>> {
 }
 
 #[get("/return")]
-pub async fn return_bills_list() -> Json<Vec<BitcreditBillForList>> {
-    let bills: Vec<BitcreditBillForList> = get_bills_for_list();
+pub async fn return_bills_list() -> Json<Vec<BitcreditBillToReturn>> {
+    let bills: Vec<BitcreditBillToReturn> = get_bills_for_list().await;
     Json(bills)
 }
 
@@ -500,7 +500,7 @@ async fn generate_link_to_pay(address: String, amount: u64, message: String) -> 
     link
 }
 
-async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
+pub async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
     //todo check what net we used
     let info_about_address = api::AddressInfo::get_testnet_address_info(address.clone()).await;
     let received_summ = info_about_address.chain_stats.funded_txo_sum;
@@ -515,7 +515,7 @@ async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
     };
 }
 
-fn get_address_to_pay(bill: BitcreditBill) -> String {
+pub fn get_address_to_pay(bill: BitcreditBill) -> String {
     let public_key_bill = bitcoin::PublicKey::from_str(&bill.public_key).unwrap();
 
     let mut person_to_pay = bill.payee.clone();

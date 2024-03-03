@@ -1,11 +1,11 @@
-import React, {useContext, useEffect, useState} from "react";
+import React, { useContext, useEffect, useState } from "react";
 import IconHolder from "../elements/IconHolder";
 import back from "../../assests/back.svg";
 import download from "../../assests/download.svg";
 import wechsel from "../../assests/WECHSEL.svg";
 import dumySig from "../../assests/Jordan-signature.png";
 import Pdf from "react-to-pdf";
-import {MainContext} from "../../context/MainContext";
+import { MainContext } from "../../context/MainContext";
 
 function Bill({ identity, data }) {
   const { showPopUpSecondary } = useContext(MainContext);
@@ -36,7 +36,22 @@ function Bill({ identity, data }) {
   useEffect(() => {
     handlePdfSize();
   }, []);
+  // Options for formatting the date
+  const ops = { year: "numeric", month: "long", day: "numeric" };
 
+  // Create a Date object with the input date
+  const dateObjectIssue = new Date(data?.date_of_issue);
+  const dateObjectMaturity = new Date(data?.maturity_date);
+
+  // Format the date
+  const issueDate = dateObjectIssue.toLocaleDateString("en-US", ops);
+  const maturityDate = dateObjectMaturity.toLocaleDateString("en-US", ops);
+  const [blocks] = data?.chain_of_blocks?.blocks?.filter(
+    (d) => d.operation_code === "Accept"
+  );
+  const signatureAccept = blocks?.signature;
+  const signatureIssue = data?.chain_of_blocks?.blocks[0]?.signature;
+  const payerName = data?.drawee?.name + ", " + data?.drawee?.company;
   return (
     <div className="billing">
       <div className="top-buttons">
@@ -45,7 +60,11 @@ function Bill({ identity, data }) {
           circuled="circule"
           icon={back}
         />
-        <Pdf targetRef={divRef} options={options} filename="Bill of exchange.pdf">
+        <Pdf
+          targetRef={divRef}
+          options={options}
+          filename="Bill of exchange.pdf"
+        >
           {({ toPdf }) => (
             <IconHolder
               handleClick={toPdf}
@@ -59,17 +78,22 @@ function Bill({ identity, data }) {
       <div id="main-container" className="billing-container" ref={divRef}>
         <div className="top-container">
           <div className="head-text">
-            <img src={wechsel} />
-            <span>Accepted</span>
+            {/* <img src={wechsel} /> */}
+            <span className="head-text-maintext">BILL OF EXCHANGE</span>
+            <span>{blocks?.operation_code === "Accept" && "Accepted"}</span>
           </div>
           <div className="line">
-            <hr />
-            <hr />
-            <hr />
+            <span></span>
+            <span>
+              {blocks &&
+                `${signatureAccept?.slice(0, 4)}...${signatureAccept?.slice(
+                  signatureAccept?.length - 4,
+                  signatureAccept?.length
+                )}`}
+            </span>
+            <span></span>
           </div>
-          <div className="unter-text">
-            <span>Acceptor’s signature</span>
-          </div>
+          <div className="unter-text">{blocks && "Acceptor’s signature"}</div>
         </div>
         <div className="details">
           <div className="details-container">
@@ -83,7 +107,7 @@ function Bill({ identity, data }) {
                     ,
                   </div>
                   <div className="details-container-uper-den-main-third">
-                    {data?.date_of_issue}
+                    {issueDate}
                   </div>
                 </div>
                 <span className="bottom-text">
@@ -105,16 +129,8 @@ function Bill({ identity, data }) {
             <div className="details-container-middle">
               <div className="details-container-middle-date">
                 <span className="details-container-middle-date-left">
-                  Against this bill of exchange pay on {data?.maturity_date}
+                  Against this bill of exchange pay on {maturityDate}
                 </span>
-                <div className="details-container-middle-date-right">
-                  <span className="details-container-middle-date-right-uper">
-                    SOME NUM HERE
-                  </span>
-                  <span className="details-container-middle-date-right-lower">
-                    Month in letters
-                  </span>
-                </div>
               </div>
               <div className="details-container-middle-num">
                 <span className="details-container-middle-num-text">
@@ -156,11 +172,11 @@ function Bill({ identity, data }) {
                       Payer
                     </span>
                     <span className="details-container-bottom-left-bez-line-ans">
-                      {data?.drawee?.name}, {data?.drawee?.postal_address}
+                      {payerName?.slice(0, 52)}
                     </span>
                   </span>
                   <span className="details-container-bottom-left-bez-next-line">
-                   SOME TEXT HERE
+                    {payerName?.slice(52, payerName?.length)}
                   </span>
                 </div>
                 <div className="details-container-bottom-left-in">
@@ -180,14 +196,14 @@ function Bill({ identity, data }) {
                   <div className="details-container-bottom-left-bez">
                     <span className="details-container-bottom-left-bez-line">
                       <span className="details-container-bottom-left-bez-line-text">
-                        Payment agents
+                        Bill Id
                       </span>
                       <span className="details-container-bottom-left-bez-line-ans">
-                        {data?.place_of_payment}
+                        {data?.name?.slice(0, 50)}
                       </span>
                     </span>
                     <span className="details-container-bottom-left-bez-next-line">
-                      SOME TEXT HERE
+                      {data?.name?.slice(50, data?.name?.length)}
                     </span>
                   </div>
                   <div className="details-container-bottom-left-in">
@@ -196,7 +212,7 @@ function Bill({ identity, data }) {
                     </span>
                     <span className="details-container-bottom-left-in-further">
                       <span className="details-container-bottom-left-in-further-text">
-                        SOME TEXT HERE
+                        {data.bill_jurisdiction}
                       </span>
                       <span className="details-container-bottom-left-in-further-bottom">
                         Use for domicile instructions
@@ -207,9 +223,13 @@ function Bill({ identity, data }) {
               </div>
               <div className="details-container-bottom-signature">
                 <span className="signature">
-                  <img src={dumySig} />
+                  {signatureIssue.slice(0, 6)}...
+                  {signatureIssue.slice(
+                    signatureIssue.length - 6,
+                    signatureIssue.length
+                  )}
                 </span>
-                <span>Signature and address of the drawer</span>
+                <span>Signature of the drawer</span>
               </div>
             </div>
           </div>

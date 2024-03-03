@@ -5,9 +5,18 @@
   font-family: writter;
   src: url(./assests/atwriter.ttf);
 }
+@font-face {
+  font-family: fancyfonts;
+  src: url(./assests/OstrichSansInline-Regular.otf);
+}
+@font-face {
+  font-family: signature;
+  src: url(./assests/brother.otf);
+}
 
 $standardWidth: 430;
 $PrimaryColor: #f7931a;
+$TextColor: #b7b700;
 $TextColor: #b28b00;
 $Black: #151515;
 $LightBlack: #636363;
@@ -119,10 +128,17 @@ select:disabled {
 select:focus {
   border: calcView(2) solid $PrimaryColor;
 }
-
+.profile-icon {
+  span {
+    font-weight: 700;
+    font-size: calcView(24);
+    line-height: calcView(24);
+    margin-top: calcView(2);
+  }
+}
 .accept-heading {
   font-size: calcView(22);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .detail {
@@ -138,8 +154,11 @@ select:focus {
   display: block;
 }
 
+.mt-5 {
+  margin-top: calcView(8);
+}
 .mt {
-  margin-top: calcView(32);
+  margin-top: calcView(15);
 }
 
 .mtt {
@@ -148,13 +167,6 @@ select:focus {
 
 .mttt {
   margin-top: calcView(75);
-}
-
-.btn {
-  align-self: center;
-  width: calcView(150);
-  padding: calcView(13) calcView(52);
-  border-radius: calcView(6);
 }
 
 .btn {
@@ -171,14 +183,15 @@ select:focus {
   align-items: center;
 
   &-text {
-    font-size: calcView(22);
+    font-size: calcView(23);
     // margin-top: calcView(24);
+    text-transform: uppercase;
     font-weight: 600;
   }
 }
 
 .icon-container {
-  background-color: #e1e1e6;
+  background-color: #fefefe;
   border-radius: calcView(12);
   @include flexCenter();
   width: calcView(58);
@@ -190,7 +203,7 @@ select:focus {
 
   .icon {
     @include flexCenter();
-    background-color: #fbfbfb;
+    background-color: #eeeeee;
     border-radius: 50%;
     width: calcView(42);
     height: calcView(42);
@@ -227,13 +240,13 @@ select:focus {
     @include flexCenter();
     align-items: start;
     flex-direction: column;
-
+    gap: calcView(4);
     &-top {
-      font-weight: 400;
+      font-weight: 500;
     }
 
     &-bottom {
-      font-weight: 600;
+      font-weight: 500;
     }
   }
 }
@@ -241,7 +254,7 @@ select:focus {
 input {
   width: 100%;
   height: calcView(50);
-  font-size: calcView(18);
+  font-size: calcView(16);
   padding: calcView(9) calcView(15);
   outline: none;
   border: none;
@@ -272,7 +285,7 @@ input {
   }
 
   input::placeholder {
-    font-size: calcView(18);
+    font-size: calcView(16);
   }
 
   input:focus {
@@ -296,12 +309,12 @@ input {
   }
 
   .check-boxes {
-    width: calcView(50);
-    height: calcView(50);
+    width: calcView(38);
+    height: calcView(38);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-width: calcView(4);
+    border-width: calcView(3);
     border-style: solid;
     border-radius: calcView(10);
   }
@@ -387,13 +400,15 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calcView(46);
-  height: calcView(46);
+  width: calcView(45);
+  height: calcView(45);
   border-radius: calcView(43);
   border: calcView(1) solid #d3d3d3;
-  background: #fff;
+  // background: #fff;
 
   &-image {
+    object-fit: contain;
+    object-position: center;
     width: calcView(16);
     height: calcView(16);
   }
@@ -414,26 +429,26 @@ input {
   align-items: center;
 
   &-icon {
-    width: calcView(100);
-    height: calcView(100);
+    width: calcView(76);
+    height: calcView(76);
     @include flexCenter();
-    border: calcView(7) solid black;
+    border: calcView(5) solid black;
     border-radius: calcView(99);
 
     &-svg {
-      width: calcView(42);
-      height: calcView(42);
+      width: calcView(26);
+      height: calcView(26);
 
       path {
-        width: calcView(42);
-        height: calcView(42);
+        width: calcView(26);
+        height: calcView(26);
         fill: black;
       }
     }
   }
 
   .payed {
-    border: calcView(7) solid #00923a;
+    border: calcView(5) solid #00923a;
 
     svg {
       path {
@@ -443,7 +458,7 @@ input {
   }
 
   .request {
-    border: calcView(7) solid #c30000;
+    border: calcView(5) solid #c30000;
 
     svg {
       path {
@@ -453,7 +468,7 @@ input {
   }
 
   .pending {
-    border: calcView(7) solid #c30000;
+    border: calcView(5) solid #c30000;
 
     svg {
       path {
@@ -463,7 +478,7 @@ input {
   }
 
   .lessthenthree {
-    border: calcView(7) solid #c30000;
+    border: calcView(5) solid #c30000;
 
     svg {
       path {
@@ -473,6 +488,7 @@ input {
   }
 
   &-text {
+    margin-top: calcView(8);
     font-size: calcView(16);
     font-weight: 600;
     text-transform: uppercase;
@@ -505,6 +521,7 @@ input {
     &-left,
     &-right {
       display: flex;
+      align-items: center;
       gap: calcView(10);
     }
   }
@@ -517,15 +534,14 @@ input {
 
     &-amount {
       display: flex;
-      justify-content: space-evenly;
-      // gap: calcView(25);
-      flex: 1 0 0;
-      align-self: stretch;
+      justify-content: center;
 
       &-single {
+        position: relative;
         display: flex;
-        align-items: center;
+        justify-content: center;
         gap: calcView(5);
+        width: calcView(200);
 
         #arrow {
           height: calcView(22);
@@ -534,11 +550,32 @@ input {
         .arrowDown {
           transform: rotate(180deg);
         }
-
         span {
           font-size: calcView(26);
           font-weight: 700;
         }
+        .currency {
+          color: $Black !important;
+          font-size: calcView(20);
+          text-transform: lowercase;
+        }
+      }
+    }
+    .home-amount-hov {
+      &::after {
+        content: attr(data-set);
+        position: absolute;
+        top: calcView(-35);
+        background: #000000bc;
+        font-size: calcView(16);
+        color: white;
+        padding: calcView(5) calcView(10);
+        border-radius: calcView(8);
+        right: calcView(30);
+        display: none;
+      }
+      &:hover::after {
+        display: block;
       }
     }
 
@@ -573,7 +610,6 @@ input {
         }
 
         span {
-          color: #c30000;
           font-family: Poppins;
           font-size: calcView(16);
           font-style: normal;
@@ -603,12 +639,15 @@ input {
         }
 
         span {
-          color: #a3a3a3;
           font-family: Poppins;
           font-size: calcView(24);
           font-style: normal;
           font-weight: 600;
           line-height: normal;
+        }
+        .currency {
+          font-size: calcView(20);
+          text-transform: lowercase;
         }
       }
     }
@@ -629,7 +668,7 @@ input {
         align-self: stretch;
         border-radius: calcView(12);
         background: #fff;
-
+        justify-content: space-between;
         .icon {
           display: flex;
           width: calcView(51);
@@ -639,20 +678,19 @@ input {
           align-items: center;
           gap: calcView(10);
           border-radius: calcView(6);
-          background: #e1e1e6;
+          background: #eff1f4;
         }
 
         .details {
+          flex: 1;
           display: flex;
           height: calcView(47);
           flex-direction: column;
           justify-content: space-between;
           align-items: flex-start;
-          flex: 1 0 0;
-
           .name {
+            max-width: calcView(140) !important;
             overflow: hidden;
-            width: calcView(180) !important;
             text-overflow: ellipsis;
             color: #151515;
             font-family: Poppins;
@@ -661,7 +699,6 @@ input {
             font-weight: 500;
             line-height: normal;
           }
-
           .date {
             color: #151515;
             font-family: Poppins;
@@ -675,15 +712,21 @@ input {
         .currency-details {
           display: flex;
           align-items: center;
-          gap: calcView(10);
-
+          gap: calcView(3);
+          position: relative;
           .amount {
+            max-width: calcView(100);
+            overflow: hidden;
+            text-overflow: ellipsis;
             color: #00923a;
             font-family: Poppins;
             font-size: calcView(18);
             font-style: normal;
             font-weight: 500;
             line-height: calcView(18);
+            &-amount {
+              min-width: fit-content;
+            }
           }
 
           .red {
@@ -698,10 +741,26 @@ input {
             color: #151515;
             font-family: Poppins;
             font-size: calcView(18);
-            text-transform: uppercase;
             font-style: normal;
             font-weight: 500;
             line-height: calcView(18);
+          }
+        }
+        .currency-details-number {
+          &::after {
+            content: attr(data-set);
+            position: absolute;
+            top: calcView(-35);
+            background: #000000bc;
+            font-size: calcView(16);
+            color: white;
+            padding: calcView(5) calcView(10);
+            border-radius: calcView(8);
+            right: calcView(30);
+            display: none;
+          }
+          &:hover::after {
+            display: block;
           }
         }
       }
@@ -756,7 +815,6 @@ input {
 
 .issue {
   width: 100%;
-
   &-number {
     @include flexSpace();
     width: calcView(366);
@@ -787,13 +845,12 @@ input {
 
 .accept {
   width: 100%;
+  height: 100vh;
   overflow-y: auto;
 
   &-container {
     width: 100%;
-    height: calcView(583);
     border-radius: calcView(32) calcView(32) 0 0;
-
     &-content {
       padding: calcView(50) calcView(23);
       display: flex;
@@ -808,25 +865,30 @@ input {
 }
 
 .Repay {
-  display: block;
-
+  width: 100%;
+  &-body {
+    margin: 0 auto;
+    display: block;
+    width: 90%;
+  }
   .select-opt {
     width: calcView(300);
+    display: flex;
   }
 
   .col {
     display: flex;
     flex-direction: column;
+    gap: calcView(5);
+    span,
+    label {
+      font-size: calcView(22);
+      font-weight: 400;
+    }
   }
 
   .inline {
     display: inline;
-  }
-
-  span,
-  label {
-    font-size: calcView(22);
-    font-weight: 500;
   }
 
   .colored {
@@ -834,7 +896,7 @@ input {
   }
 
   .mtt {
-    margin-top: calcView(58);
+    margin-top: calcView(35);
   }
 }
 
@@ -871,13 +933,6 @@ input {
 
       .head-text {
         text-align: center;
-
-        img {
-          width: calcView(316);
-          height: calcView(107);
-          object-fit: cover;
-        }
-
         span {
           display: block;
           font-size: calcView(16);
@@ -885,19 +940,36 @@ input {
           line-height: calcView(18.78);
           color: #151515;
         }
+        &-maintext {
+          font-family: fancyfonts;
+          margin-top: calcView(40);
+          margin-bottom: calcView(20);
+          font-size: calcView(66) !important;
+          line-height: calcView(66) !important;
+        }
       }
 
       .line {
         width: calcView(344);
         margin: 0 auto;
         margin-top: calcView(36);
+        margin-bottom: calcView(16);
         display: flex;
         flex-direction: column;
-        gap: calcView(35);
+        gap: calcView(15);
+        span {
+          height: calcView(18);
+          font-size: calcView(70);
+          line-height: calcView(18);
+          text-align: center;
+          font-family: signature;
+          padding-bottom: calcView(10);
+          // border-bottom: calcView(2) solid black;
+        }
       }
 
       .unter-text {
-        font-size: calcView(10);
+        font-size: calcView(12);
         text-align: center;
       }
     }
@@ -970,7 +1042,10 @@ input {
 
               &-second {
                 padding: 0 calcView(10);
-                width: 100%;
+                width: 42%;
+                white-space: pre;
+                text-overflow: ellipsis;
+                overflow: hidden;
                 border-bottom: calcView(1) solid $LightBlack;
                 color: $TextColor;
                 font-family: writter;
@@ -1132,6 +1207,7 @@ input {
                   color: $TextColor;
                   font-family: writter;
                   width: 100%;
+                  text-align: center;
                   line-height: calcView(14);
                   font-size: calcView(14);
                   border-bottom: calcView(1) solid $LightBlack;
@@ -1139,6 +1215,7 @@ input {
               }
 
               &-next-line {
+                height: calcView(15);
                 color: $TextColor;
                 font-family: writter;
                 line-height: calcView(14);
@@ -1166,6 +1243,7 @@ input {
                 &-text {
                   text-align: center;
                   width: 100%;
+                  height: calcView(17);
                   font-size: calcView(16);
                   line-height: calcView(18);
                   border-bottom: calcView(1) solid $LightBlack;
@@ -1205,13 +1283,11 @@ input {
 
             .signature {
               position: absolute;
-              top: 50%;
+              top: 60%;
               left: 50%;
               transform: translate(-50%, -50%);
-
-              img {
-                width: calcView(230);
-              }
+              font-family: signature;
+              font-size: calcView(34);
             }
 
             span {
@@ -1228,6 +1304,7 @@ input {
   position: relative;
 
   .poped-up {
+    z-index: 99;
     position: absolute;
     right: calcView(23);
     top: calcView(150);
@@ -1256,8 +1333,8 @@ input {
 
         .check-boxes {
           @include flexCenter();
-          width: calcView(32);
-          height: calcView(32);
+          width: calcView(22);
+          height: calcView(22);
           border-width: calcView(2);
           border-style: solid;
           border-radius: calcView(4);
@@ -1378,12 +1455,12 @@ input {
         &-in {
           display: flex;
           flex-direction: column;
-
           label {
+            // margin-top: calcView(-4);
             font-size: calcView(12);
+            // line-height: calcView(18);
             font-weight: 600;
           }
-
           input {
             width: 100%;
             height: calcView(50);
@@ -1394,16 +1471,15 @@ input {
             border-radius: calcView(12);
             background: #fff;
           }
-
           input:disabled {
             background: transparent;
+            padding: 0;
+            height: calcView(30);
           }
-
           input:focus {
             border: solid calcView(2) $PrimaryColor;
           }
         }
-
         .invalid {
           input {
             border: calcView(3) solid red !important;
@@ -1436,7 +1512,8 @@ input {
   bottom: calcView(10);
   left: 50%;
   transform: translateX(-50%);
-  background: #00000096;
+  background: #000000ba;
+  color: #fff;
   padding: calcView(6) calcView(16);
   font-size: calcView(16);
   white-space: pre;
@@ -1645,7 +1722,7 @@ input {
     padding-left: calcView(10);
     outline: none;
     border-radius: calcView(12);
-    border: calcView(2) solid #515151;
+    border: calcView(2) solid #818181;
 
     &:focus {
       border: calcView(2) solid #d77300;
@@ -1672,12 +1749,30 @@ input {
       align-items: center;
       justify-content: space-between;
       border-radius: calcView(8);
-
+      &-name {
+        width: fit-content;
+      }
+      .copyicon {
+        width: calcView(16);
+        height: calcView(16);
+        object-fit: contain;
+      }
       span {
-        flex-grow: 1;
+        // flex-grow: 1;
         text-overflow: ellipsis;
         overflow: hidden;
         white-space: pre;
+        font-size: calcView(18);
+      }
+      img {
+        width: calcView(28);
+        height: calcView(28);
+        object-fit: contain;
+      }
+      .flexgap {
+        display: flex;
+        align-items: center;
+        gap: calcView(10);
       }
     }
   }
@@ -1733,8 +1828,8 @@ input {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   background: $White;
   display: flex;
   flex-direction: column;

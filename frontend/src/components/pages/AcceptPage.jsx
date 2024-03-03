@@ -47,42 +47,42 @@ export default function AcceptPage({ data }) {
               <span className="accept-heading">Date of issue </span>
               <span className="detail">{data.date_of_issue}</span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">Maturity date </span>
               <span className="detail">{data.maturity_date}</span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">to the order of </span>
               <span className="detail">{data.payee.name} </span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">the sum of </span>
               <span className="detail">
                 {data.currency_code} {data.amount_numbers}
               </span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">Place of drawing </span>
               <span className="detail">{data.place_of_drawing} </span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">Place of payment </span>
               <span className="detail">{data.place_of_payment} </span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">Bill jurisdiction </span>
               <span className="detail">{data.bill_jurisdiction} </span>
             </span>
-                        <span className="block">
+            <span className="block mt-5">
               <span className="accept-heading">Language </span>
               <span className="detail">{data.language} </span>
             </span>
-                    </div>
-                    <button className="btn mtt" onClick={handleSubmit}>
-                        SIGN
-                    </button>
-                </div>
-            </div>
+          </div>
+          <button className="btn mtt" onClick={handleSubmit}>
+            SIGN
+          </button>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

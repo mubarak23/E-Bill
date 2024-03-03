@@ -1111,7 +1111,7 @@ pub fn issue_new_bill_drawer_is_payee(
         private_key: private_key_bitcoin,
         language,
         drawee: public_data_drawee,
-        drawer: IdentityPublicData::new_empty(),
+        drawer: public_data_payee.clone(),
         payee: public_data_payee,
         endorsee: IdentityPublicData::new_empty(),
     };
@@ -1196,8 +1196,8 @@ pub fn issue_new_bill_drawer_is_drawee(
         public_key: public_key_bitcoin,
         private_key: private_key_bitcoin,
         language,
-        drawee: public_data_drawee,
-        drawer: IdentityPublicData::new_empty(),
+        drawee: public_data_drawee.clone(),
+        drawer: public_data_drawee,
         payee: public_data_payee,
         endorsee: IdentityPublicData::new_empty(),
     };
@@ -1262,7 +1262,7 @@ pub fn get_bills() -> Vec<BitcreditBill> {
     bills
 }
 
-pub fn get_bills_for_list() -> Vec<BitcreditBillForList> {
+pub async fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     let mut bills = Vec::new();
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
     for _path in paths {
@@ -1279,7 +1279,7 @@ pub fn get_bills_for_list() -> Vec<BitcreditBillForList> {
                 .to_str()
                 .expect("File name error")
                 .to_string();
-            let bill = read_bill_with_chain_from_file(&path_without_extension);
+            let bill = read_bill_with_chain_from_file(&path_without_extension).await;
             bills.push(bill);
         }
     }
@@ -1587,19 +1587,31 @@ pub fn accept_bill(bill_name: &String, timestamp: i64) -> bool {
     }
 }
 
-fn read_bill_with_chain_from_file(bill_name: &String) -> BitcreditBillForList {
-    let chain = Chain::read_chain_from_file(bill_name);
-    let bill = chain.get_last_version_bill();
+async fn read_bill_with_chain_from_file(id: &String) -> BitcreditBillToReturn {
+    let bill: BitcreditBill = read_bill_from_file(&id);
+    let chain = Chain::read_chain_from_file(&bill.name);
+    let drawer = chain.get_drawer();
     let chain_to_return = ChainToReturn::new(chain.clone());
-    let bitcredit_bill_to_return: BitcreditBillForList = BitcreditBillForList {
+    let endorsed = chain.exist_block_with_operation_code(blockchain::OperationCode::Endorse);
+    let accepted = chain.exist_block_with_operation_code(blockchain::OperationCode::Accept);
+    let mut requested_to_pay =
+        chain.exist_block_with_operation_code(blockchain::OperationCode::RequestToPay);
+    let mut requested_to_accept =
+        chain.exist_block_with_operation_code(blockchain::OperationCode::RequestToAccept);
+    let address_to_pay = web::get_address_to_pay(bill.clone());
+    let check_if_already_paid =
+        web::check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone()).await;
+    let payed = check_if_already_paid.0;
+
+    let full_bill = BitcreditBillToReturn {
         name: bill.name,
         to_payee: bill.to_payee,
         bill_jurisdiction: bill.bill_jurisdiction,
         timestamp_at_drawing: bill.timestamp_at_drawing,
         drawee: bill.drawee,
-        drawer: bill.drawer,
-        payee: bill.payee.clone(),
-        endorsee: bill.endorsee.clone(),
+        drawer: drawer,
+        payee: bill.payee,
+        endorsee: bill.endorsee,
         place_of_drawing: bill.place_of_drawing,
         currency_code: bill.currency_code,
         amount_numbers: bill.amount_numbers,
@@ -1612,10 +1624,20 @@ fn read_bill_with_chain_from_file(bill_name: &String) -> BitcreditBillForList {
         public_key: bill.public_key,
         private_key: bill.private_key,
         language: bill.language,
+        accepted,
+        endorsed,
+        requested_to_pay,
+        requested_to_accept,
+        payed,
+        link_to_pay: "".to_string(),
+        pr_key_bill: "".to_string(),
+        number_of_confirmations: 0,
+        pending: false,
+        address_to_pay,
         chain_of_blocks: chain_to_return,
     };
 
-    bitcredit_bill_to_return
+    full_bill
 }
 
 fn read_bill_from_file(bill_name: &String) -> BitcreditBill {

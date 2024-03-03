@@ -39,7 +39,7 @@ export default function ReqPaymentPage({ data }) {
           <div className="block mt">
             <span className="block mt">
               <span className="accept-heading">send to </span>
-              <span className="block detail input-blank">
+              <span className="block detail">
                 {data.drawee.name}, {data.place_of_drawing}
               </span>
             </span>
