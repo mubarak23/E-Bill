@@ -184,7 +184,7 @@ async fn init_wallet() {
     localstore.migrate().await;
     let client = HttpClient::default();
 
-    //take from params
+    //TODO: take from params
     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
     let identity: Identity = read_identity_from_file();
