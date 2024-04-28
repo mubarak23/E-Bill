@@ -17,19 +17,7 @@ use rocket_dyn_templates::{context, handlebars, Template};
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, BILL_VALIDITY_PERIOD, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
-use crate::{
-    accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht,
-    change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
-    endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec,
-    get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
-    issue_new_bill_drawer_is_payee, read_bill_from_file, read_contacts_map,
-    read_identity_from_file, read_peer_id_from_file, request_acceptance, request_pay,
-    sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm, BitcreditBill, BitcreditBillForList,
-    BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm, EditContactForm,
-    EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData, IdentityWithAll,
-    NewContactForm, NodeId, RequestToAcceptBitcreditBillForm, RequestToPayBitcreditBillForm,
-    SellBitcreditBillForm,
-};
+use crate::{accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht, change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map, endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec, get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee, read_bill_from_file, read_contacts_map, read_identity_from_file, read_peer_id_from_file, request_acceptance, request_pay, sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm, BitcreditBill, BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm, EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData, IdentityWithAll, NewContactForm, NodeId, RequestToAcceptBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm, mint_bitcredit_bill};
 
 use self::handlebars::{Handlebars, JsonRender};
 
@@ -302,6 +290,43 @@ pub async fn return_chain_of_blocks(id: String) -> Json<Chain> {
 #[get("/return")]
 pub async fn return_operation_codes() -> Json<Vec<OperationCode>> {
     Json(OperationCode::get_all_operation_codes())
+}
+
+//PUT
+#[get("/mint/<id>")]
+pub async fn mint_bill(state: &State<Client>, id: String) -> Status {
+    if !Path::new(IDENTITY_FILE_PATH).exists() {
+        Status::NotAcceptable
+    } else {
+        let mut client = state.inner().clone();
+
+        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+
+        let correct = mint_bitcredit_bill(&id, timestamp).await;
+
+        if correct {
+            let chain: Chain = Chain::read_chain_from_file(&id);
+            let block = chain.get_latest_block();
+
+            let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
+            let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
+            let message = event.to_byte_array();
+
+            client.add_message_to_topic(message, id.clone()).await;
+
+            //TODO: add for mint or just sent it directly to mint?
+            // client
+            //     .add_bill_to_dht_for_node(
+            //         &endorse_bill_form.bill_name,
+            //         &public_data_endorsee.peer_id.to_string().clone(),
+            //     )
+            //     .await;
+        } else {
+            println!("Can't mint");
+        }
+
+        Status::Ok
+    }
 }
 
 #[get("/return/<id>")]
