@@ -17,7 +17,19 @@ use rocket_dyn_templates::{context, handlebars, Template};
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, BILL_VALIDITY_PERIOD, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
-use crate::{accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht, change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map, endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec, get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee, read_bill_from_file, read_contacts_map, read_identity_from_file, read_peer_id_from_file, request_acceptance, request_pay, sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm, BitcreditBill, BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm, EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData, IdentityWithAll, NewContactForm, NodeId, RequestToAcceptBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm, mint_bitcredit_bill};
+use crate::{
+    accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht,
+    change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
+    endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec,
+    get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
+    issue_new_bill_drawer_is_payee, mint_bitcredit_bill, read_bill_from_file, read_contacts_map,
+    read_identity_from_file, read_peer_id_from_file, request_acceptance, request_pay,
+    sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm, BitcreditBill,
+    BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm,
+    EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData,
+    IdentityWithAll, NewContactForm, NodeId, RequestToAcceptBitcreditBillForm,
+    RequestToPayBitcreditBillForm, SellBitcreditBillForm,
+};
 
 use self::handlebars::{Handlebars, JsonRender};
 
@@ -139,7 +151,6 @@ pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Cl
         return Status::NotAcceptable;
     }
     my_identity = read_identity_from_file();
-
 
     if !my_identity.update_valid(&identity_changes) {
         return Status::NotAcceptable;

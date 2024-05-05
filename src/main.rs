@@ -12,8 +12,9 @@ use borsh::{self, BorshDeserialize, BorshSerialize};
 use chrono::Utc;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
+use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-use moksha_wallet::wallet::WalletBuilder;
+use moksha_wallet::wallet::{Wallet, WalletBuilder};
 use openssl::pkey::{Private, Public};
 use openssl::rsa;
 use openssl::rsa::{Padding, Rsa};
@@ -130,6 +131,7 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
                 web::return_chain_of_blocks,
                 web::return_basic_bill,
                 web::sell_bill,
+                web::mint_bill,
             ],
         )
         .mount("/bills", routes![web::return_bills_list,])
@@ -180,8 +182,6 @@ async fn init_wallet() {
     let localstore = SqliteLocalStore::with_path(db_path.clone())
         .await
         .expect("Cannot parse local store");
-    localstore.migrate().await;
-    let client = HttpClient::default();
 
     //TODO: take from params
     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
@@ -189,11 +189,9 @@ async fn init_wallet() {
     let identity: Identity = read_identity_from_file();
     let bitcoin_key = identity.bitcoin_public_key.clone();
 
-    let wallet = WalletBuilder::default()
-        .with_client(client)
+    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
         .with_localstore(localstore)
         .with_mint_url(mint_url)
-        .with_key(bitcoin_key)
         .build()
         .await
         .expect("Could not create wallet");
@@ -654,21 +652,18 @@ impl Identity {
     }
 
     fn all_changeable_fields_empty(&self) -> bool {
-        self.name == "" &&
-        self.company == "" &&
-        self.postal_address == "" &&
-        self.email == ""
+        self.name == "" && self.company == "" && self.postal_address == "" && self.email == ""
     }
 
     fn all_changeable_fields_equal_to(&self, other: &Self) -> bool {
-        self.name == other.name && 
-        self.company == other.company &&
-        self.postal_address == other.postal_address &&
-        self.email == other.email
+        self.name == other.name
+            && self.company == other.company
+            && self.postal_address == other.postal_address
+            && self.email == other.email
     }
-   
+
     fn update_valid(&self, other: &Self) -> bool {
-        if other.all_changeable_fields_empty() { 
+        if other.all_changeable_fields_empty() {
             return false;
         }
         if self.all_changeable_fields_equal_to(other) {
@@ -1421,9 +1416,14 @@ pub async fn mint_bitcredit_bill(bill_name: &String, timestamp: i64) -> bool {
     let exist_block_with_code_mint =
         blockchain_from_file.exist_block_with_operation_code(OperationCode::Mint);
 
-    if ((my_peer_id.eq(&bill.payee.peer_id) && !exist_block_with_code_endorse)
-        || (my_peer_id.eq(&bill.endorsee.peer_id)))
-        && !exist_block_with_code_mint
+    let exist_block_with_code_sell =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Sell);
+
+    if (my_peer_id.eq(&bill.payee.peer_id)
+        && !exist_block_with_code_endorse
+        && !exist_block_with_code_sell
+        && !exist_block_with_code_mint)
+        || (my_peer_id.eq(&bill.endorsee.peer_id))
     {
         let identity = get_whole_identity();
 
@@ -1462,8 +1462,8 @@ pub async fn mint_bitcredit_bill(bill_name: &String, timestamp: i64) -> bool {
                 let bill_id = bill.name.clone();
                 let _ = mint(amount, bill_id);
             })
-                .await
-                .expect("Mint process panicked");
+            .await
+            .expect("Mint process panicked");
 
             blockchain_from_file.write_chain_to_file(&bill_id);
             true

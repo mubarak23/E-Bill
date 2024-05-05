@@ -1,11 +1,14 @@
+use crate::{read_identity_from_file, Identity};
 use futures::executor::block_on;
+use moksha_core::amount::Amount;
+use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
+use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-use moksha_wallet::wallet::WalletBuilder;
+use moksha_wallet::wallet::{Wallet, WalletBuilder};
 use std::fs;
 use std::path::PathBuf;
 use tokio::runtime::Handle;
 use url::Url;
-use crate::{Identity, read_identity_from_file};
 
 // pub fn mint_with_handle(handle: Handle, amount: u64, bill_id: String) {
 //     block_on(async {
@@ -76,7 +79,6 @@ pub async fn mint(
     let localstore = SqliteLocalStore::with_path(db_path.clone())
         .await
         .expect("Cannot parse local store");
-    let client = HttpClient::default();
 
     //TODO change to some conf in settings
     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
@@ -84,11 +86,9 @@ pub async fn mint(
     let identity: Identity = read_identity_from_file();
     let bitcoin_key = identity.bitcoin_public_key.clone();
 
-    let wallet = WalletBuilder::default()
-        .with_client(client)
+    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
         .with_localstore(localstore)
         .with_mint_url(mint_url)
-        .with_key(bitcoin_key)
         .build()
         .await
         .expect("Could not create wallet");
@@ -100,15 +100,15 @@ pub async fn mint(
         .await;
 
         let req = wallet
-            .get_mint_payment_request(amount.clone(), bill_id.clone())
+            .get_mint_quote(Amount::from(amount), CurrencyUnit::Sat)
             .await
             .expect("Cannot get mint payment request");
 
-        let mint_result = wallet
-            .mint_tokens(amount.clone().into(), bill_id.clone())
+        let result = wallet
+            .mint_tokens(&PaymentMethod::Bolt11, amount.into(), req.quote)
             .await;
 
-        match mint_result {
+        match result {
             Ok(_) => {
                 println!(
                     "Tokens minted successfully.\nNew balance {} sats",

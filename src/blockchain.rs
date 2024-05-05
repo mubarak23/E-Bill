@@ -146,6 +146,7 @@ impl Chain {
             rsa_public_key_pem: "".to_string(),
         };
 
+        //TODO: add mint!
         if self.blocks.len() > 1
             && (self.exist_block_with_operation_code(Endorse.clone())
                 || self.exist_block_with_operation_code(Sell.clone()))
