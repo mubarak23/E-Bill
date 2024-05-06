@@ -27,8 +27,8 @@ use crate::{
     sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm, BitcreditBill,
     BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm,
     EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData,
-    IdentityWithAll, NewContactForm, NodeId, RequestToAcceptBitcreditBillForm,
-    RequestToPayBitcreditBillForm, SellBitcreditBillForm,
+    IdentityWithAll, MintBitcreditBillForm, NewContactForm, NodeId,
+    RequestToAcceptBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
 
 use self::handlebars::{Handlebars, JsonRender};
@@ -304,8 +304,11 @@ pub async fn return_operation_codes() -> Json<Vec<OperationCode>> {
 }
 
 //PUT
-#[get("/mint/<id>")]
-pub async fn mint_bill(state: &State<Client>, id: String) -> Status {
+#[post("/mint", data = "<mint_bill_form>")]
+pub async fn mint_bill(
+    state: &State<Client>,
+    mint_bill_form: Form<MintBitcreditBillForm>,
+) -> Status {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
         Status::NotAcceptable
     } else {
@@ -313,30 +316,43 @@ pub async fn mint_bill(state: &State<Client>, id: String) -> Status {
 
         let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = mint_bitcredit_bill(&id, timestamp).await;
+        let public_mint_node =
+            get_identity_public_data(mint_bill_form.mint_node.clone(), client.clone()).await;
 
-        if correct {
-            let chain: Chain = Chain::read_chain_from_file(&id);
-            let block = chain.get_latest_block();
+        if !public_mint_node.name.is_empty() {
+            let correct = mint_bitcredit_bill(
+                &mint_bill_form.bill_name,
+                public_mint_node.clone(),
+                timestamp,
+            )
+            .await;
 
-            let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
-            let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
-            let message = event.to_byte_array();
+            if correct {
+                let chain: Chain = Chain::read_chain_from_file(&mint_bill_form.bill_name);
+                let block = chain.get_latest_block();
 
-            client.add_message_to_topic(message, id.clone()).await;
+                let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
+                let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
+                let message = event.to_byte_array();
 
-            //TODO: add for mint or just sent it directly to mint?
-            // client
-            //     .add_bill_to_dht_for_node(
-            //         &endorse_bill_form.bill_name,
-            //         &public_data_endorsee.peer_id.to_string().clone(),
-            //     )
-            //     .await;
+                client
+                    .add_message_to_topic(message, mint_bill_form.bill_name.clone())
+                    .await;
+
+                client
+                    .add_bill_to_dht_for_node(
+                        &mint_bill_form.bill_name,
+                        &public_mint_node.peer_id.to_string().clone(),
+                    )
+                    .await;
+            } else {
+                println!("Can't mint");
+            }
+
+            Status::Ok
         } else {
-            println!("Can't mint");
+            Status::NotAcceptable
         }
-
-        Status::Ok
     }
 }
 

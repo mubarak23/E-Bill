@@ -2,6 +2,7 @@ extern crate core;
 #[macro_use]
 extern crate rocket;
 
+use std::cmp::min;
 use std::collections::HashMap;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
@@ -1403,7 +1404,11 @@ pub fn endorse_bitcredit_bill(
     }
 }
 
-pub async fn mint_bitcredit_bill(bill_name: &String, timestamp: i64) -> bool {
+pub async fn mint_bitcredit_bill(
+    bill_name: &String,
+    mintnode: IdentityPublicData,
+    timestamp: i64,
+) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
     let mut bill = read_bill_from_file(&bill_name);
 
@@ -1431,7 +1436,11 @@ pub async fn mint_bitcredit_bill(bill_name: &String, timestamp: i64) -> bool {
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string());
         let minted_by = serde_json::to_vec(&my_identity_public).unwrap();
 
-        let data_for_new_block = "Bill minted by ".to_string() + &hex::encode(minted_by);
+        let data_for_new_block_in_bytes = serde_json::to_vec(&mintnode).unwrap();
+        let data_for_new_block = "Minted to ".to_string()
+            + &hex::encode(data_for_new_block_in_bytes)
+            + " minted by "
+            + &hex::encode(minted_by);
 
         let keys = read_keys_from_bill_file(&bill_name);
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
@@ -1822,6 +1831,13 @@ pub struct BitcreditBillForm {
 #[serde(crate = "rocket::serde")]
 pub struct EndorseBitcreditBillForm {
     pub endorsee: String,
+    pub bill_name: String,
+}
+
+#[derive(FromForm, Debug, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct MintBitcreditBillForm {
+    pub mint_node: String,
     pub bill_name: String,
 }
 

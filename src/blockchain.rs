@@ -18,7 +18,7 @@ use rocket::form::validate::Contains;
 use rocket::route::Cloneable;
 use serde::{Deserialize, Serialize};
 
-use crate::blockchain::OperationCode::{Endorse, Sell};
+use crate::blockchain::OperationCode::{Endorse, Mint, Sell};
 use crate::constants::{BILLS_FOLDER_PATH, USEDNET};
 use crate::{
     api, bill_from_byte_array, decrypt_bytes, encrypt_bytes, private_key_from_pem_u8,
@@ -146,19 +146,21 @@ impl Chain {
             rsa_public_key_pem: "".to_string(),
         };
 
-        //TODO: add mint!
         if self.blocks.len() > 1
             && (self.exist_block_with_operation_code(Endorse.clone())
-                || self.exist_block_with_operation_code(Sell.clone()))
+                || self.exist_block_with_operation_code(Sell.clone())
+                || self.exist_block_with_operation_code(Mint.clone()))
         {
             let last_version_block_endorse =
                 self.get_last_version_block_with_operation_code(Endorse);
+            let last_version_block_mint = self.get_last_version_block_with_operation_code(Mint);
             let last_version_block_sell = self.get_last_version_block_with_operation_code(Sell);
             let last_block = self.get_latest_block();
 
             let paid = Self::check_if_last_sell_block_is_paid(self);
 
             if (last_version_block_endorse.id < last_version_block_sell.id)
+                && (last_version_block_mint.id < last_version_block_sell.id)
                 && ((last_block.id > last_version_block_sell.id) || paid)
             {
                 let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_name);
@@ -217,7 +219,9 @@ impl Chain {
                     serde_json::from_slice(&seller_bill_u8).unwrap();
 
                 last_endorsee = buyer_bill.clone();
-            } else if self.exist_block_with_operation_code(Endorse.clone()) {
+            } else if self.exist_block_with_operation_code(Endorse.clone())
+                && (last_version_block_endorse.id > last_version_block_mint.id)
+            {
                 let bill_keys = read_keys_from_bill_file(&last_version_block_endorse.bill_name);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
@@ -241,6 +245,32 @@ impl Chain {
 
                 let endorsee = hex::decode(part_with_endorsee).unwrap();
                 last_endorsee = serde_json::from_slice(&endorsee).unwrap();
+            } else if self.exist_block_with_operation_code(Mint.clone())
+                && (last_version_block_mint.id > last_version_block_endorse.id)
+            {
+                let bill_keys = read_keys_from_bill_file(&last_version_block_mint.bill_name);
+                let key: Rsa<Private> =
+                    Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
+                let bytes = hex::decode(last_version_block_mint.data.clone()).unwrap();
+                let decrypted_bytes = decrypt_bytes(&bytes, &key);
+                let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
+
+                let mut part_with_mint = block_data_decrypted
+                    .split("Minted to ")
+                    .collect::<Vec<&str>>()
+                    .get(1)
+                    .unwrap()
+                    .to_string();
+
+                part_with_mint = part_with_mint
+                    .split(" minted by ")
+                    .collect::<Vec<&str>>()
+                    .get(0)
+                    .unwrap()
+                    .to_string();
+
+                let mint = hex::decode(part_with_mint).unwrap();
+                last_endorsee = serde_json::from_slice(&mint).unwrap();
             }
         }
 
@@ -703,18 +733,39 @@ impl Chain {
                     let decrypted_bytes = decrypt_bytes(&bytes, &key);
                     let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
-                    let part_with_minter = block_data_decrypted
-                        .split("Bill minted by ")
+                    let mut part_with_mint = block_data_decrypted
+                        .split("Minted to ")
                         .collect::<Vec<&str>>()
                         .get(1)
                         .unwrap()
                         .to_string();
 
-                    let part_with_minter_u8 = hex::decode(part_with_minter).unwrap();
+                    let part_with_minter = part_with_mint
+                        .clone()
+                        .split(" minted by ")
+                        .collect::<Vec<&str>>()
+                        .get(1)
+                        .unwrap()
+                        .to_string();
+
+                    part_with_mint = part_with_mint
+                        .split(" minted by ")
+                        .collect::<Vec<&str>>()
+                        .get(0)
+                        .unwrap()
+                        .to_string();
+
+                    let minter_bill_u8 = hex::decode(part_with_minter).unwrap();
                     let minter_bill: IdentityPublicData =
-                        serde_json::from_slice(&part_with_minter_u8).unwrap();
+                        serde_json::from_slice(&minter_bill_u8).unwrap();
+
+                    let mint_bill_u8 = hex::decode(part_with_mint).unwrap();
+                    let mint_bill: IdentityPublicData =
+                        serde_json::from_slice(&mint_bill_u8).unwrap();
 
                     if minter_bill.peer_id.eq(&request_node_id) {
+                        return true;
+                    } else if mint_bill.peer_id.eq(&request_node_id) {
                         return true;
                     }
                 }
@@ -1051,19 +1102,41 @@ impl Block {
                 let decrypted_bytes = decrypt_bytes(&bytes, &key);
                 let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
-                let part_with_minter = block_data_decrypted
-                    .split("Bill minted by ")
+                let mut part_with_mint = block_data_decrypted
+                    .split("Minted to ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
                     .to_string();
 
+                let part_with_minter = part_with_mint
+                    .clone()
+                    .split(" minted by ")
+                    .collect::<Vec<&str>>()
+                    .get(1)
+                    .unwrap()
+                    .to_string();
+
+                part_with_mint = part_with_mint
+                    .split(" minted by ")
+                    .collect::<Vec<&str>>()
+                    .get(0)
+                    .unwrap()
+                    .to_string();
+
+                let mint_bill_u8 = hex::decode(part_with_mint).unwrap();
+                let mint_bill: IdentityPublicData = serde_json::from_slice(&mint_bill_u8).unwrap();
+                let mint_bill_name = mint_bill.peer_id.clone();
+                if !mint_bill_name.is_empty() && !nodes.contains(&mint_bill_name) {
+                    nodes.push(mint_bill_name);
+                }
+
                 let minter_bill_u8 = hex::decode(part_with_minter).unwrap();
                 let minter_bill: IdentityPublicData =
                     serde_json::from_slice(&minter_bill_u8).unwrap();
-                let minter_peer_id = minter_bill.peer_id.clone();
-                if !minter_peer_id.is_empty() && !nodes.contains(&minter_peer_id) {
-                    nodes.push(minter_peer_id);
+                let minter_bill_name = minter_bill.peer_id.clone();
+                if !minter_bill_name.is_empty() && !nodes.contains(&minter_bill_name) {
+                    nodes.push(minter_bill_name);
                 }
             }
             OperationCode::RequestToAccept => {
@@ -1281,18 +1354,35 @@ impl Block {
                 let decrypted_bytes = decrypt_bytes(&bytes, &key);
                 let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
-                let mut part_with_minter = block_data_decrypted
-                    .split("Bill minted by ")
+                let mut part_with_mint = block_data_decrypted
+                    .split("Minted to ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
                     .to_string();
 
+                let part_with_minter = part_with_mint
+                    .clone()
+                    .split(" minted by ")
+                    .collect::<Vec<&str>>()
+                    .get(1)
+                    .unwrap()
+                    .to_string();
+
+                part_with_mint = part_with_mint
+                    .split(" minted by ")
+                    .collect::<Vec<&str>>()
+                    .get(0)
+                    .unwrap()
+                    .to_string();
+
+                let mint_bill_u8 = hex::decode(part_with_mint).unwrap();
+                let mint_bill: IdentityPublicData = serde_json::from_slice(&mint_bill_u8).unwrap();
+
                 let minter_bill_u8 = hex::decode(part_with_minter).unwrap();
                 let minter_bill: IdentityPublicData =
                     serde_json::from_slice(&minter_bill_u8).unwrap();
-
-                line = "Bill minted by ".to_string() + &minter_bill.name;
+                line = minter_bill.name + ", " + &minter_bill.postal_address;
             }
             OperationCode::RequestToAccept => {
                 let time_of_request_to_accept =
