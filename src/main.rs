@@ -1437,9 +1437,9 @@ pub async fn mint_bitcredit_bill(
         let minted_by = serde_json::to_vec(&my_identity_public).unwrap();
 
         let data_for_new_block_in_bytes = serde_json::to_vec(&mintnode).unwrap();
-        let data_for_new_block = "Minted to ".to_string()
+        let data_for_new_block = "Endorsed to ".to_string()
             + &hex::encode(data_for_new_block_in_bytes)
-            + " minted by "
+            + " endorsed by "
             + &hex::encode(minted_by);
 
         let keys = read_keys_from_bill_file(&bill_name);

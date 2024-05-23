@@ -256,14 +256,14 @@ impl Chain {
                 let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
                 let mut part_with_mint = block_data_decrypted
-                    .split("Minted to ")
+                    .split("Endorsed to ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
                     .to_string();
 
                 part_with_mint = part_with_mint
-                    .split(" minted by ")
+                    .split(" endorsed by ")
                     .collect::<Vec<&str>>()
                     .get(0)
                     .unwrap()
@@ -734,7 +734,7 @@ impl Chain {
                     let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
                     let mut part_with_mint = block_data_decrypted
-                        .split("Minted to ")
+                        .split("Endorsed to ")
                         .collect::<Vec<&str>>()
                         .get(1)
                         .unwrap()
@@ -742,14 +742,14 @@ impl Chain {
 
                     let part_with_minter = part_with_mint
                         .clone()
-                        .split(" minted by ")
+                        .split(" endorsed by ")
                         .collect::<Vec<&str>>()
                         .get(1)
                         .unwrap()
                         .to_string();
 
                     part_with_mint = part_with_mint
-                        .split(" minted by ")
+                        .split(" endorsed by ")
                         .collect::<Vec<&str>>()
                         .get(0)
                         .unwrap()
@@ -1103,7 +1103,7 @@ impl Block {
                 let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
                 let mut part_with_mint = block_data_decrypted
-                    .split("Minted to ")
+                    .split("Endorsed to ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
@@ -1111,14 +1111,14 @@ impl Block {
 
                 let part_with_minter = part_with_mint
                     .clone()
-                    .split(" minted by ")
+                    .split(" endorsed by ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
                     .to_string();
 
                 part_with_mint = part_with_mint
-                    .split(" minted by ")
+                    .split(" endorsed by ")
                     .collect::<Vec<&str>>()
                     .get(0)
                     .unwrap()
@@ -1355,7 +1355,7 @@ impl Block {
                 let block_data_decrypted = String::from_utf8(decrypted_bytes).unwrap();
 
                 let mut part_with_mint = block_data_decrypted
-                    .split("Minted to ")
+                    .split("Endorsed to ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
@@ -1363,14 +1363,14 @@ impl Block {
 
                 let part_with_minter = part_with_mint
                     .clone()
-                    .split(" minted by ")
+                    .split(" endorsed by ")
                     .collect::<Vec<&str>>()
                     .get(1)
                     .unwrap()
                     .to_string();
 
                 part_with_mint = part_with_mint
-                    .split(" minted by ")
+                    .split(" endorsed by ")
                     .collect::<Vec<&str>>()
                     .get(0)
                     .unwrap()
