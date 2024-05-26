@@ -133,6 +133,7 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
                 web::return_basic_bill,
                 web::sell_bill,
                 web::mint_bill,
+                web::try_mint_bill,
             ],
         )
         .mount("/bills", routes![web::return_bills_list,])

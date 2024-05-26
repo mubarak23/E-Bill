@@ -304,6 +304,35 @@ pub async fn return_operation_codes() -> Json<Vec<OperationCode>> {
 }
 
 //PUT
+#[post("/try_mint", data = "<mint_bill_form>")]
+pub async fn try_mint_bill(
+    state: &State<Client>,
+    mint_bill_form: Form<MintBitcreditBillForm>,
+) -> Status {
+    if !Path::new(IDENTITY_FILE_PATH).exists() {
+        Status::NotAcceptable
+    } else {
+        let mut client = state.inner().clone();
+
+        let public_mint_node =
+            get_identity_public_data(mint_bill_form.mint_node.clone(), client.clone()).await;
+
+        if !public_mint_node.name.is_empty() {
+            client
+                .add_bill_to_dht_for_node(
+                    &mint_bill_form.bill_name,
+                    &public_mint_node.peer_id.to_string().clone(),
+                )
+                .await;
+
+            Status::Ok
+        } else {
+            Status::NotAcceptable
+        }
+    }
+}
+
+//PUT
 #[post("/mint", data = "<mint_bill_form>")]
 pub async fn mint_bill(
     state: &State<Client>,
