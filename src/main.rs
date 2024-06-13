@@ -15,7 +15,7 @@ use libp2p::identity::Keypair;
 use libp2p::PeerId;
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-use moksha_wallet::wallet::{Wallet, WalletBuilder};
+use moksha_wallet::wallet::Wallet;
 use openssl::pkey::{Private, Public};
 use openssl::rsa;
 use openssl::rsa::{Padding, Rsa};
@@ -134,6 +134,7 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
                 web::sell_bill,
                 web::mint_bill,
                 web::try_mint_bill,
+                web::accept_mint_bill,
             ],
         )
         .mount("/bills", routes![web::return_bills_list,])
@@ -193,7 +194,6 @@ async fn init_wallet() {
 
     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
         .with_localstore(localstore)
-        .with_mint_url(mint_url)
         .build()
         .await
         .expect("Could not create wallet");
@@ -1839,6 +1839,13 @@ pub struct EndorseBitcreditBillForm {
 #[serde(crate = "rocket::serde")]
 pub struct MintBitcreditBillForm {
     pub mint_node: String,
+    pub bill_name: String,
+}
+
+#[derive(FromForm, Debug, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct AcceptMintBitcreditBillForm {
+    pub interest: u64,
     pub bill_name: String,
 }
 

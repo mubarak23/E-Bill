@@ -1,13 +1,10 @@
 use crate::{read_identity_from_file, Identity};
-use futures::executor::block_on;
 use moksha_core::amount::Amount;
-use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
+use moksha_core::primitives::{CurrencyUnit, PaymentMethod, PostMintQuoteBitcreditResponse};
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-use moksha_wallet::wallet::{Wallet, WalletBuilder};
-use std::fs;
+use moksha_wallet::wallet::Wallet;
 use std::path::PathBuf;
-use tokio::runtime::Handle;
 use url::Url;
 
 // pub fn mint_with_handle(handle: Handle, amount: u64, bill_id: String) {
@@ -88,7 +85,6 @@ pub async fn mint(
 
     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
         .with_localstore(localstore)
-        .with_mint_url(mint_url)
         .build()
         .await
         .expect("Could not create wallet");
@@ -99,13 +95,25 @@ pub async fn mint(
         )
         .await;
 
+        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
         let req = wallet
-            .get_mint_quote(Amount::from(amount), CurrencyUnit::Sat)
+            .get_mint_quote(&mint_url, Amount::from(amount), CurrencyUnit::Sat)
             .await
             .expect("Cannot get mint payment request");
 
+        let wallet_keysets = wallet
+            .add_mint_keysets(&Url::parse("https://mint.mutinynet.moksha.cash")?)
+            .await?;
+        let wallet_keyset = wallet_keysets.first().unwrap();
+
         let result = wallet
-            .mint_tokens(&PaymentMethod::Bolt11, amount.into(), req.quote)
+            .mint_tokens(
+                wallet_keyset,
+                &PaymentMethod::Bolt11,
+                amount.into(),
+                req.quote,
+            )
             .await;
 
         match result {
@@ -127,4 +135,39 @@ pub async fn mint(
     }
 
     Ok(())
+}
+
+#[tokio::main]
+pub async fn mint_bitcredit(amount: u64, bill_id: String) -> PostMintQuoteBitcreditResponse {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    let localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+    let identity: Identity = read_identity_from_file();
+    let bitcoin_key = identity.bitcoin_public_key.clone();
+
+    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+        .with_localstore(localstore)
+        .build()
+        .await
+        .expect("Could not create wallet");
+
+    let req = wallet.create_quote_bitcredit(&mint_url, amount, bill_id);
+
+    // let wallet_keysets = wallet
+    //     .add_mint_keysets(&Url::parse("https://mint.mutinynet.moksha.cash")?)
+    //     .await?;
+    // let wallet_keyset = wallet_keysets.first().unwrap();
+
+    // let result = wallet
+    //     .mint_tokens(wallet_keyset, &PaymentMethod::Bolt11, amount.into(), req.quote)
+    //     .await;
+
+    // let quote = req.quote;
+
+    req.await.unwrap()
 }

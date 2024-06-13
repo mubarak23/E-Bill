@@ -20,6 +20,7 @@ import Key from "../Key";
 import Bill from "../pages/Bill";
 import SellPage from "../pages/SellPage";
 import MintPage from "../pages/MintPage";
+import CheckMintPage from "../pages/CheckMintPage";
 
 export default function SingleBillDetail({ item }) {
   const { peer_id, showPopUp, showPopUpSecondary } = useContext(MainContext);
@@ -54,12 +55,15 @@ export default function SingleBillDetail({ item }) {
   let accepted = false;
   let endorse = false;
   let sell = false;
+  let check_mint = false;
   let mint = false;
   let buy = false;
   let req_to_pay = false;
   let req_to_acpt = false;
   let canMyPeerIdEndorse = peer_id == singleBill?.payee?.peer_id;
   let canMyPeerIdSell = peer_id == singleBill?.payee?.peer_id;
+  //TODO add some logic
+  let canMyPeerIdCheckMint = true;
   let canMyPeerIdMint = peer_id == singleBill?.payee?.peer_id;
   let canMyPeerIdBuy = peer_id == singleBill?.buyer?.peer_id;
   let canMyPeerIdAccept = peer_id == singleBill?.drawee?.peer_id;
@@ -91,6 +95,14 @@ export default function SingleBillDetail({ item }) {
         canMyPeerIdSell
     ) {
       sell = true;
+    }
+    if (
+        !singleBill?.payed &&
+        !singleBill?.pending &&
+        !singleBill?.waited_for_payment &&
+        canMyPeerIdCheckMint
+    ) {
+        check_mint = true;
     }
     if (
         !singleBill?.payed &&
@@ -143,6 +155,8 @@ export default function SingleBillDetail({ item }) {
       {isVisible: mint, name: "MINT", icon: iconEndorse },
     //todo icon sell
     {isVisible: sell, name: "SELL", icon: iconEndorse },
+      //todo icon check_mint
+      {isVisible: check_mint, name: "CHECK_MINT", icon: iconEndorse },
       //todo icon buy
     {isVisible: buy, name: "BUY", icon: iconPay },
     {
@@ -176,6 +190,9 @@ export default function SingleBillDetail({ item }) {
             break;
       case "SELL":
         showPopUpSecondary(true, <SellPage data={singleBill}/>);
+        break;
+      case "CHECK_MINT":
+        showPopUpSecondary(true, <CheckMintPage data={singleBill}/>);
         break;
       case "REQUEST TO ACCEPT":
         showPopUpSecondary(true, <ReqAcceptPage data={singleBill} />);
