@@ -3,7 +3,7 @@
 use std::convert::identity;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::thread;
+use std::{fs, thread};
 
 use bitcoin::secp256k1::Scalar;
 use chrono::{Days, Utc};
@@ -339,6 +339,16 @@ pub async fn try_mint_bill(
         } else {
             Status::NotAcceptable
         }
+    }
+}
+
+#[get("/find/<bill_id>")]
+pub async fn find_bill_in_dht(state: &State<Client>, bill_id: String) {
+    let mut client = state.inner().clone();
+    let bill_bytes = client.get_bill(bill_id.to_string().clone()).await;
+    if !bill_bytes.is_empty() {
+        let path = BILLS_FOLDER_PATH.to_string() + "/" + &bill_id + ".json";
+        fs::write(path, bill_bytes.clone()).expect("Can't write file.");
     }
 }
 
