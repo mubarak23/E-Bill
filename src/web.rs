@@ -25,7 +25,7 @@ use url::Url;
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, BILL_VALIDITY_PERIOD, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
-use crate::work_with_mint::{mint, mint_bitcredit};
+use crate::work_with_mint::{mint, mint_bitcredit, request_to_mint_bitcredit};
 use crate::{
     accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht,
     change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
@@ -38,7 +38,8 @@ use crate::{
     BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm,
     EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData,
     IdentityWithAll, MintBitcreditBillForm, NewContactForm, NodeId,
-    RequestToAcceptBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
+    RequestToAcceptBitcreditBillForm, RequestToMintBitcreditBillForm,
+    RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
 
 use self::handlebars::{Handlebars, JsonRender};
@@ -353,6 +354,20 @@ pub async fn find_bill_in_dht(state: &State<Client>, bill_id: String) {
 }
 
 //PUT
+//TODO: add try_mint_bill here?
+#[post("/request_to_mint", data = "<request_to_mint_bill_form>")]
+pub async fn request_to_mint_bill(
+    state: &State<Client>,
+    request_to_mint_bill_form: Form<RequestToMintBitcreditBillForm>,
+) -> Status {
+    thread::spawn(move || request_to_mint_bitcredit(request_to_mint_bill_form.bill_name.clone()))
+        .join()
+        .expect("Thread panicked");
+    Status::Ok
+}
+
+//PUT
+//This is function for mint software
 #[post("/accept_mint", data = "<accept_mint_bill_form>")]
 pub async fn accept_mint_bill(
     state: &State<Client>,

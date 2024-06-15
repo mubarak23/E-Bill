@@ -136,6 +136,7 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
                 web::try_mint_bill,
                 web::accept_mint_bill,
                 web::find_bill_in_dht,
+                web::request_to_mint_bill,
             ],
         )
         .mount("/bills", routes![web::return_bills_list,])
@@ -1847,6 +1848,13 @@ pub struct MintBitcreditBillForm {
 #[serde(crate = "rocket::serde")]
 pub struct AcceptMintBitcreditBillForm {
     pub interest: u64,
+    pub bill_name: String,
+}
+
+#[derive(FromForm, Debug, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct RequestToMintBitcreditBillForm {
+    pub mint_node: String,
     pub bill_name: String,
 }
 

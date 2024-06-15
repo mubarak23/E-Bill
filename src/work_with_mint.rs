@@ -1,6 +1,8 @@
-use crate::{read_identity_from_file, Identity};
+use crate::{read_identity_from_file, read_keys_from_bill_file, Identity};
 use moksha_core::amount::Amount;
-use moksha_core::primitives::{CurrencyUnit, PaymentMethod, PostMintQuoteBitcreditResponse};
+use moksha_core::primitives::{
+    CurrencyUnit, PaymentMethod, PostMintQuoteBitcreditResponse, PostRequestToMintBitcreditResponse,
+};
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use moksha_wallet::wallet::Wallet;
@@ -168,6 +170,30 @@ pub async fn mint_bitcredit(amount: u64, bill_id: String) -> PostMintQuoteBitcre
     //     .await;
 
     // let quote = req.quote;
+
+    req.await.unwrap()
+}
+
+#[tokio::main]
+pub async fn request_to_mint_bitcredit(bill_id: String) -> PostRequestToMintBitcreditResponse {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    let localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+        .with_localstore(localstore)
+        .build()
+        .await
+        .expect("Could not create wallet");
+
+    let bill_keys = read_keys_from_bill_file(&bill_id);
+    let bill_private_key = bill_keys.private_key_pem;
+
+    let req = wallet.send_request_to_mint_bitcredit(&mint_url, bill_id, bill_private_key);
 
     req.await.unwrap()
 }

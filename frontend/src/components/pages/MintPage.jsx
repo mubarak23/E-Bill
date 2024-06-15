@@ -19,7 +19,7 @@ export default function MintPage({ data }) {
         const form_data = new FormData();
         form_data.append("bill_name", data.name);
         form_data.append("mint_node", billMint);
-        await fetch("http://localhost:8000/bill/try_mint", {
+        await fetch("http://localhost:8000/bill/request_to_mint", {
             method: "POST",
             body: form_data,
             mode: "cors",
