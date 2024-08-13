@@ -121,7 +121,7 @@ export default function CheckMintPage({ data }) {
               {/*TODO:here must be who requested to mint*/}
           </div>
           <button className="btn mtt" onClick={handleSubmit}>
-            ACCEPT
+            MINT
           </button>
             {/*TODO: decline button*/}
         </div>

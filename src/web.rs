@@ -10,7 +10,7 @@ use chrono::{Days, Utc};
 use futures::executor::block_on;
 use libp2p::dns::DnsConfig;
 use libp2p::{tcp, PeerId};
-use moksha_core::primitives::PostMintQuoteBitcreditResponse;
+use moksha_core::primitives::{CheckBitcreditQuoteResponse, PostMintQuoteBitcreditResponse};
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use moksha_wallet::wallet::Wallet;
@@ -25,19 +25,22 @@ use url::Url;
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, BILL_VALIDITY_PERIOD, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
-use crate::work_with_mint::{mint, mint_bitcredit, request_to_mint_bitcredit};
+use crate::work_with_mint::{
+    accept_mint_bitcredit, check_bitcredit_quote, client_accept_bitcredit_quote,
+    request_to_mint_bitcredit,
+};
 use crate::{
     accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht,
     change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
     endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec,
-    get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
+    get_quote_from_map, get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
     issue_new_bill_drawer_is_payee, mint_bitcredit_bill, read_bill_from_file,
     read_bill_with_chain_from_file, read_contacts_map, read_identity_from_file,
     read_peer_id_from_file, request_acceptance, request_pay, sell_bitcredit_bill,
     write_identity_to_file, AcceptBitcreditBillForm, AcceptMintBitcreditBillForm, BitcreditBill,
-    BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, Contact, DeleteContactForm,
-    EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData,
-    IdentityWithAll, MintBitcreditBillForm, NewContactForm, NodeId,
+    BitcreditBillForList, BitcreditBillForm, BitcreditBillToReturn, BitcreditEbillQuote, Contact,
+    DeleteContactForm, EditContactForm, EndorseBitcreditBillForm, Identity, IdentityForm,
+    IdentityPublicData, IdentityWithAll, MintBitcreditBillForm, NewContactForm, NodeId,
     RequestToAcceptBitcreditBillForm, RequestToMintBitcreditBillForm,
     RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
@@ -116,6 +119,14 @@ pub async fn return_peer_id() -> Json<NodeId> {
 pub async fn return_contacts() -> Json<Vec<Contact>> {
     let contacts: Vec<Contact> = get_contacts_vec();
     Json(contacts)
+}
+
+#[get("/holder/<id>")]
+pub async fn holder(id: String) -> Json<bool> {
+    let identity: IdentityWithAll = get_whole_identity();
+    let bill: BitcreditBill = read_bill_from_file(&id);
+    let am_i_holder = identity.peer_id.to_string().eq(&bill.payee.peer_id);
+    Json(am_i_holder)
 }
 
 #[get("/return")]
@@ -315,33 +326,33 @@ pub async fn return_operation_codes() -> Json<Vec<OperationCode>> {
 }
 
 //PUT
-#[post("/try_mint", data = "<mint_bill_form>")]
-pub async fn try_mint_bill(
-    state: &State<Client>,
-    mint_bill_form: Form<MintBitcreditBillForm>,
-) -> Status {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Status::NotAcceptable
-    } else {
-        let mut client = state.inner().clone();
-
-        let public_mint_node =
-            get_identity_public_data(mint_bill_form.mint_node.clone(), client.clone()).await;
-
-        if !public_mint_node.name.is_empty() {
-            client
-                .add_bill_to_dht_for_node(
-                    &mint_bill_form.bill_name,
-                    &public_mint_node.peer_id.to_string().clone(),
-                )
-                .await;
-
-            Status::Ok
-        } else {
-            Status::NotAcceptable
-        }
-    }
-}
+// #[post("/try_mint", data = "<mint_bill_form>")]
+// pub async fn try_mint_bill(
+//     state: &State<Client>,
+//     mint_bill_form: Form<MintBitcreditBillForm>,
+// ) -> Status {
+//     if !Path::new(IDENTITY_FILE_PATH).exists() {
+//         Status::NotAcceptable
+//     } else {
+//         let mut client = state.inner().clone();
+//
+//         let public_mint_node =
+//             get_identity_public_data(mint_bill_form.mint_node.clone(), client.clone()).await;
+//
+//         if !public_mint_node.name.is_empty() {
+//             client
+//                 .add_bill_to_dht_for_node(
+//                     &mint_bill_form.bill_name,
+//                     &public_mint_node.peer_id.to_string().clone(),
+//                 )
+//                 .await;
+//
+//             Status::Ok
+//         } else {
+//             Status::NotAcceptable
+//         }
+//     }
+// }
 
 #[get("/find/<bill_id>")]
 pub async fn find_bill_in_dht(state: &State<Client>, bill_id: String) {
@@ -360,7 +371,19 @@ pub async fn request_to_mint_bill(
     state: &State<Client>,
     request_to_mint_bill_form: Form<RequestToMintBitcreditBillForm>,
 ) -> Status {
-    thread::spawn(move || request_to_mint_bitcredit(request_to_mint_bill_form.bill_name.clone()))
+    let mut client = state.inner().clone();
+    let public_mint_node =
+        get_identity_public_data(request_to_mint_bill_form.mint_node.clone(), client.clone()).await;
+    if !public_mint_node.name.is_empty() {
+        client
+            .add_bill_to_dht_for_node(
+                &request_to_mint_bill_form.bill_name,
+                &public_mint_node.peer_id.to_string().clone(),
+            )
+            .await;
+    }
+
+    thread::spawn(move || request_to_mint_bitcredit(request_to_mint_bill_form.clone()))
         .join()
         .expect("Thread panicked");
     Status::Ok
@@ -372,34 +395,27 @@ pub async fn request_to_mint_bill(
 pub async fn accept_mint_bill(
     state: &State<Client>,
     accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>,
-) -> Json<String> {
-    //call endpoint to create quote
-    // let dir = PathBuf::from("./data/wallet".to_string());
-    // let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
-    // let localstore = SqliteLocalStore::with_path(db_path.clone())
-    //     .await
-    //     .expect("Cannot parse local store");
-
-    // let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
-
-    // let wallet: Wallet<_, CrossPlatformHttpClient> = block_on(
-    //     Wallet::builder().with_localstore(localstore).build()
-    // ).unwrap();
-
-    let bill_amount = read_bill_from_file(&accept_mint_bill_form.bill_name.clone()).amount_numbers;
+) -> Status {
+    let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone());
+    let bill_amount = bill.amount_numbers.clone();
+    let holder_node_id = bill.payee.peer_id.clone();
 
     //TODO: calculate percent
-    let quote =
-        thread::spawn(move || mint_bitcredit(bill_amount, accept_mint_bill_form.bill_name.clone()))
-            .join()
-            .expect("Thread panicked");
+    thread::spawn(move || {
+        accept_mint_bitcredit(
+            bill_amount,
+            accept_mint_bill_form.bill_name.clone(),
+            holder_node_id,
+        )
+    })
+    .join()
+    .expect("Thread panicked");
 
-    println!("{}", quote.quote);
-    Json(quote.quote)
-    //TODO: catch this object in frontend
+    Status::Ok
 }
 
 //PUT
+//After accept mint on client side
 #[post("/mint", data = "<mint_bill_form>")]
 pub async fn mint_bill(
     state: &State<Client>,
@@ -450,6 +466,41 @@ pub async fn mint_bill(
             Status::NotAcceptable
         }
     }
+}
+
+#[get("/return/<id>")]
+pub async fn return_quote(id: String) -> Json<BitcreditEbillQuote> {
+    let mut quote = get_quote_from_map(&id);
+    let copy_id = id.clone();
+    if !quote.bill_id.is_empty() && quote.quote_id.is_empty() {
+        thread::spawn(move || check_bitcredit_quote(&copy_id))
+            .join()
+            .expect("Thread panicked");
+    }
+    quote = get_quote_from_map(&id);
+    Json(quote)
+}
+
+#[get("/accept/<id>")]
+pub async fn accept_quote(state: &State<Client>, id: String) -> Json<BitcreditEbillQuote> {
+    let mut quote = get_quote_from_map(&id);
+    let mut client = state.inner().clone();
+
+    let public_data_endorsee =
+        get_identity_public_data(quote.mint_node_id.clone(), client.clone()).await;
+    if !public_data_endorsee.name.is_empty() {
+        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        endorse_bitcredit_bill(&quote.bill_id, public_data_endorsee.clone(), timestamp);
+    }
+
+    let copy_id = id.clone();
+    if !quote.bill_id.is_empty() && !quote.quote_id.is_empty() {
+        thread::spawn(move || client_accept_bitcredit_quote(&copy_id))
+            .join()
+            .expect("Thread panicked");
+    }
+    quote = get_quote_from_map(&id);
+    Json(quote)
 }
 
 #[get("/return/<id>")]
@@ -768,6 +819,7 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
                     form_bill.amount_numbers,
                     form_bill.place_of_payment,
                     form_bill.maturity_date,
+                    form_bill.currency_code,
                     drawer.clone(),
                     form_bill.language,
                     public_data_drawee,
@@ -787,6 +839,7 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
                     form_bill.amount_numbers,
                     form_bill.place_of_payment,
                     form_bill.maturity_date,
+                    form_bill.currency_code,
                     drawer.clone(),
                     form_bill.language,
                     public_data_payee,
@@ -809,6 +862,7 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
                     form_bill.amount_numbers,
                     form_bill.place_of_payment,
                     form_bill.maturity_date,
+                    form_bill.currency_code,
                     drawer.clone(),
                     form_bill.language,
                     public_data_drawee,

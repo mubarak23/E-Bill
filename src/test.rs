@@ -19,7 +19,6 @@ mod test {
     use url::Url;
 
     use crate::numbers_to_words::encode;
-    use crate::work_with_mint::mint_bitcredit;
     use crate::{
         byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
         generation_rsa_key, read_bill_with_chain_from_file, read_identity_from_file,
@@ -246,13 +245,65 @@ mod test {
             .await
             .expect("Could not create wallet");
 
-        let rt = Builder::new_current_thread().enable_all().build().unwrap();
+        let wallet_keysets = wallet
+            .add_mint_keysets(&Url::parse("http://127.0.0.1:3338").unwrap())
+            .await
+            .unwrap();
+        let wallet_keyset = wallet_keysets.first().unwrap();
 
-        let quote = thread::spawn(move || mint_bitcredit(123, "dasd".to_string()))
-            .join()
-            .expect("Thread panicked");
+        let balance = wallet.get_balance().await.unwrap();
+        println!("Balance: {balance:?} sats");
 
-        println!("Quote: {}", quote.quote);
+        let result = wallet
+            .mint_tokens(
+                wallet_keyset,
+                &PaymentMethod::Bitcredit,
+                3432.into(),
+                "00cf84c6-a2a0-4913-9765-adf06b10fc53".to_string(),
+            )
+            .await;
+
+        let token = result.unwrap().serialize().unwrap();
+        println!("Token: {token:?}");
+
+        let balance2 = wallet.get_balance().await.unwrap();
+        println!("Balance2: {balance2:?} sats");
+
+        assert_eq!(1, 2);
+    }
+
+    #[tokio::test]
+    async fn test_check_quote() {
+        let dir = PathBuf::from("./data/wallet".to_string());
+        fs::create_dir_all(dir.clone()).unwrap();
+        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+        let localstore = SqliteLocalStore::with_path(db_path.clone())
+            .await
+            .expect("Cannot parse local store");
+
+        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+            .with_localstore(localstore)
+            .build()
+            .await
+            .expect("Could not create wallet");
+
+        let result = wallet
+            .check_bitcredit_quote(
+                &mint_url,
+                "9d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(),
+                "12D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string(),
+            )
+            .await;
+
+        //bad
+        // let result = wallet
+        //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
+        //     .await;
+
+        println!("Quote: {result:?}");
 
         assert_eq!(1, 2);
     }

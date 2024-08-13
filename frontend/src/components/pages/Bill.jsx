@@ -143,7 +143,7 @@ function Bill({ identity, data }) {
                 </span>
                 <span className="details-container-middle-num-amount">
                   <span className="details-container-middle-num-amount-currency">
-                    sat
+                    {data.currency_code}
                   </span>
                   <span className="details-container-middle-num-amount-figures">
                     {data?.amount_numbers}
@@ -151,10 +151,8 @@ function Bill({ identity, data }) {
                 </span>
               </div>
               <div className="details-container-middle-letter">
-                <span className="details-container-middle-letter-currency">
-                  Satoshi
-                </span>
-                <span className="details-container-middle-letter-amount">
+                  {currency({ currency_code: data.currency_code })}
+                  <span className="details-container-middle-letter-amount">
                   <span className="details-container-middle-letter-amount-figures">
                     {data?.amounts_letters}
                   </span>
@@ -237,6 +235,19 @@ function Bill({ identity, data }) {
       </div>
     </div>
   );
+}
+function currency({ currency_code }) {
+    return (
+        <div>
+            {(() => {
+                if (currency_code === "sat") {
+                    return <span className="details-container-middle-letter-currency">Satoshi</span>;
+                } else if (currency_code === "usd") {
+                    return <span className="details-container-middle-letter-currency">United States dollar</span>;
+                }
+            })()}
+        </div>
+    );
 }
 
 export default Bill;

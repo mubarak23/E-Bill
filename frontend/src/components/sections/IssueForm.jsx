@@ -63,6 +63,7 @@ export default function IssueForm() {
         form_data.append("bill_jurisdiction", data.bill_jurisdiction);
         form_data.append("place_of_drawing", data.place_of_drawing);
         form_data.append("amount_numbers", data.amount_numbers);
+        form_data.append("currency_code", data.currency_code);
         form_data.append("language", data.language);
         form_data.append("drawee_name", data.drawee_name);
         form_data.append("payee_name", data.payee_name);
@@ -180,23 +181,24 @@ export default function IssueForm() {
         <div className="form-input-row">
           <span className="select-opt">
             <select
-              style={{
-                appearance: "none",
-                MozAppearance: "none",
-                WebkitAppearance: "none",
-              }}
-              className="form-select"
-              id="currency_code"
-              name="currency_code"
-              onChange={changeHandle}
-              placeholder="sat"
-              required
+                style={{
+                    appearance: "none",
+                    MozAppearance: "none",
+                    WebkitAppearance: "none",
+                }}
+                className="form-select"
+                id="currency_code"
+                name="currency_code"
+                onChange={changeHandle}
+                placeholder="sat"
+                required
             >
-              <option value={data.currency_code}>sat</option>
+                <option value="sat">sat</option>
+                <option value="usd">usd</option>
             </select>
           </span>
-          <input
-            className="drop-shadow"
+            <input
+                className="drop-shadow"
             style={{
               border: `.7vw solid ${errorInput ? "#d40202" : "transparent"}`,
             }}
