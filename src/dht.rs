@@ -9,7 +9,7 @@ use tokio::spawn;
 use crate::dht::network::Client;
 
 pub async fn dht_main() -> Result<Client, Box<dyn Error + Send + Sync>> {
-    let (mut network_client, network_events, network_event_loop) = network::new()
+    let (network_client, network_events, network_event_loop) = network::new()
         .await
         .expect("Can not to create network module in dht.");
 
@@ -82,7 +82,7 @@ pub mod network {
         let local_peer_id = read_peer_id_from_file();
         println!("Local peer id: {local_peer_id:?}");
 
-        let (relay_transport, client) = relay::client::new(local_peer_id.clone());
+        let (relay_transport, client) = relay::client::new(local_peer_id);
 
         let transport = OrTransport::new(
             relay_transport,
@@ -97,10 +97,10 @@ pub mod network {
         .timeout(std::time::Duration::from_secs(20))
         .boxed();
 
-        let behaviour = MyBehaviour::new(local_peer_id.clone(), local_public_key.clone(), client);
+        let behaviour = MyBehaviour::new(local_peer_id, local_public_key.clone(), client);
 
         let mut swarm =
-            SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id.clone()).build();
+            SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build();
 
         swarm
             .listen_on(
@@ -251,7 +251,7 @@ pub mod network {
     impl Client {
         pub async fn run(
             mut self,
-            mut stdin: futures::stream::Fuse<
+            mut stdin: stream::Fuse<
                 futures::io::Lines<async_std::io::BufReader<async_std::io::Stdin>>,
             >,
             mut network_events: Receiver<Event>,
@@ -355,7 +355,7 @@ pub mod network {
                     if is_not_hidden(&dir) {
                         let mut bill_name = dir.file_name().into_string().unwrap();
 
-                        bill_name = path::Path::file_stem(path::Path::new(&bill_name))
+                        bill_name = Path::file_stem(Path::new(&bill_name))
                             .expect("File name error")
                             .to_str()
                             .expect("File name error")
@@ -376,7 +376,7 @@ pub mod network {
                     let dir = file.unwrap();
                     if is_not_hidden(&dir) {
                         let mut bill_name = dir.file_name().into_string().unwrap();
-                        bill_name = path::Path::file_stem(path::Path::new(&bill_name))
+                        bill_name = Path::file_stem(Path::new(&bill_name))
                             .expect("File name error")
                             .to_str()
                             .expect("File name error")
@@ -402,7 +402,7 @@ pub mod network {
                 let dir = file.unwrap();
                 if is_not_hidden(&dir) {
                     let mut bill_name = dir.file_name().into_string().unwrap();
-                    bill_name = path::Path::file_stem(path::Path::new(&bill_name))
+                    bill_name = Path::file_stem(Path::new(&bill_name))
                         .expect("File name error")
                         .to_str()
                         .expect("File name error")
@@ -483,8 +483,8 @@ pub mod network {
             self.send_message(msg, topic).await;
         }
 
-        pub async fn put(&mut self, name: &String) {
-            self.start_providing(name.clone()).await;
+        pub async fn put(&mut self, name: &str) {
+            self.start_providing(name.to_owned()).await;
         }
 
         pub async fn get_bill(&mut self, name: String) -> Vec<u8> {
@@ -655,57 +655,50 @@ pub mod network {
         }
 
         async fn handle_event(&mut self, event: Event) {
-            match event {
-                Event::InboundRequest { request, channel } => {
-                    let size_request = request.split("_").collect::<Vec<&str>>();
-                    if size_request.len().eq(&3) {
-                        let request_node_id: String =
-                            request.splitn(2, "_").collect::<Vec<&str>>()[0].to_string();
-                        let request = request.splitn(2, "_").collect::<Vec<&str>>()[1].to_string();
+            if let Event::InboundRequest { request, channel } = event {
+                let size_request = request.split("_").collect::<Vec<&str>>();
+                if size_request.len().eq(&3) {
+                    let request_node_id: String =
+                        request.splitn(2, "_").collect::<Vec<&str>>()[0].to_string();
+                    let request = request.splitn(2, "_").collect::<Vec<&str>>()[1].to_string();
 
-                        let mut bill_name = request.clone();
-                        if request.starts_with("KEY_") {
-                            bill_name =
+                    let mut bill_name = request.clone();
+                    if request.starts_with("KEY_") {
+                        bill_name = request.splitn(2, "KEY_").collect::<Vec<&str>>()[1].to_string();
+                    } else if request.starts_with("BILL_") {
+                        bill_name = request.split("BILL_").collect::<Vec<&str>>()[1].to_string();
+                    }
+                    let chain = Chain::read_chain_from_file(&bill_name);
+
+                    let bill_contain_node = chain.bill_contain_node(request_node_id.clone());
+
+                    if request.starts_with("KEY_") {
+                        if bill_contain_node {
+                            let public_key = self
+                                .get_identity_public_data_from_dht(request_node_id.clone())
+                                .await
+                                .rsa_public_key_pem;
+
+                            let key_name =
                                 request.splitn(2, "KEY_").collect::<Vec<&str>>()[1].to_string();
-                        } else if request.starts_with("BILL_") {
-                            bill_name =
-                                request.split("BILL_").collect::<Vec<&str>>()[1].to_string();
+                            let path_to_key =
+                                BILLS_KEYS_FOLDER_PATH.to_string() + "/" + &key_name + ".json";
+                            let file = fs::read(&path_to_key).unwrap();
+
+                            let file_encrypted = encrypt_bytes_with_public_key(&file, public_key);
+
+                            self.respond_file(file_encrypted, channel).await;
                         }
-                        let chain = Chain::read_chain_from_file(&bill_name);
+                    } else if request.starts_with("BILL_") {
+                        let bill_name =
+                            request.splitn(2, "BILL_").collect::<Vec<&str>>()[1].to_string();
+                        let path_to_bill =
+                            BILLS_FOLDER_PATH.to_string() + "/" + &bill_name + ".json";
+                        let file = fs::read(&path_to_bill).unwrap();
 
-                        let bill_contain_node = chain.bill_contain_node(request_node_id.clone());
-
-                        if request.starts_with("KEY_") {
-                            if bill_contain_node {
-                                let public_key = self
-                                    .get_identity_public_data_from_dht(request_node_id.clone())
-                                    .await
-                                    .rsa_public_key_pem;
-
-                                let key_name =
-                                    request.splitn(2, "KEY_").collect::<Vec<&str>>()[1].to_string();
-                                let path_to_key =
-                                    BILLS_KEYS_FOLDER_PATH.to_string() + "/" + &key_name + ".json";
-                                let file = std::fs::read(&path_to_key).unwrap();
-
-                                let file_encrypted =
-                                    encrypt_bytes_with_public_key(&file, public_key);
-
-                                self.respond_file(file_encrypted, channel).await;
-                            }
-                        } else if request.starts_with("BILL_") {
-                            let bill_name =
-                                request.splitn(2, "BILL_").collect::<Vec<&str>>()[1].to_string();
-                            let path_to_bill =
-                                BILLS_FOLDER_PATH.to_string() + "/" + &bill_name + ".json";
-                            let file = std::fs::read(&path_to_bill).unwrap();
-
-                            self.respond_file(file, channel).await;
-                        }
+                        self.respond_file(file, channel).await;
                     }
                 }
-
-                _ => {}
             }
         }
 
@@ -850,7 +843,7 @@ pub mod network {
 
     pub struct EventLoop {
         swarm: Swarm<MyBehaviour>,
-        command_receiver: mpsc::Receiver<Command>,
+        command_receiver: Receiver<Command>,
         event_sender: mpsc::Sender<Event>,
         pending_dial: HashMap<PeerId, oneshot::Sender<Result<(), Box<dyn Error + Send>>>>,
         pending_start_providing: HashMap<QueryId, oneshot::Sender<()>>,
@@ -863,7 +856,7 @@ pub mod network {
     impl EventLoop {
         fn new(
             swarm: Swarm<MyBehaviour>,
-            command_receiver: mpsc::Receiver<Command>,
+            command_receiver: Receiver<Command>,
             event_sender: mpsc::Sender<Event>,
         ) -> Self {
             Self {
@@ -882,11 +875,7 @@ pub mod network {
             loop {
                 futures::select! {
                     event = self.swarm.next() => self.handle_event(event.expect("Swarm stream to be infinite.")).await,
-                    command = self.command_receiver.next() => match command {
-                        Some(c) => self.handle_command(c).await,
-
-                        _ => {}
-                    },
+                    command = self.command_receiver.next() => if let Some(c) = command { self.handle_command(c).await },
                 }
             }
         }
@@ -911,8 +900,8 @@ pub mod network {
                         rocket::Either<
                             ConnectionHandlerUpgrErr<
                                 rocket::Either<
-                                    libp2p::relay::inbound::stop::FatalUpgradeError,
-                                    libp2p::relay::outbound::hop::FatalUpgradeError,
+                                    relay::inbound::stop::FatalUpgradeError,
+                                    relay::outbound::hop::FatalUpgradeError,
                                 >,
                             >,
                             void::Void,
@@ -921,8 +910,8 @@ pub mod network {
                     rocket::Either<
                         ConnectionHandlerUpgrErr<
                             rocket::Either<
-                                libp2p::dcutr::inbound::UpgradeError,
-                                libp2p::dcutr::outbound::UpgradeError,
+                                dcutr::inbound::UpgradeError,
+                                dcutr::outbound::UpgradeError,
                             >,
                         >,
                         rocket::Either<ConnectionHandlerUpgrErr<std::io::Error>, void::Void>,
@@ -1082,8 +1071,6 @@ pub mod network {
                             .expect("Request to still be pending.")
                             .send(Ok(response.0));
                     }
-
-                    _ => {}
                 },
 
                 SwarmEvent::Behaviour(ComposedEvent::RequestResponse(
@@ -1115,13 +1102,11 @@ pub mod network {
                 }
 
                 //--------------GOSSIPSUB EVENTS--------------
-                SwarmEvent::Behaviour(ComposedEvent::Gossipsub(
-                    libp2p::gossipsub::Event::Message {
-                        propagation_source: peer_id,
-                        message_id: id,
-                        message,
-                    },
-                )) => {
+                SwarmEvent::Behaviour(ComposedEvent::Gossipsub(gossipsub::Event::Message {
+                    propagation_source: peer_id,
+                    message_id: id,
+                    message,
+                })) => {
                     let bill_name = message.topic.clone().into_string();
                     println!(
                         "Got message with id: {id} from peer: {peer_id} in topic: {bill_name}",
@@ -1186,7 +1171,7 @@ pub mod network {
                     println!("{event:?}")
                 }
 
-                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                SwarmEvent::OutgoingConnectionError { .. } => {
                     // println!("Outgoing connection error to {:?}: {:?}", peer_id, error);
                     // if let Some(peer_id) = peer_id {
                     //     if let Some(sender) = self.pending_dial.remove(&peer_id) {
@@ -1292,7 +1277,7 @@ pub mod network {
                         .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
                         .with(Protocol::P2p(Multihash::from(relay_peer_id)))
                         .with(Protocol::P2pCircuit)
-                        .with(Protocol::P2p(Multihash::from(peer.clone())));
+                        .with(Protocol::P2p(Multihash::from(peer)));
 
                     let swarm = self.swarm.behaviour_mut();
                     swarm.request_response.add_address(&peer, relay_address);
@@ -1318,7 +1303,7 @@ pub mod network {
     #[behaviour(out_event = "ComposedEvent", event_process = false)]
     struct MyBehaviour {
         request_response: request_response::Behaviour<FileExchangeCodec>,
-        kademlia: kad::Kademlia<MemoryStore>,
+        kademlia: Kademlia<MemoryStore>,
         identify: identify::Behaviour,
         gossipsub: gossipsub::Behaviour,
         relay_client: relay::client::Behaviour,
@@ -1365,7 +1350,7 @@ pub mod network {
         fn bootstrap_kademlia(&mut self) {
             let boot_nodes_string = fs::read_to_string(BOOTSTRAP_NODES_FILE_PATH)
                 .expect("Can't read bootstrap nodes file.");
-            let mut boot_nodes = serde_json::from_str::<NodesJson>(&boot_nodes_string)
+            let boot_nodes = serde_json::from_str::<NodesJson>(&boot_nodes_string)
                 .expect("Can't parse bootstrap nodes file.");
             for index in 0..boot_nodes.nodes.len() {
                 let node = boot_nodes.nodes[index].node.clone();
@@ -1383,7 +1368,7 @@ pub mod network {
     #[allow(clippy::large_enum_variant)]
     enum ComposedEvent {
         RequestResponse(request_response::Event<FileRequest, FileResponse>),
-        Kademlia(kad::KademliaEvent),
+        Kademlia(KademliaEvent),
         Identify(identify::Event),
         Gossipsub(gossipsub::Event),
         Relay(relay::client::Event),
@@ -1396,8 +1381,8 @@ pub mod network {
         }
     }
 
-    impl From<kad::KademliaEvent> for ComposedEvent {
-        fn from(event: kad::KademliaEvent) -> Self {
+    impl From<KademliaEvent> for ComposedEvent {
+        fn from(event: KademliaEvent) -> Self {
             ComposedEvent::Kademlia(event)
         }
     }

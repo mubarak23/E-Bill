@@ -1,12 +1,10 @@
 use moksha_core::primitives::{
-    BillKeys, CheckBitcreditQuoteResponse, PaymentMethod, PostMintQuoteBitcreditResponse,
-    PostRequestToMintBitcreditResponse,
+    BillKeys, PaymentMethod, PostMintQuoteBitcreditResponse, PostRequestToMintBitcreditResponse,
 };
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use moksha_wallet::wallet::Wallet;
 use std::path::PathBuf;
-use std::thread;
 use url::Url;
 
 use crate::{
@@ -45,7 +43,7 @@ pub async fn accept_mint_bitcredit(
 }
 
 #[tokio::main]
-pub async fn check_bitcredit_quote(bill_id: &String) {
+pub async fn check_bitcredit_quote(bill_id: &str) {
     let dir = PathBuf::from("./data/wallet".to_string());
     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
     let localstore = SqliteLocalStore::with_path(db_path.clone())
@@ -63,13 +61,13 @@ pub async fn check_bitcredit_quote(bill_id: &String) {
     let node_id = read_peer_id_from_file().to_string();
 
     let result = wallet
-        .check_bitcredit_quote(&mint_url, bill_id.clone(), node_id.clone())
+        .check_bitcredit_quote(&mint_url, bill_id.to_owned(), node_id.clone())
         .await;
 
     let quote = result.unwrap();
 
     if !quote.quote.is_empty() {
-        add_bitcredit_quote_and_amount_in_quotes_map(quote.clone(), bill_id.clone());
+        add_bitcredit_quote_and_amount_in_quotes_map(quote.clone(), bill_id.to_owned());
     }
 
     // quote
@@ -95,9 +93,9 @@ pub async fn client_accept_bitcredit_quote(bill_id: &String) -> String {
     let wallet_keysets = wallet.add_mint_keysets(&mint_url).await.unwrap();
     let wallet_keyset = wallet_keysets.first().unwrap();
 
-    let quote = get_quote_from_map(&bill_id);
+    let quote = get_quote_from_map(bill_id);
     let quote_id = quote.quote_id.clone();
-    let amount = quote.amount.clone();
+    let amount = quote.amount;
 
     let mut token = "".to_string();
 

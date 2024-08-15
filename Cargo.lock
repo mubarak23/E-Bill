@@ -2027,7 +2027,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "http 0.2.12",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "slab",
  "tokio",
  "tokio-util",
@@ -2046,7 +2046,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "http 1.1.0",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "slab",
  "tokio",
  "tokio-util",
@@ -2494,9 +2494,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3fc2e30ba82dd1b3911c8de1ffc143c74a914a14e99514d7637e3099df5ea0"
+checksum = "93ead53efc7ea8ed3cfb0c79fc8023fbb782a5432b52830b6518941cebe6505c"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
@@ -3350,7 +3350,7 @@ dependencies = [
 [[package]]
 name = "moksha-core"
 version = "0.2.1"
-source = "git+https://github.com/mtbitcr/moksha#7c9941d16becf6521efb8314da314f4ed2e836cf"
+source = "git+https://github.com/mtbitcr/moksha#4d12560fa86ef2d9eda8319034915e858eb8add7"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3371,7 +3371,7 @@ dependencies = [
 [[package]]
 name = "moksha-mint"
 version = "0.2.1"
-source = "git+https://github.com/mtbitcr/moksha#7c9941d16becf6521efb8314da314f4ed2e836cf"
+source = "git+https://github.com/mtbitcr/moksha#4d12560fa86ef2d9eda8319034915e858eb8add7"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3409,7 +3409,7 @@ dependencies = [
 [[package]]
 name = "moksha-wallet"
 version = "0.2.1"
-source = "git+https://github.com/mtbitcr/moksha#7c9941d16becf6521efb8314da314f4ed2e836cf"
+source = "git+https://github.com/mtbitcr/moksha#4d12560fa86ef2d9eda8319034915e858eb8add7"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4126,7 +4126,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
 ]
 
 [[package]]
@@ -4910,7 +4910,7 @@ dependencies = [
  "either",
  "figment",
  "futures",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "log",
  "memchr",
  "multer",
@@ -4942,7 +4942,7 @@ checksum = "575d32d7ec1a9770108c879fc7c47815a80073f96ca07ff9525a94fcede1dd46"
 dependencies = [
  "devise",
  "glob",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "proc-macro2",
  "quote",
  "rocket_http",
@@ -4975,7 +4975,7 @@ dependencies = [
  "futures",
  "http 0.2.12",
  "hyper 0.14.30",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "log",
  "memchr",
  "pear",
@@ -5438,7 +5438,7 @@ dependencies = [
  "chrono",
  "hex",
  "indexmap 1.9.3",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -5646,7 +5646,7 @@ dependencies = [
  "futures-util",
  "hashlink",
  "hex",
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "log",
  "memchr",
  "once_cell",
@@ -6179,7 +6179,7 @@ version = "0.22.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "583c44c02ad26b0c3f3066fe629275e50627026c51ac2e595cca4c230ce1ce1d"
 dependencies = [
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -6673,7 +6673,7 @@ version = "4.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5afb1a60e207dca502682537fefcfd9921e71d0b83e9576060f09abc6efab23"
 dependencies = [
- "indexmap 2.3.0",
+ "indexmap 2.4.0",
  "serde",
  "serde_json",
  "utoipa-gen",
