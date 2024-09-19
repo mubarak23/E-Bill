@@ -30,9 +30,9 @@ use crate::blockchain::{
 use crate::constants::{
     BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH,
     COMPOUNDING_INTEREST_RATE_ZERO, CONTACT_MAP_FILE_PATH, CONTACT_MAP_FOLDER_PATH,
-    CSS_FOLDER_PATH, IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_FOLDER_PATH,
-    IDENTITY_PEER_ID_FILE_PATH, IMAGE_FOLDER_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH,
-    TEMPLATES_FOLDER_PATH, USEDNET,
+    IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_FOLDER_PATH,
+    IDENTITY_PEER_ID_FILE_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH,
+    USEDNET,
 };
 use crate::dht::network::Client;
 use crate::numbers_to_words::encode;
@@ -75,8 +75,6 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
     let rocket = rocket::build()
         .register("/", catchers![web::not_found])
         .manage(dht)
-        .mount("/image", FileServer::from(IMAGE_FOLDER_PATH))
-        .mount("/css", FileServer::from(CSS_FOLDER_PATH))
         // .mount("/", routes![web::start])
         .mount("/exit", routes![web::exit])
         .mount("/opcodes", routes![web::return_operation_codes])
@@ -163,15 +161,6 @@ fn init_folders() {
     }
     if !Path::new(BILLS_KEYS_FOLDER_PATH).exists() {
         fs::create_dir(BILLS_KEYS_FOLDER_PATH).expect("Can't create folder bills_keys.");
-    }
-    if !Path::new(CSS_FOLDER_PATH).exists() {
-        fs::create_dir(CSS_FOLDER_PATH).expect("Can't create folder css.");
-    }
-    if !Path::new(IMAGE_FOLDER_PATH).exists() {
-        fs::create_dir(IMAGE_FOLDER_PATH).expect("Can't create folder image.");
-    }
-    if !Path::new(TEMPLATES_FOLDER_PATH).exists() {
-        fs::create_dir(TEMPLATES_FOLDER_PATH).expect("Can't create folder templates.");
     }
     if !Path::new(BOOTSTRAP_FOLDER_PATH).exists() {
         fs::create_dir(BOOTSTRAP_FOLDER_PATH).expect("Can't create folder bootstrap.");

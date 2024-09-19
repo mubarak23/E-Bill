@@ -5,25 +5,19 @@ use std::{
 
 const IDENTITY_FOLDER_PATH: &str = "identity";
 const BILLS_FOLDER_PATH: &str = "bills";
-const CONTACT_MAP_FOLDER_PATH: &str = "contacts";
 const QUOTES_MAP_FOLDER_PATH: &str = "quotes";
-const CSS_FOLDER_PATH: &str = "css";
-const IMAGE_FOLDER_PATH: &str = "image";
-const TEMPLATES_FOLDER_PATH: &str = "templates";
+const CONTACT_MAP_FOLDER_PATH: &str = "contacts";
 pub const BOOTSTRAP_FOLDER_PATH: &str = "bootstrap";
 const BILLS_KEYS_FOLDER_PATH: &str = "bills_keys";
 const FRONTEND_FOLDER_PATH: &str = "frontend_build";
-const COPY_DIR: [&str; 10] = [
+const COPY_DIR: [&str; 7] = [
     IDENTITY_FOLDER_PATH,
     BILLS_FOLDER_PATH,
     CONTACT_MAP_FOLDER_PATH,
-    QUOTES_MAP_FOLDER_PATH,
-    CSS_FOLDER_PATH,
-    IMAGE_FOLDER_PATH,
-    TEMPLATES_FOLDER_PATH,
     BOOTSTRAP_FOLDER_PATH,
     BILLS_KEYS_FOLDER_PATH,
     FRONTEND_FOLDER_PATH,
+    QUOTES_MAP_FOLDER_PATH,
 ];
 
 /// A helper function for recursively copying a directory.
@@ -75,15 +69,6 @@ fn init_folders() {
     }
     if !Path::new(BILLS_FOLDER_PATH).exists() {
         fs::create_dir(BILLS_FOLDER_PATH).expect("Can't create folder bills.");
-    }
-    if !Path::new(CSS_FOLDER_PATH).exists() {
-        fs::create_dir(CSS_FOLDER_PATH).expect("Can't create folder css.");
-    }
-    if !Path::new(IMAGE_FOLDER_PATH).exists() {
-        fs::create_dir(IMAGE_FOLDER_PATH).expect("Can't create folder image.");
-    }
-    if !Path::new(TEMPLATES_FOLDER_PATH).exists() {
-        fs::create_dir(TEMPLATES_FOLDER_PATH).expect("Can't create folder templates.");
     }
     if !Path::new(BOOTSTRAP_FOLDER_PATH).exists() {
         fs::create_dir(BOOTSTRAP_FOLDER_PATH).expect("Can't create folder bootstrap.");

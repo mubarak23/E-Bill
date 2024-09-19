@@ -533,6 +533,11 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     let address_to_pay = get_address_to_pay(bill.clone());
     //TODO: add last_sell_block_paid
     let check_if_already_paid = check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
+    let mut check_if_already_paid = (false, 0u64);
+    if requested_to_pay {
+        check_if_already_paid =
+            check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone()).await;
+    }
     let payed = check_if_already_paid.0;
     let mut number_of_confirmations: u64 = 0;
     let mut pending = false;
@@ -640,7 +645,10 @@ pub async fn get_bill(id: String) -> Template {
         address_to_pay = get_address_to_pay(bill.clone());
         let message: String = format!("Payment in relation to a bill {}", bill.name.clone());
         link_to_pay = generate_link_to_pay(address_to_pay.clone(), amount, message).await;
-        let check_if_already_paid = check_if_paid(address_to_pay.clone(), amount).await;
+        let mut check_if_already_paid = (false, 0);
+        if requested_to_pay {
+            check_if_already_paid = check_if_paid(address_to_pay.clone(), amount).await;
+        }
         paid = check_if_already_paid.0;
         if paid && check_if_already_paid.1.eq(&0) {
             pending = "Pending".to_string();
