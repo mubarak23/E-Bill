@@ -39,51 +39,8 @@ use crate::{
 use self::handlebars::{Handlebars, JsonRender};
 
 #[get("/")]
-pub async fn start() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        let bills = get_bills();
-        let identity: IdentityWithAll = get_whole_identity();
-
-        Template::render(
-            "hbs/home",
-            context! {
-                identity: Some(identity.identity),
-                bills: bills,
-            },
-        )
-    }
-}
-
-#[get("/")]
 pub async fn exit() {
     std::process::exit(0x0100);
-}
-
-#[get("/")]
-pub async fn info() -> Template {
-    Template::render("hbs/info", context! {})
-}
-
-#[get("/")]
-pub async fn get_identity() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        let identity: IdentityWithAll = get_whole_identity();
-        let peer_id = identity.peer_id.to_string();
-        let usednet = USEDNET.to_string();
-
-        Template::render(
-            "hbs/identity",
-            context! {
-                peer_id: peer_id,
-                identity: Some(identity.identity),
-                usednet: usednet,
-            },
-        )
-    }
 }
 
 #[get("/return")]
@@ -173,128 +130,6 @@ pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Cl
     client.put_identity_public_data_in_dht().await;
 
     Status::Ok
-}
-
-#[get("/")]
-pub async fn bills_list() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        let bills = get_bills();
-
-        Template::render(
-            "hbs/bills_list",
-            context! {
-                bills: bills,
-            },
-        )
-    }
-}
-
-#[get("/history/<id>")]
-pub async fn get_bill_history(id: String) -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else if Path::new((BILLS_FOLDER_PATH.to_string() + "/" + &id + ".json").as_str()).exists() {
-        let bill: BitcreditBill = read_bill_from_file(&id);
-        let chain = Chain::read_chain_from_file(&bill.name);
-        let history = chain.get_bill_history();
-
-        let address_to_pay = get_address_to_pay(bill.clone());
-        let info_about_address =
-            api::AddressInfo::get_testnet_address_info(address_to_pay.clone()).await;
-        let chain_received_summ = info_about_address.chain_stats.funded_txo_sum;
-        let chain_spent_summ = info_about_address.chain_stats.spent_txo_sum;
-        let chain_summ = chain_received_summ + chain_spent_summ;
-        let mempool_received_summ = info_about_address.mempool_stats.funded_txo_sum;
-        let mempool_spent_summ = info_about_address.mempool_stats.spent_txo_sum;
-        let mempool_summ = mempool_received_summ + mempool_spent_summ;
-
-        Template::render(
-            "hbs/bill_history",
-            context! {
-                bill: Some(bill),
-                history: history,
-                chain_summ: chain_summ,
-                mempool_summ: mempool_summ,
-                address_to_pay: address_to_pay,
-            },
-        )
-    } else {
-        let bills = get_bills();
-        let identity: IdentityWithAll = get_whole_identity();
-        let peer_id = read_peer_id_from_file().to_string();
-
-        Template::render(
-            "hbs/home",
-            context! {
-                peer_id: Some(peer_id),
-                identity: Some(identity.identity),
-                bills: bills,
-            },
-        )
-    }
-}
-
-#[get("/blockchain/<id>")]
-pub async fn get_bill_chain(id: String) -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else if Path::new((BILLS_FOLDER_PATH.to_string() + "/" + &id + ".json").as_str()).exists() {
-        let bill: BitcreditBill = read_bill_from_file(&id);
-        let chain = Chain::read_chain_from_file(&bill.name);
-        Template::render(
-            "hbs/bill_chain",
-            context! {
-                bill: Some(bill),
-                chain: chain,
-            },
-        )
-    } else {
-        let bills = get_bills();
-        let identity: IdentityWithAll = get_whole_identity();
-        let peer_id = read_peer_id_from_file().to_string();
-
-        Template::render(
-            "hbs/home",
-            context! {
-                peer_id: Some(peer_id),
-                identity: Some(identity.identity),
-                bills: bills,
-            },
-        )
-    }
-}
-
-#[get("/<id>/block/<block_id>")]
-pub async fn get_block(id: String, block_id: u64) -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else if Path::new((BILLS_FOLDER_PATH.to_string() + "/" + &id + ".json").as_str()).exists() {
-        let bill: BitcreditBill = read_bill_from_file(&id);
-        let chain = Chain::read_chain_from_file(&bill.name);
-        let block = chain.get_block_by_id(block_id);
-        Template::render(
-            "hbs/block",
-            context! {
-                bill: Some(bill),
-                block: block,
-            },
-        )
-    } else {
-        let bills = get_bills();
-        let identity: IdentityWithAll = get_whole_identity();
-        let peer_id = read_peer_id_from_file().to_string();
-
-        Template::render(
-            "hbs/home",
-            context! {
-                peer_id: Some(peer_id),
-                identity: Some(identity.identity),
-                bills: bills,
-            },
-        )
-    }
 }
 
 #[get("/return/basic/<id>")]
@@ -613,106 +448,6 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     Json(full_bill)
 }
 
-#[get("/<id>")]
-pub async fn get_bill(id: String) -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else if Path::new((BILLS_FOLDER_PATH.to_string() + "/" + &id + ".json").as_str()).exists() {
-        let bill: BitcreditBill = read_bill_from_file(&id);
-        let chain = Chain::read_chain_from_file(&bill.name);
-        let endorsed = chain.exist_block_with_operation_code(OperationCode::Endorse);
-        let last_block = chain.get_latest_block().clone();
-        let operation_code = last_block.operation_code;
-        let identity: IdentityWithAll = get_whole_identity();
-        let accepted = chain.exist_block_with_operation_code(OperationCode::Accept);
-        let payee = bill.payee.clone();
-        let local_peer_id = identity.peer_id.to_string().clone();
-        let drawer_from_bill = bill.drawer.clone();
-        let drawee_from_bill = bill.drawee.clone();
-        let amount = bill.amount_numbers;
-        let payee_public_key = bill.payee.bitcoin_public_key.clone();
-        let mut address_to_pay = String::new();
-        let mut link_to_pay = String::new();
-        let mut pr_key_bill = String::new();
-        let mut paid: bool = false;
-        let mut number_of_confirmations: u64 = 0;
-        let usednet = USEDNET.to_string();
-        let mut pending = String::new();
-        let requested_to_pay = chain.exist_block_with_operation_code(OperationCode::RequestToPay);
-        let requested_to_accept =
-            chain.exist_block_with_operation_code(OperationCode::RequestToAccept);
-
-        address_to_pay = get_address_to_pay(bill.clone());
-        let message: String = format!("Payment in relation to a bill {}", bill.name.clone());
-        link_to_pay = generate_link_to_pay(address_to_pay.clone(), amount, message).await;
-        let mut check_if_already_paid = (false, 0);
-        if requested_to_pay {
-            check_if_already_paid = check_if_paid(address_to_pay.clone(), amount).await;
-        }
-        paid = check_if_already_paid.0;
-        if paid && check_if_already_paid.1.eq(&0) {
-            pending = "Pending".to_string();
-        } else if paid && !check_if_already_paid.1.eq(&0) {
-            let transaction = api::get_transactions_testet(address_to_pay.clone()).await;
-            let txid = api::Txid::get_first_transaction(transaction.clone()).await;
-            let height = api::get_testnet_last_block_height().await;
-            number_of_confirmations = height - txid.status.block_height + 1;
-        }
-        if !endorsed && payee_public_key.eq(&identity.identity.bitcoin_public_key)
-        // && !payee.peer_id.eq(&drawee_from_bill.peer_id)
-        {
-            pr_key_bill = get_current_payee_private_key(identity.identity.clone(), bill.clone());
-        } else if endorsed
-            && bill
-                .endorsee
-                .bitcoin_public_key
-                .eq(&identity.identity.bitcoin_public_key)
-        {
-            pr_key_bill = get_current_payee_private_key(identity.identity.clone(), bill.clone());
-        }
-
-        // if paid {
-        //     bill.payee = bill.drawee.clone();
-        // }
-
-        Template::render(
-            "hbs/bill",
-            context! {
-                codes: OperationCode::get_all_operation_codes(),
-                operation_code: operation_code,
-                peer_id: local_peer_id,
-                bill: Some(bill),
-                identity: Some(identity.identity),
-                accepted: accepted,
-                payed: paid,
-                requested_to_pay: requested_to_pay,
-                requested_to_accept: requested_to_accept,
-                address_to_pay: address_to_pay,
-                pr_key_bill: pr_key_bill,
-                usednet: usednet,
-                endorsed: endorsed,
-                pending: pending,
-                number_of_confirmations: number_of_confirmations,
-                link_to_pay: link_to_pay,
-            },
-        )
-    } else {
-        //todo: add for this block of code some function
-        let bills = get_bills();
-        let identity: IdentityWithAll = get_whole_identity();
-        let peer_id = read_peer_id_from_file().to_string();
-
-        Template::render(
-            "hbs/home",
-            context! {
-                peer_id: Some(peer_id),
-                identity: Some(identity.identity),
-                bills: bills,
-            },
-        )
-    }
-}
-
 async fn generate_link_to_pay(address: String, amount: u64, message: String) -> String {
     //todo check what net we used
     let link = format!("bitcoin:{}?amount={}&message={}", address, amount, message);
@@ -899,58 +634,6 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
         }
 
         status
-    }
-}
-
-#[get("/")]
-pub async fn new_two_party_bill_drawer_is_payee() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        let identity: IdentityWithAll = get_whole_identity();
-        let utc = Utc::now();
-        let date_of_issue = utc.naive_local().date().to_string();
-        let maturity_date = utc
-            .checked_add_days(Days::new(BILL_VALIDITY_PERIOD))
-            .unwrap()
-            .naive_local()
-            .date()
-            .to_string();
-
-        Template::render(
-            "hbs/new_two_party_bill_drawer_is_payee",
-            context! {
-                identity: Some(identity.identity),
-                date_of_issue: date_of_issue,
-                maturity_date: maturity_date,
-            },
-        )
-    }
-}
-
-#[get("/")]
-pub async fn new_two_party_bill_drawer_is_drawee() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        let identity: IdentityWithAll = get_whole_identity();
-        let utc = Utc::now();
-        let date_of_issue = utc.naive_local().date().to_string();
-        let maturity_date = utc
-            .checked_add_days(Days::new(BILL_VALIDITY_PERIOD))
-            .unwrap()
-            .naive_local()
-            .date()
-            .to_string();
-
-        Template::render(
-            "hbs/new_two_party_bill_drawer_is_drawee",
-            context! {
-                identity: Some(identity.identity),
-                date_of_issue: date_of_issue,
-                maturity_date: maturity_date,
-            },
-        )
     }
 }
 
@@ -1167,15 +850,6 @@ pub async fn accept_bill_form(
     }
 }
 
-#[get("/add")]
-pub async fn add_contact() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        Template::render("hbs/new_contact", context! {})
-    }
-}
-
 #[post("/remove", data = "<remove_contact_form>")]
 pub async fn remove_contact(remove_contact_form: Form<DeleteContactForm>) -> Status {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
@@ -1219,21 +893,6 @@ pub async fn edit_contact(
         );
 
         Ok(Json(get_contacts_vec()))
-    }
-}
-
-#[get("/")]
-pub async fn contacts() -> Template {
-    if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Template::render("hbs/create_identity", context! {})
-    } else {
-        let contacts = read_contacts_map();
-        Template::render(
-            "hbs/contacts",
-            context! {
-                contacts: contacts,
-            },
-        )
     }
 }
 

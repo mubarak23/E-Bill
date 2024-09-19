@@ -75,38 +75,24 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
     let rocket = rocket::build()
         .register("/", catchers![web::not_found])
         .manage(dht)
-        // .mount("/", routes![web::start])
         .mount("/exit", routes![web::exit])
         .mount("/opcodes", routes![web::return_operation_codes])
         .mount(
             "/identity",
             routes![
-                web::get_identity,
                 web::create_identity,
                 web::change_identity,
                 web::return_identity,
                 web::return_peer_id
             ],
         )
-        .mount("/bills", routes![web::bills_list])
-        .mount("/info", routes![web::info])
         .mount("/bitcredit", FileServer::from("frontend_build"))
-        .mount(
-            "/new_two_party_bill_drawer_is_payee",
-            routes![web::new_two_party_bill_drawer_is_payee],
-        )
-        .mount(
-            "/new_two_party_bill_drawer_is_drawee",
-            routes![web::new_two_party_bill_drawer_is_drawee],
-        )
         .mount(
             "/contacts",
             routes![
-                web::add_contact,
                 web::new_contact,
                 web::edit_contact,
                 web::remove_contact,
-                web::contacts,
                 web::return_contacts
             ],
         )
@@ -114,16 +100,12 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
             "/bill",
             routes![
                 web::holder,
-                web::get_bill,
                 web::issue_bill,
                 web::endorse_bill,
                 web::search_bill,
                 web::request_to_accept_bill,
                 web::accept_bill_form,
                 web::request_to_pay_bill,
-                web::get_bill_history,
-                web::get_bill_chain,
-                web::get_block,
                 web::return_bill,
                 web::return_chain_of_blocks,
                 web::return_basic_bill,
@@ -136,9 +118,6 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
         )
         .mount("/bills", routes![web::return_bills_list,])
         .mount("/quote", routes![web::return_quote, web::accept_quote])
-        .attach(Template::custom(|engines| {
-            web::customize(&mut engines.handlebars);
-        }))
         .attach(web::CORS);
 
     open::that("http://127.0.0.1:8000/bitcredit/").expect("Can't open browser.");
