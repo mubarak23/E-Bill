@@ -20,7 +20,7 @@ export default function SellPage({ data }) {
   const [dataForm, setDataForm] = useState({
     amount_numbers: "",
     buyer: "",
-    currency_code: "sat",
+    currency_code: "",
   });
 
   const changeHandle = (e) => {
@@ -39,8 +39,9 @@ export default function SellPage({ data }) {
     form_data.append("bill_name", data.name);
     form_data.append("buyer", dataForm.buyer);
     form_data.append("amount_numbers", dataForm.amount_numbers);
+    form_data.append("currency_code", dataForm.currency_code);
 
-    if (dataForm.amount_numbers && dataForm.buyer) {
+      if (dataForm.amount_numbers && dataForm.buyer) {
       await fetch("http://localhost:8000/bill/sell", {
         method: "POST",
         body: form_data,
@@ -119,24 +120,24 @@ export default function SellPage({ data }) {
               <div className="form-input-row">
                 <span className="select-opt">
                   <select
-                    style={{
-                      appearance: "none",
-                      MozAppearance: "none",
-                      WebkitAppearance: "none",
-                      textTransform: "uppercase",
-                    }}
-                    className="form-select"
-                    id="currency_code"
-                    name="currency_code"
-                    onChange={changeHandle}
-                    placeholder="sat"
-                    required
+                      style={{
+                          appearance: "none",
+                          MozAppearance: "none",
+                          WebkitAppearance: "none",
+                      }}
+                      className="form-select"
+                      id="currency_code"
+                      name="currency_code"
+                      onChange={changeHandle}
+                      placeholder="sat"
+                      required
                   >
                     <option value={data.currency_code}>sat</option>
+                    <option value={data.currency_code}>usd</option>
                   </select>
                 </span>
                 <input
-                  className="drop-shadow"
+                    className="drop-shadow"
                   name="amount_numbers"
                   value={dataForm.amount_numbers}
                   onChange={changeHandle}

@@ -4,7 +4,7 @@ extern crate rocket;
 
 use std::collections::HashMap;
 use std::fs::DirEntry;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{env, fs, mem, path, thread};
 
 use bitcoin::PublicKey;
@@ -12,6 +12,8 @@ use borsh::{self, BorshDeserialize, BorshSerialize};
 use chrono::Utc;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
+use moksha_core::primitives::CheckBitcreditQuoteResponse;
+use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use openssl::pkey::{Private, Public};
 use openssl::rsa;
 use openssl::rsa::{Padding, Rsa};
@@ -29,7 +31,8 @@ use crate::constants::{
     BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH,
     COMPOUNDING_INTEREST_RATE_ZERO, CONTACT_MAP_FILE_PATH, CONTACT_MAP_FOLDER_PATH,
     IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_FOLDER_PATH,
-    IDENTITY_PEER_ID_FILE_PATH, SATOSHI, USEDNET,
+    IDENTITY_PEER_ID_FILE_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH,
+    USEDNET,
 };
 use crate::dht::network::Client;
 use crate::numbers_to_words::encode;
@@ -41,6 +44,7 @@ mod dht;
 mod numbers_to_words;
 mod test;
 mod web;
+mod work_with_mint;
 
 // MAIN
 // #[rocket::main]
@@ -51,6 +55,8 @@ async fn main() {
     env_logger::init();
 
     init_folders();
+
+    init_wallet().await;
 
     let mut dht = dht::dht_main().await.expect("DHT failed to start");
 
@@ -107,6 +113,7 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
         .mount(
             "/bill",
             routes![
+                web::holder,
                 web::get_bill,
                 web::issue_bill,
                 web::endorse_bill,
@@ -121,9 +128,14 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
                 web::return_chain_of_blocks,
                 web::return_basic_bill,
                 web::sell_bill,
+                web::mint_bill,
+                web::accept_mint_bill,
+                web::find_bill_in_dht,
+                web::request_to_mint_bill,
             ],
         )
         .mount("/bills", routes![web::return_bills_list,])
+        .mount("/quote", routes![web::return_quote, web::accept_quote])
         .attach(Template::custom(|engines| {
             web::customize(&mut engines.handlebars);
         }))
@@ -138,6 +150,9 @@ fn init_folders() {
     if !Path::new(CONTACT_MAP_FOLDER_PATH).exists() {
         fs::create_dir(CONTACT_MAP_FOLDER_PATH).expect("Can't create folder contacts.");
     }
+    if !Path::new(QUOTES_MAP_FOLDER_PATH).exists() {
+        fs::create_dir(QUOTES_MAP_FOLDER_PATH).expect("Can't create folder quotes.");
+    }
     if !Path::new(IDENTITY_FOLDER_PATH).exists() {
         fs::create_dir(IDENTITY_FOLDER_PATH).expect("Can't create folder identity.");
     }
@@ -150,6 +165,104 @@ fn init_folders() {
     if !Path::new(BOOTSTRAP_FOLDER_PATH).exists() {
         fs::create_dir(BOOTSTRAP_FOLDER_PATH).expect("Can't create folder bootstrap.");
     }
+}
+
+async fn init_wallet() {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    if !dir.exists() {
+        fs::create_dir_all(dir.clone()).unwrap();
+    }
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    // //TODO: take from params
+    // let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //
+    // let identity: Identity = read_identity_from_file();
+    // let bitcoin_key = identity.bitcoin_public_key.clone();
+    //
+    // let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //     .with_localstore(localstore)
+    //     .build()
+    //     .await
+    //     .expect("Could not create wallet");
+}
+
+pub fn read_quotes_map() -> HashMap<String, BitcreditEbillQuote> {
+    if !Path::new(QUOTE_MAP_FILE_PATH).exists() {
+        create_quotes_map();
+    }
+    let data: Vec<u8> = fs::read(QUOTE_MAP_FILE_PATH).expect("Unable to read quotes.");
+    let quotes: HashMap<String, BitcreditEbillQuote> = HashMap::try_from_slice(&data).unwrap();
+    quotes
+}
+
+pub fn create_quotes_map() {
+    let quotes: HashMap<String, BitcreditEbillQuote> = HashMap::new();
+    write_quotes_map(quotes);
+}
+
+pub fn write_quotes_map(map: HashMap<String, BitcreditEbillQuote>) {
+    let quotes_byte = map.try_to_vec().unwrap();
+    fs::write(QUOTE_MAP_FILE_PATH, quotes_byte).expect("Unable to write quote in file.");
+}
+
+pub fn add_in_quotes_map(quote: BitcreditEbillQuote) {
+    if !Path::new(QUOTE_MAP_FILE_PATH).exists() {
+        create_quotes_map();
+    }
+
+    let mut quotes: HashMap<String, BitcreditEbillQuote> = read_quotes_map();
+
+    quotes.insert(quote.bill_id.clone(), quote);
+    write_quotes_map(quotes);
+}
+
+fn get_quote_from_map(bill_id: &String) -> BitcreditEbillQuote {
+    let quotes = read_quotes_map();
+    if quotes.contains_key(bill_id) {
+        let data = quotes.get(bill_id).unwrap().clone();
+        data
+    } else {
+        BitcreditEbillQuote::new_empty()
+    }
+}
+
+pub fn add_bitcredit_quote_and_amount_in_quotes_map(
+    response: CheckBitcreditQuoteResponse,
+    bill_id: String,
+) {
+    if !Path::new(QUOTE_MAP_FILE_PATH).exists() {
+        create_quotes_map();
+    }
+
+    let mut quotes: HashMap<String, BitcreditEbillQuote> = read_quotes_map();
+    let mut quote = get_quote_from_map(&bill_id);
+
+    quote.amount = response.amount;
+    quote.quote_id = response.quote.clone();
+
+    quotes.remove(&bill_id);
+    quotes.insert(bill_id.clone(), quote);
+    write_quotes_map(quotes);
+}
+
+pub fn add_bitcredit_token_in_quotes_map(token: String, bill_id: String) {
+    if !Path::new(QUOTE_MAP_FILE_PATH).exists() {
+        create_quotes_map();
+    }
+
+    let mut quotes: HashMap<String, BitcreditEbillQuote> = read_quotes_map();
+    let mut quote = get_quote_from_map(&bill_id);
+
+    quote.token = token.clone();
+
+    quotes.remove(&bill_id);
+    quotes.insert(bill_id.clone(), quote);
+    write_quotes_map(quotes);
 }
 
 //-------------------------Contacts map-------------------------
@@ -321,17 +434,17 @@ fn pem_public_key_from_rsa(rsa: &Rsa<Private>) -> String {
     String::from_utf8(public_key).unwrap()
 }
 
-fn private_key_from_pem_u8(private_key_u8: &Vec<u8>) -> Rsa<Private> {
+fn private_key_from_pem_u8(private_key_u8: &[u8]) -> Rsa<Private> {
     rsa::Rsa::private_key_from_pem(private_key_u8).unwrap()
 }
 
-fn public_key_from_pem_u8(public_key_u8: &Vec<u8>) -> Rsa<Public> {
+fn public_key_from_pem_u8(public_key_u8: &[u8]) -> Rsa<Public> {
     rsa::Rsa::public_key_from_pem(public_key_u8).unwrap()
 }
 //--------------------------------------------------------------
 
 //-------------------------Bytes common-------------------------
-fn encrypt_bytes_with_public_key(bytes: &Vec<u8>, public_key: String) -> Vec<u8> {
+fn encrypt_bytes_with_public_key(bytes: &[u8], public_key: String) -> Vec<u8> {
     let public_key = Rsa::public_key_from_pem(public_key.as_bytes()).unwrap();
 
     let key_size: usize = (public_key.size() / 2) as usize; //128
@@ -383,7 +496,7 @@ fn encrypt_bytes_with_public_key(bytes: &Vec<u8>, public_key: String) -> Vec<u8>
     whole_encrypted_buff
 }
 
-fn decrypt_bytes_with_private_key(bytes: &Vec<u8>, private_key: String) -> Vec<u8> {
+fn decrypt_bytes_with_private_key(bytes: &[u8], private_key: String) -> Vec<u8> {
     let private_key = Rsa::private_key_from_pem(private_key.as_bytes()).unwrap();
 
     let key_size: usize = private_key.size() as usize; //256
@@ -433,7 +546,7 @@ fn decrypt_bytes_with_private_key(bytes: &Vec<u8>, private_key: String) -> Vec<u
     whole_decrypted_buff
 }
 
-fn encrypt_bytes(bytes: &Vec<u8>, rsa_key: &Rsa<Private>) -> Vec<u8> {
+fn encrypt_bytes(bytes: &[u8], rsa_key: &Rsa<Private>) -> Vec<u8> {
     let key_size: usize = (rsa_key.size() / 2) as usize; //128
 
     let mut whole_encrypted_buff: Vec<u8> = Vec::new();
@@ -483,7 +596,7 @@ fn encrypt_bytes(bytes: &Vec<u8>, rsa_key: &Rsa<Private>) -> Vec<u8> {
     whole_encrypted_buff
 }
 
-fn decrypt_bytes(bytes: &Vec<u8>, rsa_key: &Rsa<Private>) -> Vec<u8> {
+fn decrypt_bytes(bytes: &[u8], rsa_key: &Rsa<Private>) -> Vec<u8> {
     let key_size: usize = rsa_key.size() as usize; //256
 
     let mut whole_decrypted_buff: Vec<u8> = Vec::new();
@@ -532,7 +645,7 @@ fn decrypt_bytes(bytes: &Vec<u8>, rsa_key: &Rsa<Private>) -> Vec<u8> {
 }
 
 unsafe fn structure_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-    ::std::slice::from_raw_parts((p as *const T) as *const u8, ::std::mem::size_of::<T>())
+    std::slice::from_raw_parts((p as *const T) as *const u8, size_of::<T>())
 }
 
 fn is_not_hidden(entry: &DirEntry) -> bool {
@@ -607,21 +720,21 @@ impl Identity {
     }
 
     fn all_changeable_fields_empty(&self) -> bool {
-        self.name == "" &&
-        self.company == "" &&
-        self.postal_address == "" &&
-        self.email == ""
+        self.name.is_empty()
+            && self.company.is_empty()
+            && self.postal_address.is_empty()
+            && self.email.is_empty()
     }
 
     fn all_changeable_fields_equal_to(&self, other: &Self) -> bool {
-        self.name == other.name && 
-        self.company == other.company &&
-        self.postal_address == other.postal_address &&
-        self.email == other.email
+        self.name == other.name
+            && self.company == other.company
+            && self.postal_address == other.postal_address
+            && self.email == other.email
     }
-   
+
     fn update_valid(&self, other: &Self) -> bool {
-        if other.all_changeable_fields_empty() { 
+        if other.all_changeable_fields_empty() {
             return false;
         }
         if self.all_changeable_fields_equal_to(other) {
@@ -773,15 +886,15 @@ fn identity_to_byte_array(identity: &Identity) -> Vec<u8> {
     identity.try_to_vec().unwrap()
 }
 
-fn identity_from_byte_array(identity: &Vec<u8>) -> Identity {
+fn identity_from_byte_array(identity: &[u8]) -> Identity {
     Identity::try_from_slice(identity).unwrap()
 }
 
-fn byte_array_to_size_array_keypair(array: &[u8]) -> &[u8; ::std::mem::size_of::<Keypair>()] {
+fn byte_array_to_size_array_keypair(array: &[u8]) -> &[u8; size_of::<Keypair>()] {
     array.try_into().expect("slice with incorrect length")
 }
 
-fn byte_array_to_size_array_peer_id(array: &[u8]) -> &[u8; ::std::mem::size_of::<PeerId>()] {
+fn byte_array_to_size_array_peer_id(array: &[u8]) -> &[u8; size_of::<PeerId>()] {
     array.try_into().expect("slice with incorrect length")
 }
 //--------------------------------------------------------------
@@ -829,6 +942,32 @@ pub struct BitcreditBillToReturn {
     chain_of_blocks: ChainToReturn,
 }
 
+#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct BitcreditEbillQuote {
+    bill_id: String,
+    quote_id: String,
+    amount: u64,
+    mint_node_id: String,
+    mint_url: String,
+    accepted: bool,
+    token: String,
+}
+
+impl BitcreditEbillQuote {
+    pub fn new_empty() -> Self {
+        Self {
+            bill_id: "".to_string(),
+            quote_id: "".to_string(),
+            amount: 0,
+            mint_node_id: "".to_string(),
+            mint_url: "".to_string(),
+            accepted: false,
+            token: "".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct BitcreditBillForList {
@@ -866,7 +1005,7 @@ pub struct BitcreditBill {
     drawee: IdentityPublicData,
     // The party issuing a Bill
     drawer: IdentityPublicData,
-    // The person to whom the Payee or a Endorsee endorses a bill
+    // The person to whom the Payee or an Endorsee endorses a bill
     payee: IdentityPublicData,
     endorsee: IdentityPublicData,
     place_of_drawing: String,
@@ -968,6 +1107,7 @@ pub fn issue_new_bill(
     amount_numbers: u64,
     place_of_payment: String,
     maturity_date: String,
+    currency_code: String,
     drawer: IdentityWithAll,
     language: String,
     public_data_drawee: IdentityPublicData,
@@ -1014,9 +1154,9 @@ pub fn issue_new_bill(
         name: bill_name.clone(),
         to_payee: false,
         bill_jurisdiction,
-        timestamp_at_drawing: timestamp.clone(),
+        timestamp_at_drawing: timestamp,
         place_of_drawing,
-        currency_code: SATOSHI.to_string(),
+        currency_code,
         amount_numbers,
         amounts_letters: amount_letters,
         maturity_date,
@@ -1055,6 +1195,7 @@ pub fn issue_new_bill_drawer_is_payee(
     amount_numbers: u64,
     place_of_payment: String,
     maturity_date: String,
+    currency_code: String,
     drawer: IdentityWithAll,
     language: String,
     public_data_drawee: IdentityPublicData,
@@ -1100,9 +1241,9 @@ pub fn issue_new_bill_drawer_is_payee(
         name: bill_name.clone(),
         to_payee: true,
         bill_jurisdiction,
-        timestamp_at_drawing: timestamp.clone(),
+        timestamp_at_drawing: timestamp,
         place_of_drawing,
-        currency_code: SATOSHI.to_string(),
+        currency_code,
         amount_numbers,
         amounts_letters: amount_letters,
         maturity_date,
@@ -1129,7 +1270,7 @@ pub fn issue_new_bill_drawer_is_payee(
         drawer.identity.public_key_pem.clone(),
         drawer.identity.private_key_pem.clone(),
         private_key_pem.clone(),
-        timestamp.clone(),
+        timestamp,
     );
 
     new_bill
@@ -1141,6 +1282,7 @@ pub fn issue_new_bill_drawer_is_drawee(
     amount_numbers: u64,
     place_of_payment: String,
     maturity_date: String,
+    currency_code: String,
     drawer: IdentityWithAll,
     language: String,
     public_data_payee: IdentityPublicData,
@@ -1186,9 +1328,9 @@ pub fn issue_new_bill_drawer_is_drawee(
         name: bill_name.clone(),
         to_payee: false,
         bill_jurisdiction,
-        timestamp_at_drawing: timestamp.clone(),
+        timestamp_at_drawing: timestamp,
         place_of_drawing,
-        currency_code: SATOSHI.to_string(),
+        currency_code,
         amount_numbers,
         amounts_letters: amount_letters,
         maturity_date,
@@ -1215,7 +1357,7 @@ pub fn issue_new_bill_drawer_is_drawee(
         drawer.identity.public_key_pem.clone(),
         drawer.identity.private_key_pem.clone(),
         private_key_pem.clone(),
-        timestamp.clone(),
+        timestamp,
     );
 
     new_bill
@@ -1228,7 +1370,7 @@ fn write_bill_keys_to_file(bill_name: String, private_key: String, public_key: S
     };
 
     let output_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name.as_str() + ".json";
-    std::fs::write(
+    fs::write(
         output_path.clone(),
         serde_json::to_string_pretty(&keys).unwrap(),
     )
@@ -1237,8 +1379,8 @@ fn write_bill_keys_to_file(bill_name: String, private_key: String, public_key: S
 
 fn create_bill_name(public_key: &PublicKey) -> String {
     let bill_name_hash: Vec<u8> = sha256(&public_key.to_bytes()).to_vec();
-    let bill_name_readable = hex::encode(bill_name_hash);
-    bill_name_readable
+
+    hex::encode(bill_name_hash)
 }
 
 pub fn get_bills() -> Vec<BitcreditBill> {
@@ -1247,13 +1389,13 @@ pub fn get_bills() -> Vec<BitcreditBill> {
     for _path in paths {
         let dir = _path.unwrap();
         if is_not_hidden(&dir) {
-            let mut file_name = dir
+            let file_name = dir
                 .file_name()
                 .to_str()
                 .expect("File name error")
                 .to_string();
             //TODO change
-            let path_without_extension = path::Path::file_stem(path::Path::new(&file_name))
+            let path_without_extension = Path::file_stem(Path::new(&file_name))
                 .expect("File name error")
                 .to_str()
                 .expect("File name error")
@@ -1271,13 +1413,13 @@ pub fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     for _path in paths {
         let dir = _path.unwrap();
         if is_not_hidden(&dir) {
-            let mut file_name = dir
+            let file_name = dir
                 .file_name()
                 .to_str()
                 .expect("File name error")
                 .to_string();
             //TODO change
-            let path_without_extension = path::Path::file_stem(path::Path::new(&file_name))
+            let path_without_extension = Path::file_stem(Path::new(&file_name))
                 .expect("File name error")
                 .to_str()
                 .expect("File name error")
@@ -1298,7 +1440,7 @@ pub fn endorse_bitcredit_bill(
     timestamp: i64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let mut bill = read_bill_from_file(&bill_name);
+    let bill = read_bill_from_file(bill_name);
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -1306,12 +1448,16 @@ pub fn endorse_bitcredit_bill(
     let exist_block_with_code_endorse =
         blockchain_from_file.exist_block_with_operation_code(OperationCode::Endorse);
 
+    let exist_block_with_code_mint =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Mint);
+
     let exist_block_with_code_sell =
         blockchain_from_file.exist_block_with_operation_code(OperationCode::Sell);
 
     if (my_peer_id.eq(&bill.payee.peer_id)
         && !exist_block_with_code_endorse
-        && !exist_block_with_code_sell)
+        && !exist_block_with_code_sell
+        && !exist_block_with_code_mint)
         || (my_peer_id.eq(&bill.endorsee.peer_id))
     {
         let identity = get_whole_identity();
@@ -1326,7 +1472,7 @@ pub fn endorse_bitcredit_bill(
             + " endorsed by "
             + &hex::encode(endorsed_by);
 
-        let keys = read_keys_from_bill_file(&bill_name);
+        let keys = read_keys_from_bill_file(bill_name);
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
@@ -1342,12 +1488,84 @@ pub fn endorse_bitcredit_bill(
             identity.identity.public_key_pem.clone(),
             OperationCode::Endorse,
             identity.identity.private_key_pem.clone(),
-            timestamp.clone(),
+            timestamp,
         );
 
         let try_add_block = blockchain_from_file.try_add_block(new_block.clone());
         if try_add_block && blockchain_from_file.is_chain_valid() {
             blockchain_from_file.write_chain_to_file(&bill.name);
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+pub async fn mint_bitcredit_bill(
+    bill_name: &String,
+    mintnode: IdentityPublicData,
+    timestamp: i64,
+) -> bool {
+    let my_peer_id = read_peer_id_from_file().to_string();
+    let bill = read_bill_from_file(bill_name);
+
+    let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
+    let last_block = blockchain_from_file.get_latest_block();
+
+    let exist_block_with_code_endorse =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Endorse);
+
+    let exist_block_with_code_mint =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Mint);
+
+    let exist_block_with_code_sell =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Sell);
+
+    if (my_peer_id.eq(&bill.payee.peer_id)
+        && !exist_block_with_code_endorse
+        && !exist_block_with_code_sell
+        && !exist_block_with_code_mint)
+        || (my_peer_id.eq(&bill.endorsee.peer_id))
+    {
+        let identity = get_whole_identity();
+
+        let my_identity_public =
+            IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string());
+        let minted_by = serde_json::to_vec(&my_identity_public).unwrap();
+
+        let data_for_new_block_in_bytes = serde_json::to_vec(&mintnode).unwrap();
+        let data_for_new_block = "Endorsed to ".to_string()
+            + &hex::encode(data_for_new_block_in_bytes)
+            + " endorsed by "
+            + &hex::encode(minted_by);
+
+        let keys = read_keys_from_bill_file(bill_name);
+        let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
+
+        let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
+        let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+        let data_for_new_block_encrypted_in_string_format =
+            hex::encode(data_for_new_block_encrypted);
+
+        let new_block = Block::new(
+            last_block.id + 1,
+            last_block.hash.clone(),
+            data_for_new_block_encrypted_in_string_format,
+            bill_name.clone(),
+            identity.identity.public_key_pem.clone(),
+            OperationCode::Mint,
+            identity.identity.private_key_pem.clone(),
+            timestamp,
+        );
+
+        let try_add_block = blockchain_from_file.try_add_block(new_block.clone());
+
+        if try_add_block && blockchain_from_file.is_chain_valid() {
+            let bill_id = bill.name.clone();
+
+            blockchain_from_file.write_chain_to_file(&bill_id);
             true
         } else {
             false
@@ -1364,7 +1582,7 @@ pub fn sell_bitcredit_bill(
     amount_numbers: u64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let mut bill = read_bill_from_file(&bill_name);
+    let bill = read_bill_from_file(bill_name);
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -1394,7 +1612,7 @@ pub fn sell_bitcredit_bill(
             + " amount: "
             + &amount_numbers.to_string();
 
-        let keys = read_keys_from_bill_file(&bill_name);
+        let keys = read_keys_from_bill_file(bill_name);
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
@@ -1410,7 +1628,7 @@ pub fn sell_bitcredit_bill(
             identity.identity.public_key_pem.clone(),
             OperationCode::Sell,
             identity.identity.private_key_pem.clone(),
-            timestamp.clone(),
+            timestamp,
         );
 
         let try_add_block = blockchain_from_file.try_add_block(new_block.clone());
@@ -1435,12 +1653,16 @@ pub fn request_pay(bill_name: &String, timestamp: i64) -> bool {
     let exist_block_with_code_endorse =
         blockchain_from_file.exist_block_with_operation_code(OperationCode::Endorse);
 
+    let exist_block_with_code_mint =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Mint);
+
     let exist_block_with_code_sell =
         blockchain_from_file.exist_block_with_operation_code(OperationCode::Sell);
 
     if (my_peer_id.eq(&bill.payee.peer_id)
         && !exist_block_with_code_endorse
-        && !exist_block_with_code_sell)
+        && !exist_block_with_code_sell
+        && !exist_block_with_code_mint)
         || (my_peer_id.eq(&bill.endorsee.peer_id))
     {
         let identity = get_whole_identity();
@@ -1452,7 +1674,7 @@ pub fn request_pay(bill_name: &String, timestamp: i64) -> bool {
         let data_for_new_block =
             "Requested to pay by ".to_string() + &hex::encode(data_for_new_block_in_bytes);
 
-        let keys = read_keys_from_bill_file(&bill_name);
+        let keys = read_keys_from_bill_file(bill_name);
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
@@ -1468,7 +1690,7 @@ pub fn request_pay(bill_name: &String, timestamp: i64) -> bool {
             identity.identity.public_key_pem.clone(),
             OperationCode::RequestToPay,
             identity.identity.private_key_pem.clone(),
-            timestamp.clone(),
+            timestamp,
         );
 
         let try_add_block = blockchain_from_file.try_add_block(new_block.clone());
@@ -1496,9 +1718,13 @@ pub fn request_acceptance(bill_name: &String, timestamp: i64) -> bool {
     let exist_block_with_code_sell =
         blockchain_from_file.exist_block_with_operation_code(OperationCode::Sell);
 
+    let exist_block_with_code_mint =
+        blockchain_from_file.exist_block_with_operation_code(OperationCode::Mint);
+
     if (my_peer_id.eq(&bill.payee.peer_id)
         && !exist_block_with_code_endorse
-        && !exist_block_with_code_sell)
+        && !exist_block_with_code_sell
+        && !exist_block_with_code_mint)
         || (my_peer_id.eq(&bill.endorsee.peer_id))
     {
         let identity = get_whole_identity();
@@ -1510,7 +1736,7 @@ pub fn request_acceptance(bill_name: &String, timestamp: i64) -> bool {
         let data_for_new_block =
             "Requested to accept by ".to_string() + &hex::encode(data_for_new_block_in_bytes);
 
-        let keys = read_keys_from_bill_file(&bill_name);
+        let keys = read_keys_from_bill_file(bill_name);
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
@@ -1526,7 +1752,7 @@ pub fn request_acceptance(bill_name: &String, timestamp: i64) -> bool {
             identity.identity.public_key_pem.clone(),
             OperationCode::RequestToAccept,
             identity.identity.private_key_pem.clone(),
-            timestamp.clone(),
+            timestamp,
         );
 
         let try_add_block = blockchain_from_file.try_add_block(new_block.clone());
@@ -1560,7 +1786,7 @@ pub fn accept_bill(bill_name: &String, timestamp: i64) -> bool {
             let data_for_new_block =
                 "Accepted by ".to_string() + &hex::encode(data_for_new_block_in_bytes);
 
-            let keys = read_keys_from_bill_file(&bill_name);
+            let keys = read_keys_from_bill_file(bill_name);
             let key: Rsa<Private> =
                 Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
@@ -1577,7 +1803,7 @@ pub fn accept_bill(bill_name: &String, timestamp: i64) -> bool {
                 identity.identity.public_key_pem.clone(),
                 OperationCode::Accept,
                 identity.identity.private_key_pem.clone(),
-                timestamp.clone(),
+                timestamp,
             );
 
             let try_add_block = blockchain_from_file.try_add_block(new_block.clone());
@@ -1597,28 +1823,26 @@ pub fn accept_bill(bill_name: &String, timestamp: i64) -> bool {
 
 #[tokio::main]
 async fn read_bill_with_chain_from_file(id: &String) -> BitcreditBillToReturn {
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(id);
     let chain = Chain::read_chain_from_file(&bill.name);
     let drawer = chain.get_drawer();
     let chain_to_return = ChainToReturn::new(chain.clone());
-    let endorsed = chain.exist_block_with_operation_code(blockchain::OperationCode::Endorse);
-    let accepted = chain.exist_block_with_operation_code(blockchain::OperationCode::Accept);
-    let mut requested_to_pay =
-        chain.exist_block_with_operation_code(blockchain::OperationCode::RequestToPay);
-    let mut requested_to_accept =
-        chain.exist_block_with_operation_code(blockchain::OperationCode::RequestToAccept);
+    let endorsed = chain.exist_block_with_operation_code(OperationCode::Endorse);
+    let accepted = chain.exist_block_with_operation_code(OperationCode::Accept);
+    let requested_to_pay = chain.exist_block_with_operation_code(OperationCode::RequestToPay);
+    let requested_to_accept = chain.exist_block_with_operation_code(OperationCode::RequestToAccept);
     let address_to_pay = web::get_address_to_pay(bill.clone());
     let check_if_already_paid =
-        web::check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone()).await;
+        web::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
     let payed = check_if_already_paid.0;
 
-    let full_bill = BitcreditBillToReturn {
+    BitcreditBillToReturn {
         name: bill.name,
         to_payee: bill.to_payee,
         bill_jurisdiction: bill.bill_jurisdiction,
         timestamp_at_drawing: bill.timestamp_at_drawing,
         drawee: bill.drawee,
-        drawer: drawer,
+        drawer,
         payee: bill.payee,
         endorsee: bill.endorsee,
         place_of_drawing: bill.place_of_drawing,
@@ -1650,28 +1874,25 @@ async fn read_bill_with_chain_from_file(id: &String) -> BitcreditBillToReturn {
         pending: false,
         address_to_pay,
         chain_of_blocks: chain_to_return,
-    };
-
-    full_bill
+    }
 }
 
 fn read_bill_from_file(bill_name: &String) -> BitcreditBill {
     let chain = Chain::read_chain_from_file(bill_name);
-    let bill = chain.get_last_version_bill();
-    bill
+    chain.get_last_version_bill()
 }
 
 fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
     bill.try_to_vec().unwrap()
 }
 
-fn bill_from_byte_array(bill: &Vec<u8>) -> BitcreditBill {
+fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {
     BitcreditBill::try_from_slice(bill).unwrap()
 }
 
-fn read_keys_from_bill_file(bill_name: &String) -> BillKeys {
-    let input_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name.as_str() + ".json";
-    let blockchain_from_file = std::fs::read(input_path.clone()).expect("file not found");
+fn read_keys_from_bill_file(bill_name: &str) -> BillKeys {
+    let input_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
+    let blockchain_from_file = fs::read(input_path.clone()).expect("file not found");
     serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
 }
 //--------------------------------------------------------------
@@ -1682,6 +1903,7 @@ fn read_keys_from_bill_file(bill_name: &String) -> BillKeys {
 pub struct BitcreditBillForm {
     pub bill_jurisdiction: String,
     pub place_of_drawing: String,
+    pub currency_code: String,
     pub amount_numbers: u64,
     pub language: String,
     pub drawee_name: String,
@@ -1701,10 +1923,32 @@ pub struct EndorseBitcreditBillForm {
 
 #[derive(FromForm, Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
+pub struct MintBitcreditBillForm {
+    pub mint_node: String,
+    pub bill_name: String,
+}
+
+#[derive(FromForm, Debug, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct AcceptMintBitcreditBillForm {
+    pub interest: u64,
+    pub bill_name: String,
+}
+
+#[derive(FromForm, Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct RequestToMintBitcreditBillForm {
+    pub mint_node: String,
+    pub bill_name: String,
+}
+
+#[derive(FromForm, Debug, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
 pub struct SellBitcreditBillForm {
     pub buyer: String,
     pub bill_name: String,
     pub amount_numbers: u64,
+    pub currency_code: String,
 }
 
 #[derive(FromForm, Debug, Serialize, Deserialize)]

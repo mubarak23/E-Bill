@@ -45,7 +45,7 @@ export default function ReqAcceptPage({ data }) {
             </span>
             <span className="block mt-5">
               <span className="accept-heading">the sum of </span>
-              <span className="detail" style={{ textTransform: "uppercase" }}>
+              <span className="detail">
                 {data.currency_code}, {data.amount_numbers}
               </span>
             </span>

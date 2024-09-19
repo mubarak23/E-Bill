@@ -3,6 +3,7 @@ import IconHolder from "../elements/IconHolder";
 import SecondaryIcon from "../elements/SecondaryIcon";
 
 import setting from "../../assests/setting.svg";
+import search from "../../assests/search.svg";
 import contact from "../../assests/contact.svg";
 import payment_options from "../../assests/payment-options.svg";
 import payment_channel from "../../assests/payment-chanel.svg";
@@ -21,6 +22,7 @@ export default function HomeHeader() {
       <div className="home-header-left">
         <IconHolder handleClick={() => handlePage("setting")} icon={setting} />
         <IconHolder handleClick={() => handlePage("contact")} icon={contact} />
+        <IconHolder handleClick={() => handlePage("findbill")} icon={search} />
         {/* <SecondaryIcon
           routing={() => handlePage("contact")}
           iconImage={contact}

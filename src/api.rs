@@ -79,14 +79,13 @@ pub struct TimeApi {
 impl TimeApi {
     pub async fn get_atomic_time() -> Self {
         let request_url = "https://api.timezonedb.com/v2.1/get-time-zone?key=RQ6ZFDOXPVLR&format=json&by=zone&zone=Europe/Vienna".to_string();
-        let time_api = reqwest::get(&request_url)
+
+        reqwest::get(&request_url)
             .await
             .expect("Failed to send request")
             .json()
             .await
-            .expect("Failed to read response");
-
-        time_api
+            .expect("Failed to read response")
     }
 }
 

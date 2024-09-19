@@ -23,7 +23,7 @@ export default function RepayPage({ data }) {
         </div>
         <div className="inline">
           <span>the sum of </span>
-          <span className="colored" style={{ textTransform: "uppercase" }}>
+          <span className="colored">
             {data.currency_code} {data.amount_numbers}
           </span>
         </div>

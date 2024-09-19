@@ -1,19 +1,28 @@
 #[cfg(test)]
 mod test {
     use std::io::Read;
-    use std::path::Path;
-    use std::{fs, mem};
+    use std::path::{Path, PathBuf};
+    use std::{fs, mem, thread};
 
     use bitcoin::secp256k1::Scalar;
+    use futures::executor::block_on;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
+    use moksha_core::amount::Amount;
+    use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
+    use moksha_wallet::http::CrossPlatformHttpClient;
+    use moksha_wallet::localstore::sqlite::SqliteLocalStore;
+    use moksha_wallet::wallet::{Wallet, WalletBuilder};
     use openssl::rsa::{Padding, Rsa};
     use serde_derive::Deserialize;
+    use tokio::runtime::Builder;
+    use url::Url;
 
     use crate::numbers_to_words::encode;
     use crate::{
         byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        generation_rsa_key, structure_as_u8_slice,
+        generation_rsa_key, read_bill_with_chain_from_file, read_identity_from_file,
+        structure_as_u8_slice, Identity,
     };
 
     //TODO: Change. Because we create new bill every time we run tests
@@ -216,6 +225,146 @@ mod test {
         println!("public key: {}", pub_key3);
         println!("address: {}", address3);
         println!("{}", address3.is_spend_standard());
+    }
+
+    #[tokio::test]
+    async fn test_mint() {
+        let dir = PathBuf::from("./data/wallet".to_string());
+        fs::create_dir_all(dir.clone()).unwrap();
+        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+        let localstore = SqliteLocalStore::with_path(db_path.clone())
+            .await
+            .expect("Cannot parse local store");
+
+        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+            .with_localstore(localstore)
+            .build()
+            .await
+            .expect("Could not create wallet");
+
+        let wallet_keysets = wallet
+            .add_mint_keysets(&Url::parse("http://127.0.0.1:3338").unwrap())
+            .await
+            .unwrap();
+        let wallet_keyset = wallet_keysets.first().unwrap();
+
+        let balance = wallet.get_balance().await.unwrap();
+        println!("Balance: {balance:?} sats");
+
+        let result = wallet
+            .mint_tokens(
+                wallet_keyset,
+                &PaymentMethod::Bitcredit,
+                3432.into(),
+                "00cf84c6-a2a0-4913-9765-adf06b10fc53".to_string(),
+            )
+            .await;
+
+        let token = result.unwrap().serialize().unwrap();
+        println!("Token: {token:?}");
+
+        let balance2 = wallet.get_balance().await.unwrap();
+        println!("Balance2: {balance2:?} sats");
+
+        assert_eq!(1, 2);
+    }
+
+    #[tokio::test]
+    async fn test_check_quote() {
+        let dir = PathBuf::from("./data/wallet".to_string());
+        fs::create_dir_all(dir.clone()).unwrap();
+        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+        let localstore = SqliteLocalStore::with_path(db_path.clone())
+            .await
+            .expect("Cannot parse local store");
+
+        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+            .with_localstore(localstore)
+            .build()
+            .await
+            .expect("Could not create wallet");
+
+        let result = wallet
+            .check_bitcredit_quote(
+                &mint_url,
+                "9d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(),
+                "12D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string(),
+            )
+            .await;
+
+        //bad
+        // let result = wallet
+        //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
+        //     .await;
+
+        println!("Quote: {result:?}");
+
+        assert_eq!(1, 2);
+    }
+
+    // #[tokio::test]
+    // async fn test_send() {
+    //     let dir = PathBuf::from("./data/wallet".to_string());
+    //     fs::create_dir_all(dir.clone()).unwrap();
+    //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    //
+    //     let localstore = SqliteLocalStore::with_path(db_path.clone())
+    //         .await
+    //         .expect("Cannot parse local store");
+    //
+    //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //
+    //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //         .with_localstore(localstore)
+    //         .build()
+    //         .await
+    //         .expect("Could not create wallet");
+    //
+    //     let result = wallet.send_tokens(10).await.expect("Cannot send tokens");
+    //     let payment_invoice: String = result.try_into().unwrap();
+    //
+    //     println!("Result:\n{payment_invoice}");
+    //     println!(
+    //         "\nNew balance: {:?} sats",
+    //         wallet.get_balance().await.unwrap()
+    //     );
+    //
+    //     assert_eq!("test".to_string(), payment_invoice);
+    //     assert_ne!("test".to_string(), payment_invoice);
+    // }
+
+    #[tokio::test]
+    async fn test_balance() {
+        let dir = PathBuf::from("./data/wallet".to_string());
+        fs::create_dir_all(dir.clone()).unwrap();
+        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+        let localstore = SqliteLocalStore::with_path(db_path.clone())
+            .await
+            .expect("Cannot parse local store");
+
+        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+        let identity: Identity = read_identity_from_file();
+        let bitcoin_key = identity.bitcoin_public_key.clone();
+
+        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+            .with_localstore(localstore)
+            .build()
+            .await
+            .expect("Could not create wallet");
+
+        let balance = wallet.get_balance().await.unwrap();
+        println!("Balance: {balance:?} sats");
+
+        assert_eq!(1, balance);
+        assert_ne!(1, balance);
     }
 
     #[tokio::test]
