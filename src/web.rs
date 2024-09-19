@@ -350,8 +350,11 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
         chain.exist_block_with_operation_code(blockchain::OperationCode::RequestToAccept);
     let address_to_pay = get_address_to_pay(bill.clone());
     //TODO: add last_sell_block_paid
-    let check_if_already_paid =
-        check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone()).await;
+    let mut check_if_already_paid = (false, 0u64);
+    if requested_to_pay {
+        check_if_already_paid =
+            check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone()).await;
+    }
     let payed = check_if_already_paid.0;
     let mut number_of_confirmations: u64 = 0;
     let mut pending = false;
