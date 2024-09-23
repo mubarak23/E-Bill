@@ -1,6 +1,4 @@
-use moksha_core::primitives::{
-    BillKeys, PaymentMethod, PostMintQuoteBitcreditResponse, PostRequestToMintBitcreditResponse,
-};
+use moksha_core::primitives::{BillKeys, CurrencyUnit, PaymentMethod, PostMintQuoteBitcreditResponse, PostRequestToMintBitcreditResponse};
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use moksha_wallet::wallet::Wallet;
@@ -90,7 +88,7 @@ pub async fn client_accept_bitcredit_quote(bill_id: &String) -> String {
         .await
         .expect("Could not create wallet");
 
-    let wallet_keysets = wallet.add_mint_keysets(&mint_url).await.unwrap();
+    let wallet_keysets = wallet.add_mint_keysets(&mint_url, "cr-sat".to_string()).await.unwrap();
     let wallet_keyset = wallet_keysets.first().unwrap();
 
     let quote = get_quote_from_map(bill_id);
@@ -106,10 +104,11 @@ pub async fn client_accept_bitcredit_quote(bill_id: &String) -> String {
                 &PaymentMethod::Bitcredit,
                 amount.into(),
                 quote_id,
+                CurrencyUnit::CrSat,
             )
             .await;
 
-        token = result.unwrap().serialize().unwrap();
+        token = result.unwrap().serialize(Option::from(CurrencyUnit::CrSat)).unwrap();
 
         add_bitcredit_token_in_quotes_map(token.clone(), bill_id.clone());
     }

@@ -82,7 +82,7 @@ export default function SingleBillDetail({ item }) {
   let canMyPeerIdSell = peer_id == singleBill?.payee?.peer_id;
   //TODO add some logic
   let canMyPeerIdCheckMint = !singleQuote?.quote_id;
-  let canMyPeerIdCheckQuote = (peer_id == singleBill?.payee?.peer_id) && (singleQuote?.bill_id);
+  let canMyPeerIdCheckQuote = singleQuote?.bill_id;
   let canMyPeerIdMint = (peer_id == singleBill?.payee?.peer_id) && (!singleQuote?.bill_id);
   let canMyPeerIdBuy = peer_id == singleBill?.buyer?.peer_id;
   let canMyPeerIdAccept = peer_id == singleBill?.drawee?.peer_id;
@@ -124,9 +124,6 @@ export default function SingleBillDetail({ item }) {
         check_mint = true;
     }
     if (
-        !singleBill?.payed &&
-        !singleBill?.pending &&
-        !singleBill?.waited_for_payment &&
         canMyPeerIdCheckQuote
     ) {
         check_quote = true;
@@ -180,8 +177,8 @@ export default function SingleBillDetail({ item }) {
     { isVisible: endorse, name: "ENDORSE", icon: iconEndorse },
     { isVisible: mint, name: "MINT", icon: iconBank },
     { isVisible: sell, name: "SELL", icon: iconSell },
-      //FUNCTION ONLY FOR MINTS
-    // {isVisible: check_mint, name: "CHECK MINT", icon: iconCheckMint },
+      //TODO: FUNCTION ONLY FOR MINTS
+    // { isVisible: check_mint, name: "CHECK MINT", icon: iconCheckMint },
     { isVisible: buy, name: "BUY", icon: iconPay },
     { isVisible: req_to_acpt, name: "REQUEST TO ACCEPT", icon: iconRTA },
     { isVisible: check_quote, name: "CHECK QUOTE", icon: iconQuote },
