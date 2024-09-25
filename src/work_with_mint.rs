@@ -88,7 +88,8 @@ pub async fn client_accept_bitcredit_quote(bill_id: &String) -> String {
         .await
         .expect("Could not create wallet");
 
-    let wallet_keysets = wallet.add_mint_keysets(&mint_url, "cr-sat".to_string()).await.unwrap();
+    let clone_bill_id = bill_id.clone();
+    let wallet_keysets = wallet.add_mint_keysets_by_id(&mint_url, "cr-sat".to_string(), clone_bill_id).await.unwrap();
     let wallet_keyset = wallet_keysets.first().unwrap();
 
     let quote = get_quote_from_map(bill_id);

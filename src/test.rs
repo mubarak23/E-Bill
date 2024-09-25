@@ -246,7 +246,7 @@ mod test {
             .expect("Could not create wallet");
 
         let wallet_keysets = wallet
-            .add_mint_keysets(&Url::parse("http://127.0.0.1:3338").unwrap(), "cr-sat".to_string())
+            .add_mint_keysets_by_id(&Url::parse("http://127.0.0.1:3338").unwrap(), "cr-sat".to_string(), "5ee3478d7e11534d332dffe67dfad8c6def74d2130d8af3e9035cd180d0f70f6".to_string())
             .await
             .unwrap();
         let wallet_keyset = wallet_keysets.first().unwrap();
@@ -258,8 +258,8 @@ mod test {
             .mint_tokens(
                 wallet_keyset,
                 &PaymentMethod::Bitcredit,
-                567.into(),
-                "715aa8df-0997-4db9-98d3-5d8cec4dcf45".to_string(),
+                45.into(),
+                "f4f35d70-813f-4310-9c10-fdd4953c0f9a".to_string(),
                 CurrencyUnit::CrSat,
             )
             .await;
