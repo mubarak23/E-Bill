@@ -1706,9 +1706,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "flate2"
-version = "1.0.33"
+version = "1.0.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "324a1be68054ef05ad64b861cc9eaf1d623d2d8cb25b4bf2cb9cdd902b4bf253"
+checksum = "a1b589b4dc103969ad3cf85c950899926ec64300a1a46d76c03a6072957036f0"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -3371,7 +3371,7 @@ dependencies = [
 [[package]]
 name = "moksha-core"
 version = "0.2.1"
-source = "git+https://github.com/mtbitcr/moksha#b4d2850dd3fa0652bed70648c06bf0b8309e3dc9"
+source = "git+https://github.com/mtbitcr/moksha#62bc8dc261d649ed4ffc28f9b676504e8d9d0623"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3392,7 +3392,7 @@ dependencies = [
 [[package]]
 name = "moksha-mint"
 version = "0.2.1"
-source = "git+https://github.com/mtbitcr/moksha#b4d2850dd3fa0652bed70648c06bf0b8309e3dc9"
+source = "git+https://github.com/mtbitcr/moksha#62bc8dc261d649ed4ffc28f9b676504e8d9d0623"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3430,7 +3430,7 @@ dependencies = [
 [[package]]
 name = "moksha-wallet"
 version = "0.2.1"
-source = "git+https://github.com/mtbitcr/moksha#b4d2850dd3fa0652bed70648c06bf0b8309e3dc9"
+source = "git+https://github.com/mtbitcr/moksha#62bc8dc261d649ed4ffc28f9b676504e8d9d0623"
 dependencies = [
  "anyhow",
  "async-trait",
