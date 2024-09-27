@@ -1,0 +1,7 @@
+services:
+  bitcredit:
+    build: .
+    environment:
+      - ROCKET_ENV=prod
+    ports:
+      - "8001:8000"

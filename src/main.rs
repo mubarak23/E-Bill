@@ -31,8 +31,7 @@ use crate::constants::{
     BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH,
     COMPOUNDING_INTEREST_RATE_ZERO, CONTACT_MAP_FILE_PATH, CONTACT_MAP_FOLDER_PATH,
     IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_FOLDER_PATH,
-    IDENTITY_PEER_ID_FILE_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH,
-    USEDNET,
+    IDENTITY_PEER_ID_FILE_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH, USEDNET,
 };
 use crate::dht::network::Client;
 use crate::numbers_to_words::encode;
@@ -120,7 +119,12 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
         .mount("/quote", routes![web::return_quote, web::accept_quote])
         .attach(web::CORS);
 
-    open::that("http://127.0.0.1:8000/bitcredit/").expect("Can't open browser.");
+    match open::that("http://127.0.0.1:8000/bitcredit/") {
+        Ok(_) => {}
+        Err(_) => {
+            info!("Can't open browser.")
+        }
+    }
 
     rocket
 }
