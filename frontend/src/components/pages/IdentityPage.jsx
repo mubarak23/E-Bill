@@ -61,7 +61,7 @@ export default function IdentityPage() {
     for (const [key, value] of Object.entries(userData)) {
       form_data.append(key, value);
     }
-    await fetch("http://localhost:8000/identity/create", {
+    await fetch("/identity/create", {
       method: "POST",
       body: form_data,
       mode: "cors",
@@ -86,7 +86,7 @@ export default function IdentityPage() {
               for (const [key, value] of Object.entries(differece)) {
                   form_data.append(key, value);
               }
-              await fetch("http://localhost:8000/identity/change", {
+              await fetch("/identity/change", {
                   method: "POST",
                   body: form_data,
                   mode: "cors",

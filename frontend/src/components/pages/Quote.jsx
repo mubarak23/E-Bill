@@ -13,7 +13,7 @@ export default function Quote({ data }) {
 
     const [singleQuote, setSingleQuote] = useState();
     useEffect(() => {
-        fetch(`http://localhost:8000/quote/return/${data.name}`)
+        fetch(`/quote/return/${data.name}`)
             .then((res) => res.json())
             .then((data) => {
                 setSingleQuote(data);
@@ -29,7 +29,7 @@ export default function Quote({ data }) {
   const handleSubmit = async () => {
     const form_data = new FormData();
     form_data.append("bill_name", data.name);
-    fetch(`http://localhost:8000/quote/accept/${data.name}`)
+    fetch(`/quote/accept/${data.name}`)
         .then((response) => {
         console.log(response);
         handleRefresh();

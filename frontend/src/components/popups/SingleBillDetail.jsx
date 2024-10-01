@@ -35,7 +35,7 @@ export default function SingleBillDetail({ item }) {
     //   const [singleBillChain, setSingleBillChain] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/bill/return/${item.name}`)
+    fetch(`/bill/return/${item.name}`)
       .then((res) => res.json())
       .then((data) => {
         setSingleBill(data);
@@ -46,7 +46,7 @@ export default function SingleBillDetail({ item }) {
   }, []);
 
     useEffect(() => {
-        fetch(`http://localhost:8000/quote/return/${item.name}`)
+        fetch(`/quote/return/${item.name}`)
             .then((res) => res.json())
             .then((data) => {
                 setSingleQuote(data);
@@ -57,7 +57,7 @@ export default function SingleBillDetail({ item }) {
     }, []);
 
   //   useEffect(() => {
-  //     fetch(`http://localhost:8000/bill/chain/return/${item.name}`)
+  //     fetch(`/bill/chain/return/${item.name}`)
   //       .then((res) => res.json())
   //       .then((data) => {
   //         console.log(data);

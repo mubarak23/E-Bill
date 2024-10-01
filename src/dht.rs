@@ -6,10 +6,10 @@ use libp2p::multihash::Multihash;
 use serde_derive::{Deserialize, Serialize};
 use tokio::spawn;
 
-use crate::dht::network::Client;
+use crate::{config::Config, dht::network::Client};
 
-pub async fn dht_main() -> Result<Client, Box<dyn Error + Send + Sync>> {
-    let (network_client, network_events, network_event_loop) = network::new()
+pub async fn dht_main(conf: &Config) -> Result<Client, Box<dyn Error + Send + Sync>> {
+    let (network_client, network_events, network_event_loop) = network::new(conf)
         .await
         .expect("Can not to create network module in dht.");
 
@@ -61,17 +61,19 @@ pub mod network {
         BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BILLS_PREFIX, BOOTSTRAP_NODES_FILE_PATH,
         IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_PEER_ID_FILE_PATH,
         RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID,
-        RELAY_BOOTSTRAP_NODE_ONE_TCP, TCP_PORT_TO_LISTEN,
+        RELAY_BOOTSTRAP_NODE_ONE_TCP,
     };
     use crate::{
-        decrypt_bytes_with_private_key, encrypt_bytes_with_public_key, generate_dht_logic,
+        config, decrypt_bytes_with_private_key, encrypt_bytes_with_public_key, generate_dht_logic,
         get_bills, get_whole_identity, is_not_hidden, read_ed25519_keypair_from_file,
         read_peer_id_from_file, IdentityPublicData, IdentityWithAll,
     };
 
     use super::*;
 
-    pub async fn new() -> Result<(Client, Receiver<Event>, EventLoop), Box<dyn Error>> {
+    pub async fn new(
+        conf: &Config,
+    ) -> Result<(Client, Receiver<Event>, EventLoop), Box<dyn Error>> {
         if !Path::new(IDENTITY_PEER_ID_FILE_PATH).exists()
             && !Path::new(IDENTITY_ED_25529_KEYS_FILE_PATH).exists()
         {
@@ -102,13 +104,7 @@ pub mod network {
         let mut swarm =
             SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build();
 
-        swarm
-            .listen_on(
-                Multiaddr::empty()
-                    .with("0.0.0.0".parse::<Ipv4Addr>().unwrap().into())
-                    .with(Protocol::Tcp(TCP_PORT_TO_LISTEN)),
-            )
-            .unwrap();
+        swarm.listen_on(conf.p2p_listen_url().unwrap()).unwrap();
 
         // Wait to listen on all interfaces.
         block_on(async {

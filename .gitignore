@@ -3,3 +3,8 @@
 /data/*
 /frontend_build/*
 /identity/*
+/bills/*
+/bills_keys/*
+/bootstrap/*
+/contacts/*
+/quotes/*

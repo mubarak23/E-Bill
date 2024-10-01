@@ -10,6 +10,8 @@ use std::{env, fs, mem, path, thread};
 use bitcoin::PublicKey;
 use borsh::{self, BorshDeserialize, BorshSerialize};
 use chrono::Utc;
+use clap::Parser;
+use config::Config;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
 use moksha_core::primitives::CheckBitcreditQuoteResponse;
@@ -22,7 +24,6 @@ use rocket::fs::FileServer;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::yansi::Paint;
 use rocket::{Build, Rocket};
-use rocket_dyn_templates::Template;
 
 use crate::blockchain::{
     start_blockchain_for_new_bill, Block, Chain, ChainToReturn, OperationCode,
@@ -38,6 +39,7 @@ use crate::numbers_to_words::encode;
 
 mod api;
 mod blockchain;
+mod config;
 mod constants;
 mod dht;
 mod numbers_to_words;
@@ -46,18 +48,20 @@ mod web;
 mod work_with_mint;
 
 // MAIN
-// #[rocket::main]
 #[tokio::main]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "full");
 
     env_logger::init();
 
+    // Parse command line arguments and env vars with clap
+    let conf = Config::parse();
+
     init_folders();
 
     init_wallet().await;
 
-    let mut dht = dht::dht_main().await.expect("DHT failed to start");
+    let mut dht = dht::dht_main(&conf).await.expect("DHT failed to start");
 
     let local_peer_id = read_peer_id_from_file();
     dht.check_new_bills(local_peer_id.to_string().clone()).await;
@@ -67,11 +71,16 @@ async fn main() {
     dht.start_provide().await;
     dht.receive_updates_for_all_bills_topics().await;
     dht.put_identity_public_data_in_dht().await;
-    let _rocket = rocket_main(dht).launch().await.unwrap();
+    let _rocket = rocket_main(dht, &conf).launch().await.unwrap();
 }
 
-fn rocket_main(dht: Client) -> Rocket<Build> {
+fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
     let rocket = rocket::build()
+        .configure(
+            rocket::Config::figment()
+                .merge(("port", conf.http_port))
+                .merge(("address", conf.http_address.to_owned())),
+        )
         .register("/", catchers![web::not_found])
         .manage(dht)
         .mount("/exit", routes![web::exit])
@@ -119,7 +128,7 @@ fn rocket_main(dht: Client) -> Rocket<Build> {
         .mount("/quote", routes![web::return_quote, web::accept_quote])
         .attach(web::CORS);
 
-    match open::that("http://127.0.0.1:8000/bitcredit/") {
+    match open::that(format!("{}/bitcredit/", conf.http_listen_url()).as_str()) {
         Ok(_) => {}
         Err(_) => {
             info!("Can't open browser.")

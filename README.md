@@ -13,7 +13,15 @@ Make sure to have a recent version of the Rust toolchain installed.
 Start the backend server in development mode:
 
 ```bash
+# Run with defaults
 cargo run
+
+# configure listening ports and addresses
+cargo run -- --http-port 8001 --http-address 0.0.0.0
+
+# Configuration can also be set via environment variables
+export P2P_PORT=1909
+export P2P_ADDRESS=0.0.0.0
 ```
 
 ### Frontend

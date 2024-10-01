@@ -72,7 +72,7 @@ export default function IssueForm() {
         form_data.append("drawer_is_payee", data.drawer_is_payee);
         form_data.append("drawer_is_drawee", data.drawer_is_drawee);
         setToast("Please Wait...");
-        fetch("http://localhost:8000/bill/issue", {
+        fetch("/bill/issue", {
           method: "POST",
           body: form_data,
           mode: "cors",

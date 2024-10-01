@@ -12,7 +12,7 @@ export default function HomePage() {
   // find all bills event
   useEffect(() => {
     try {
-      fetch("http://localhost:8000/bill/dht");
+      fetch("/bill/dht");
     } catch (err) {
       console.log(err);
     }
