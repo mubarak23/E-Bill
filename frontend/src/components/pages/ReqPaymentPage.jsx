@@ -12,7 +12,7 @@ export default function ReqPaymentPage({ data }) {
   const handleSubmit = async () => {
     const form_data = new FormData();
     form_data.append("bill_name", data.name);
-    await fetch("http://localhost:8000/bill/request_to_pay", {
+    await fetch("/bill/request_to_pay", {
       method: "POST",
       body: form_data,
       mode: "cors",

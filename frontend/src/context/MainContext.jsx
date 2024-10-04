@@ -1,4 +1,4 @@
-import React, {createContext, useEffect, useState} from "react";
+import React, { createContext, useEffect, useState } from "react";
 
 const MainContext = createContext();
 
@@ -48,7 +48,7 @@ function MainProvider({ children }) {
   const [contacts, setContacts] = useState([]);
   // Set contacts
   useEffect(() => {
-    fetch("http://localhost:8000/contacts/return", {
+    fetch("/contacts/return", {
       mode: "cors",
     })
       .then((res) => res.json())
@@ -63,7 +63,7 @@ function MainProvider({ children }) {
   const handleDelete = async (id) => {
     const form_data = new FormData();
     form_data.append("name", id);
-    await fetch("http://localhost:8000/contacts/remove", {
+    await fetch("/contacts/remove", {
       method: "POST",
       body: form_data,
       mode: "cors",
@@ -85,7 +85,7 @@ function MainProvider({ children }) {
     form_data.append("old_name", old_contact_id);
     form_data.append("name", newContact.name);
     form_data.append("node_id", newContact.node_id);
-    await fetch("http://localhost:8000/contacts/edit", {
+    await fetch("/contacts/edit", {
       method: "POST",
       body: form_data,
       mode: "cors",
@@ -103,7 +103,7 @@ function MainProvider({ children }) {
     const form_data = new FormData();
     form_data.append("name", newContact.name);
     form_data.append("node_id", newContact.peer_id);
-    await fetch("http://localhost:8000/contacts/new", {
+    await fetch("/contacts/new", {
       method: "POST",
       body: form_data,
       mode: "cors",
@@ -139,7 +139,7 @@ function MainProvider({ children }) {
   // Set identity
   useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8000/identity/return", {
+    fetch("/identity/return", {
       mode: "cors",
     })
       .then((res) => res.json())
@@ -161,7 +161,7 @@ function MainProvider({ children }) {
   }, [refresh]);
   // Set bills
   useEffect(() => {
-    fetch("http://localhost:8000/bills/return", {
+    fetch("/bills/return", {
       mode: "cors",
     })
       .then((res) => res.json())
@@ -178,7 +178,7 @@ function MainProvider({ children }) {
   // Set peer id
   useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8000/identity/peer_id/return", {
+    fetch("/identity/peer_id/return", {
       mode: "cors",
     })
       .then((res) => res.json())
@@ -226,7 +226,7 @@ function MainProvider({ children }) {
         amountCalculation(element);
       });
     }
-    return () => {};
+    return () => { };
   }, [peer_id, bills_list]);
   function copytoClip(copytext, text) {
     navigator.clipboard.writeText(copytext);

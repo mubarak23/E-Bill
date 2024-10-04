@@ -11,7 +11,7 @@ export default function AcceptPage({ data }) {
   const handleSubmit = async () => {
     const form_data = new FormData();
     form_data.append("bill_name", data.name);
-    await fetch("http://localhost:8000/bill/accept", {
+    await fetch("/bill/accept", {
       method: "POST",
       body: form_data,
       mode: "cors",

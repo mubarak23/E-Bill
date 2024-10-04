@@ -38,7 +38,7 @@ export default function CheckMintPage({ data }) {
     form_data.append("interest", dataForm.interest);
 
     if (dataForm.interest) {
-      await fetch("http://localhost:8000/bill/accept_mint", {
+      await fetch("/bill/accept_mint", {
         method: "POST",
         body: form_data,
         mode: "cors",

@@ -16,7 +16,7 @@ export default function App() {
   const [operation_codes, setOperationCodes] = useState([]);
   // Set operation codes
   useEffect(() => {
-    fetch("http://localhost:8000/opcodes/return", {
+    fetch("/opcodes/return", {
       mode: "cors",
     })
       .then((res) => res.json())
@@ -39,7 +39,7 @@ export default function App() {
       case "contact":
         return <Contact />;
       case "findbill":
-            return <FindBill />;
+        return <FindBill />;
       case "issue":
         return <IssuePage />;
       case "setting":

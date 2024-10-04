@@ -19,7 +19,7 @@ export default function EndorsePage({ data }) {
     const form_data = new FormData();
     form_data.append("bill_name", data.name);
     form_data.append("endorsee", billEndorse);
-    await fetch("http://localhost:8000/bill/endorse", {
+    await fetch("/bill/endorse", {
       method: "POST",
       body: form_data,
       mode: "cors",

@@ -42,7 +42,7 @@ export default function SellPage({ data }) {
     form_data.append("currency_code", dataForm.currency_code);
 
       if (dataForm.amount_numbers && dataForm.buyer) {
-      await fetch("http://localhost:8000/bill/sell", {
+      await fetch("/bill/sell", {
         method: "POST",
         body: form_data,
         mode: "cors",

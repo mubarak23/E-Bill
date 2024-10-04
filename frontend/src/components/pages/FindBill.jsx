@@ -13,7 +13,7 @@ export default function FindBill() {
     setSearch(e.target.value);
   };
     const handleSubmit = () => {
-        fetch("http://localhost:8000/bill/find/" + search, {
+        fetch("/bill/find/" + search, {
             mode: "cors",
         }).then(response =>  console.log(response));
     };
