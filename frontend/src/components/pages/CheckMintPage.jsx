@@ -39,7 +39,7 @@ export default function CheckMintPage({ data }) {
 
     if (dataForm.interest) {
       await fetch("/bill/accept_mint", {
-        method: "POST",
+        method: "PUT",
         body: form_data,
         mode: "cors",
       })

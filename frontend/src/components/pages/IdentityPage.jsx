@@ -87,7 +87,7 @@ export default function IdentityPage() {
                   form_data.append(key, value);
               }
               await fetch("/identity/change", {
-                  method: "POST",
+                  method: "PUT",
                   body: form_data,
                   mode: "cors",
               })

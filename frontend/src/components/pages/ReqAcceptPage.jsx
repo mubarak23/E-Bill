@@ -13,7 +13,7 @@ export default function ReqAcceptPage({ data }) {
     const form_data = new FormData();
     form_data.append("bill_name", data.name);
     await fetch("/bill/request_to_accept", {
-      method: "POST",
+      method: "PUT",
       body: form_data,
       mode: "cors",
     })

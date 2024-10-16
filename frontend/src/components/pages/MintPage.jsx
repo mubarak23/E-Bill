@@ -20,7 +20,7 @@ export default function MintPage({ data }) {
         form_data.append("bill_name", data.name);
         form_data.append("mint_node", billMint);
         await fetch("/bill/request_to_mint", {
-            method: "POST",
+            method: "PUT",
             body: form_data,
             mode: "cors",
         })
