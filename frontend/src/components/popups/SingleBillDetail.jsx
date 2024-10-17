@@ -178,7 +178,7 @@ export default function SingleBillDetail({ item }) {
     { isVisible: mint, name: "MINT", icon: iconBank },
     { isVisible: sell, name: "SELL", icon: iconSell },
       //TODO: FUNCTION ONLY FOR MINTS
-    // { isVisible: check_mint, name: "CHECK MINT", icon: iconCheckMint },
+    { isVisible: check_mint, name: "CHECK MINT", icon: iconCheckMint },
     { isVisible: buy, name: "BUY", icon: iconPay },
     { isVisible: req_to_acpt, name: "REQUEST TO ACCEPT", icon: iconRTA },
     { isVisible: check_quote, name: "CHECK QUOTE", icon: iconQuote },

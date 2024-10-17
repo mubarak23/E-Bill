@@ -64,7 +64,7 @@ function MainProvider({ children }) {
     const form_data = new FormData();
     form_data.append("name", id);
     await fetch("/contacts/remove", {
-      method: "POST",
+      method: "DELETE",
       body: form_data,
       mode: "cors",
     })
@@ -86,7 +86,7 @@ function MainProvider({ children }) {
     form_data.append("name", newContact.name);
     form_data.append("node_id", newContact.node_id);
     await fetch("/contacts/edit", {
-      method: "POST",
+      method: "PUT",
       body: form_data,
       mode: "cors",
     })

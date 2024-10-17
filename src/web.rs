@@ -103,7 +103,7 @@ pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Cl
     Status::Ok
 }
 
-#[post("/change", data = "<identity_form>")]
+#[put("/change", data = "<identity_form>")]
 pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
     println!("Change identity");
 
@@ -190,7 +190,7 @@ pub async fn find_bill_in_dht(state: &State<Client>, bill_id: String) {
 
 //PUT
 //TODO: add try_mint_bill here?
-#[post("/request_to_mint", data = "<request_to_mint_bill_form>")]
+#[put("/request_to_mint", data = "<request_to_mint_bill_form>")]
 pub async fn request_to_mint_bill(
     state: &State<Client>,
     request_to_mint_bill_form: Form<RequestToMintBitcreditBillForm>,
@@ -213,9 +213,8 @@ pub async fn request_to_mint_bill(
     Status::Ok
 }
 
-//PUT
 //This is function for mint software
-#[post("/accept_mint", data = "<accept_mint_bill_form>")]
+#[put("/accept_mint", data = "<accept_mint_bill_form>")]
 pub async fn accept_mint_bill(
     state: &State<Client>,
     accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>,
@@ -238,9 +237,8 @@ pub async fn accept_mint_bill(
     Status::Ok
 }
 
-//PUT
 //After accept mint on client side
-#[post("/mint", data = "<mint_bill_form>")]
+#[put("/mint", data = "<mint_bill_form>")]
 pub async fn mint_bill(
     state: &State<Client>,
     mint_bill_form: Form<MintBitcreditBillForm>,
@@ -305,7 +303,7 @@ pub async fn return_quote(id: String) -> Json<BitcreditEbillQuote> {
     Json(quote)
 }
 
-#[get("/accept/<id>")]
+#[put("/accept/<id>")]
 pub async fn accept_quote(state: &State<Client>, id: String) -> Json<BitcreditEbillQuote> {
     let mut quote = get_quote_from_map(&id);
     let client = state.inner().clone();
@@ -659,7 +657,7 @@ pub async fn get_identity_public_data(
     identity
 }
 
-#[post("/sell", data = "<sell_bill_form>")]
+#[put("/sell", data = "<sell_bill_form>")]
 pub async fn sell_bill(
     state: &State<Client>,
     sell_bill_form: Form<SellBitcreditBillForm>,
@@ -708,7 +706,7 @@ pub async fn sell_bill(
     }
 }
 
-#[post("/endorse", data = "<endorse_bill_form>")]
+#[put("/endorse", data = "<endorse_bill_form>")]
 pub async fn endorse_bill(
     state: &State<Client>,
     endorse_bill_form: Form<EndorseBitcreditBillForm>,
@@ -760,7 +758,7 @@ pub async fn endorse_bill(
     }
 }
 
-#[post("/request_to_pay", data = "<request_to_pay_bill_form>")]
+#[put("/request_to_pay", data = "<request_to_pay_bill_form>")]
 pub async fn request_to_pay_bill(
     state: &State<Client>,
     request_to_pay_bill_form: Form<RequestToPayBitcreditBillForm>,
@@ -790,7 +788,7 @@ pub async fn request_to_pay_bill(
     }
 }
 
-#[post("/request_to_accept", data = "<request_to_accept_bill_form>")]
+#[put("/request_to_accept", data = "<request_to_accept_bill_form>")]
 pub async fn request_to_accept_bill(
     state: &State<Client>,
     request_to_accept_bill_form: Form<RequestToAcceptBitcreditBillForm>,
@@ -820,7 +818,7 @@ pub async fn request_to_accept_bill(
     }
 }
 
-#[post("/accept", data = "<accept_bill_form>")]
+#[put("/accept", data = "<accept_bill_form>")]
 pub async fn accept_bill_form(
     state: &State<Client>,
     accept_bill_form: Form<AcceptBitcreditBillForm>,
@@ -850,7 +848,7 @@ pub async fn accept_bill_form(
     }
 }
 
-#[post("/remove", data = "<remove_contact_form>")]
+#[delete("/remove", data = "<remove_contact_form>")]
 pub async fn remove_contact(remove_contact_form: Form<DeleteContactForm>) -> Status {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
         Status::NotAcceptable
@@ -880,7 +878,7 @@ pub async fn new_contact(
     }
 }
 
-#[post("/edit", data = "<edit_contact_form>")]
+#[put("/edit", data = "<edit_contact_form>")]
 pub async fn edit_contact(
     edit_contact_form: Form<EditContactForm>,
 ) -> Result<Json<Vec<Contact>>, Status> {

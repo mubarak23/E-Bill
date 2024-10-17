@@ -13,7 +13,7 @@ export default function ReqPaymentPage({ data }) {
     const form_data = new FormData();
     form_data.append("bill_name", data.name);
     await fetch("/bill/request_to_pay", {
-      method: "POST",
+      method: "PUT",
       body: form_data,
       mode: "cors",
     })

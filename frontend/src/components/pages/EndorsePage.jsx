@@ -20,7 +20,7 @@ export default function EndorsePage({ data }) {
     form_data.append("bill_name", data.name);
     form_data.append("endorsee", billEndorse);
     await fetch("/bill/endorse", {
-      method: "POST",
+      method: "PUT",
       body: form_data,
       mode: "cors",
     })
