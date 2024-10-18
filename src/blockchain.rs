@@ -1,9 +1,7 @@
-use std::str::FromStr;
-use std::thread;
-
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{to_vec, BorshDeserialize};
+use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::prelude::*;
-use log::{info, warn};
+use log::{error, info, warn};
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::pkey::Private;
@@ -11,7 +9,10 @@ use openssl::rsa::Rsa;
 use openssl::sha::Sha256;
 use openssl::sign::{Signer, Verifier};
 use rocket::form::validate::Contains;
+use rocket::{FromForm, FromFormField};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use std::thread;
 
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
@@ -1533,7 +1534,7 @@ impl GossipsubEvent {
     }
 
     pub fn to_byte_array(&self) -> Vec<u8> {
-        self.try_to_vec().expect("Failed to serialize event")
+        to_vec(self).expect("Failed to serialize event")
     }
 
     pub fn from_byte_array(bytes: &[u8]) -> Self {
@@ -1602,7 +1603,7 @@ fn calculate_hash(
     });
     let mut hasher = Sha256::new();
     hasher.update(data.to_string().as_bytes());
-    hasher.finish().try_to_vec().unwrap()
+    hasher.finish().to_vec()
 }
 
 pub fn signature(hash: String, private_key_pem: String) -> String {
@@ -1622,7 +1623,7 @@ pub fn signature(hash: String, private_key_pem: String) -> String {
 }
 
 pub fn encrypted_hash_data_from_bill(bill: &BitcreditBill, private_key_pem: String) -> String {
-    let bytes = bill.try_to_vec().unwrap();
+    let bytes = to_vec(bill).unwrap();
     let key: Rsa<Private> = Rsa::private_key_from_pem(private_key_pem.as_bytes()).unwrap();
     let encrypted_bytes = encrypt_bytes(&bytes, &key);
 

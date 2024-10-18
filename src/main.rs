@@ -1,19 +1,17 @@
-extern crate core;
-#[macro_use]
-extern crate rocket;
-
 use std::collections::HashMap;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::{env, fs, mem, path, thread};
+use std::{env, fs, mem, thread};
 
 use bitcoin::PublicKey;
-use borsh::{self, BorshDeserialize, BorshSerialize};
+use borsh::{to_vec, BorshDeserialize};
+use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
 use clap::Parser;
 use config::Config;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
+use log::info;
 use moksha_core::primitives::CheckBitcreditQuoteResponse;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use openssl::pkey::{Private, Public};
@@ -23,7 +21,7 @@ use openssl::sha::sha256;
 use rocket::fs::FileServer;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::yansi::Paint;
-use rocket::{Build, Rocket};
+use rocket::{catchers, routes, Build, FromForm, Rocket};
 
 use crate::blockchain::{
     start_blockchain_for_new_bill, Block, Chain, ChainToReturn, OperationCode,
@@ -198,7 +196,7 @@ pub fn create_quotes_map() {
 }
 
 pub fn write_quotes_map(map: HashMap<String, BitcreditEbillQuote>) {
-    let quotes_byte = map.try_to_vec().unwrap();
+    let quotes_byte = to_vec(&map).unwrap();
     fs::write(QUOTE_MAP_FILE_PATH, quotes_byte).expect("Unable to write quote in file.");
 }
 
@@ -344,7 +342,7 @@ fn create_contacts_map() {
 }
 
 fn write_contacts_map(map: HashMap<String, IdentityPublicData>) {
-    let contacts_byte = map.try_to_vec().unwrap();
+    let contacts_byte = to_vec(&map).unwrap();
     fs::write(CONTACT_MAP_FILE_PATH, contacts_byte).expect("Unable to write peer id in file.");
 }
 
@@ -875,7 +873,7 @@ fn read_peer_id_from_file() -> PeerId {
 }
 
 fn identity_to_byte_array(identity: &Identity) -> Vec<u8> {
-    identity.try_to_vec().unwrap()
+    to_vec(identity).unwrap()
 }
 
 fn identity_from_byte_array(identity: &[u8]) -> Identity {
@@ -1875,7 +1873,7 @@ fn read_bill_from_file(bill_name: &String) -> BitcreditBill {
 }
 
 fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
-    bill.try_to_vec().unwrap()
+    to_vec(bill).unwrap()
 }
 
 fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {
