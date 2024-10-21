@@ -1,28 +1,23 @@
 #[cfg(test)]
 mod test {
-    use std::io::Read;
     use std::path::{Path, PathBuf};
-    use std::{fs, mem, thread};
+    use std::{fs, mem};
 
     use bitcoin::secp256k1::Scalar;
-    use futures::executor::block_on;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
-    use moksha_core::amount::Amount;
     use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
     use moksha_wallet::http::CrossPlatformHttpClient;
     use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-    use moksha_wallet::wallet::{Wallet, WalletBuilder};
+    use moksha_wallet::wallet::Wallet;
     use openssl::rsa::{Padding, Rsa};
-    use serde_derive::Deserialize;
-    use tokio::runtime::Builder;
+    use serde::Deserialize;
     use url::Url;
 
     use crate::numbers_to_words::encode;
     use crate::{
         byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        generation_rsa_key, read_bill_with_chain_from_file, read_identity_from_file,
-        structure_as_u8_slice, Identity,
+        generation_rsa_key, read_identity_from_file, structure_as_u8_slice, Identity,
     };
 
     //TODO: Change. Because we create new bill every time we run tests
@@ -246,7 +241,11 @@ mod test {
             .expect("Could not create wallet");
 
         let wallet_keysets = wallet
-            .add_mint_keysets_by_id(&Url::parse("http://127.0.0.1:3338").unwrap(), "cr-sat".to_string(), "5ee3478d7e11534d332dffe67dfad8c6def74d2130d8af3e9035cd180d0f70f6".to_string())
+            .add_mint_keysets_by_id(
+                &Url::parse("http://127.0.0.1:3338").unwrap(),
+                "cr-sat".to_string(),
+                "5ee3478d7e11534d332dffe67dfad8c6def74d2130d8af3e9035cd180d0f70f6".to_string(),
+            )
             .await
             .unwrap();
         let wallet_keyset = wallet_keysets.first().unwrap();
@@ -264,7 +263,10 @@ mod test {
             )
             .await;
 
-        let token = result.unwrap().serialize(Option::from(CurrencyUnit::CrSat)).unwrap();
+        let token = result
+            .unwrap()
+            .serialize(Option::from(CurrencyUnit::CrSat))
+            .unwrap();
         println!("Token: {token:?}");
 
         let balance2 = wallet.get_balance().await.unwrap();
@@ -420,12 +422,12 @@ mod test {
     fn test_schnorr() {
         let secp1 = bitcoin::secp256k1::Secp256k1::new();
         let key_pair1 =
-            bitcoin::secp256k1::KeyPair::new(&secp1, &mut bitcoin::secp256k1::rand::thread_rng());
+            bitcoin::secp256k1::Keypair::new(&secp1, &mut bitcoin::secp256k1::rand::thread_rng());
         let xonly1 = bitcoin::secp256k1::XOnlyPublicKey::from_keypair(&key_pair1);
 
         let secp2 = bitcoin::secp256k1::Secp256k1::new();
         let key_pair2 =
-            bitcoin::secp256k1::KeyPair::new(&secp2, &mut bitcoin::secp256k1::rand::thread_rng());
+            bitcoin::secp256k1::Keypair::new(&secp2, &mut bitcoin::secp256k1::rand::thread_rng());
         let xonly2 = bitcoin::secp256k1::XOnlyPublicKey::from_keypair(&key_pair2);
 
         let msg = bitcoin::secp256k1::Message::from_slice(&[0xab; 32]).unwrap();

@@ -1,32 +1,29 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
 use std::path::Path;
 use std::str::FromStr;
 use std::{fs, thread};
 
 use bitcoin::secp256k1::Scalar;
-use chrono::{Days, Utc};
 use libp2p::PeerId;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::form::Form;
 use rocket::http::{Header, Status};
 use rocket::serde::json::Json;
-use rocket::{Request, Response, State};
-use rocket_dyn_templates::{context, handlebars, Template};
+use rocket::{catch, delete, get, post, put, Request, Response, State};
+use rocket_dyn_templates::handlebars;
 
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
-use crate::constants::{BILLS_FOLDER_PATH, BILL_VALIDITY_PERIOD, IDENTITY_FILE_PATH, USEDNET};
+use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
 use crate::work_with_mint::{
     accept_mint_bitcredit, check_bitcredit_quote, client_accept_bitcredit_quote,
     request_to_mint_bitcredit,
 };
 use crate::{
-    accept_bill, add_in_contacts_map, api, blockchain, change_contact_data_from_dht,
+    accept_bill, add_in_contacts_map, api, change_contact_data_from_dht,
     change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
     endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec,
     get_quote_from_map, get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
-    issue_new_bill_drawer_is_payee, mint_bitcredit_bill, read_bill_from_file, read_contacts_map,
+    issue_new_bill_drawer_is_payee, mint_bitcredit_bill, read_bill_from_file,
     read_identity_from_file, read_peer_id_from_file, request_acceptance, request_pay,
     sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm,
     AcceptMintBitcreditBillForm, BitcreditBill, BitcreditBillForm, BitcreditBillToReturn,
@@ -916,7 +913,7 @@ pub fn customize(hbs: &mut Handlebars) {
 }
 
 fn wow_helper(
-    h: &handlebars::Helper<'_, '_>,
+    h: &handlebars::Helper<'_>,
     _: &Handlebars,
     _: &handlebars::Context,
     _: &mut handlebars::RenderContext<'_, '_>,

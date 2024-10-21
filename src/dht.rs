@@ -3,10 +3,11 @@ use std::error::Error;
 use futures::prelude::*;
 use libp2p::core::Multiaddr;
 use libp2p::multihash::Multihash;
-use serde_derive::{Deserialize, Serialize};
-use tokio::spawn;
+use serde::{Deserialize, Serialize};
+use tokio::{io::AsyncBufReadExt, spawn};
 
 use crate::{config::Config, dht::network::Client};
+use tokio_stream::wrappers::LinesStream;
 
 pub async fn dht_main(conf: &Config) -> Result<Client, Box<dyn Error + Send + Sync>> {
     let (network_client, network_events, network_event_loop) = network::new(conf)
@@ -14,9 +15,7 @@ pub async fn dht_main(conf: &Config) -> Result<Client, Box<dyn Error + Send + Sy
         .expect("Can not to create network module in dht.");
 
     //Need for testing from console.
-    let stdin = async_std::io::BufReader::new(async_std::io::stdin())
-        .lines()
-        .fuse();
+    let stdin = LinesStream::new(tokio::io::BufReader::new(tokio::io::stdin()).lines()).fuse();
 
     spawn(network_event_loop.run());
 
@@ -29,9 +28,8 @@ pub async fn dht_main(conf: &Config) -> Result<Client, Box<dyn Error + Send + Sy
 
 pub mod network {
     use std::collections::{HashMap, HashSet};
-    use std::net::Ipv4Addr;
     use std::path::Path;
-    use std::{fs, iter, path};
+    use std::{fs, iter};
 
     use async_trait::async_trait;
     use futures::channel::mpsc::Receiver;
@@ -51,9 +49,7 @@ pub mod network {
     };
     use libp2p::multiaddr::Protocol;
     use libp2p::request_response::{self, ProtocolSupport, RequestId, ResponseChannel};
-    use libp2p::swarm::{
-        ConnectionHandlerUpgrErr, NetworkBehaviour, Swarm, SwarmBuilder, SwarmEvent,
-    };
+    use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmBuilder, SwarmEvent};
     use libp2p::{dcutr, gossipsub, identify, kad, noise, relay, tcp, yamux, PeerId, Transport};
 
     use crate::blockchain::{Block, Chain, GossipsubEvent, GossipsubEventId};
@@ -64,7 +60,7 @@ pub mod network {
         RELAY_BOOTSTRAP_NODE_ONE_TCP,
     };
     use crate::{
-        config, decrypt_bytes_with_private_key, encrypt_bytes_with_public_key, generate_dht_logic,
+        decrypt_bytes_with_private_key, encrypt_bytes_with_public_key, generate_dht_logic,
         get_bills, get_whole_identity, is_not_hidden, read_ed25519_keypair_from_file,
         read_peer_id_from_file, IdentityPublicData, IdentityWithAll,
     };
@@ -108,7 +104,9 @@ pub mod network {
 
         // Wait to listen on all interfaces.
         block_on(async {
-            let mut delay = futures_timer::Delay::new(std::time::Duration::from_secs(1)).fuse();
+            let sleep = tokio::time::sleep(std::time::Duration::from_secs(1)).fuse();
+            tokio::pin!(sleep);
+
             loop {
                 futures::select! {
                     event = swarm.next() => {
@@ -121,7 +119,7 @@ pub mod network {
                             event => panic!("{event:?}"),
                         }
                     }
-                    _ = delay => {
+                    _ = sleep => {
                         // Likely listening on all interfaces now, thus continuing by breaking the loop.
                         break;
                     }
@@ -247,9 +245,7 @@ pub mod network {
     impl Client {
         pub async fn run(
             mut self,
-            mut stdin: stream::Fuse<
-                futures::io::Lines<async_std::io::BufReader<async_std::io::Stdin>>,
-            >,
+            mut stdin: stream::Fuse<LinesStream<tokio::io::BufReader<tokio::io::Stdin>>>,
             mut network_events: Receiver<Event>,
         ) {
             loop {
@@ -876,45 +872,10 @@ pub mod network {
             }
         }
 
-        async fn handle_event(
-            &mut self,
-            event: SwarmEvent<
-                ComposedEvent,
-                //TODO change this (now it is bad)
-                rocket::Either<
-                    rocket::Either<
-                        rocket::Either<
-                            rocket::Either<
-                                rocket::Either<
-                                    ConnectionHandlerUpgrErr<std::io::Error>,
-                                    std::io::Error,
-                                >,
-                                std::io::Error,
-                            >,
-                            void::Void,
-                        >,
-                        rocket::Either<
-                            ConnectionHandlerUpgrErr<
-                                rocket::Either<
-                                    relay::inbound::stop::FatalUpgradeError,
-                                    relay::outbound::hop::FatalUpgradeError,
-                                >,
-                            >,
-                            void::Void,
-                        >,
-                    >,
-                    rocket::Either<
-                        ConnectionHandlerUpgrErr<
-                            rocket::Either<
-                                dcutr::inbound::UpgradeError,
-                                dcutr::outbound::UpgradeError,
-                            >,
-                        >,
-                        rocket::Either<ConnectionHandlerUpgrErr<std::io::Error>, void::Void>,
-                    >,
-                >,
-            >,
-        ) {
+        async fn handle_event<T>(&mut self, event: SwarmEvent<ComposedEvent, T>)
+        where
+            T: std::fmt::Debug,
+        {
             match event {
                 //--------------KADEMLIA EVENTS--------------
                 SwarmEvent::Behaviour(ComposedEvent::Kademlia(
