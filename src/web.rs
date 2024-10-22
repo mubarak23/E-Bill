@@ -2,24 +2,16 @@ use std::path::Path;
 use std::str::FromStr;
 use std::{fs, thread};
 
-use bitcoin::secp256k1::Scalar;
-use libp2p::PeerId;
-use rocket::fairing::{Fairing, Info, Kind};
-use rocket::form::Form;
-use rocket::http::{Header, Status};
-use rocket::serde::json::Json;
-use rocket::{catch, delete, get, post, put, Request, Response, State};
-use rocket_dyn_templates::handlebars;
-
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH, USEDNET};
 use crate::dht::network::Client;
+use crate::external;
 use crate::work_with_mint::{
     accept_mint_bitcredit, check_bitcredit_quote, client_accept_bitcredit_quote,
     request_to_mint_bitcredit,
 };
 use crate::{
-    accept_bill, add_in_contacts_map, api, change_contact_data_from_dht,
+    accept_bill, add_in_contacts_map, change_contact_data_from_dht,
     change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
     endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec,
     get_quote_from_map, get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
@@ -32,6 +24,14 @@ use crate::{
     NewContactForm, NodeId, RequestToAcceptBitcreditBillForm, RequestToMintBitcreditBillForm,
     RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
+use bitcoin::secp256k1::Scalar;
+use libp2p::PeerId;
+use rocket::fairing::{Fairing, Info, Kind};
+use rocket::form::Form;
+use rocket::http::{Header, Status};
+use rocket::serde::json::Json;
+use rocket::{catch, delete, get, post, put, Request, Response, State};
+use rocket_dyn_templates::handlebars;
 
 use self::handlebars::{Handlebars, JsonRender};
 
@@ -245,7 +245,7 @@ pub async fn mint_bill(
     } else {
         let mut client = state.inner().clone();
 
-        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
         let public_mint_node =
             get_identity_public_data(mint_bill_form.mint_node.clone(), client.clone()).await;
@@ -308,7 +308,7 @@ pub async fn accept_quote(state: &State<Client>, id: String) -> Json<BitcreditEb
     let public_data_endorsee =
         get_identity_public_data(quote.mint_node_id.clone(), client.clone()).await;
     if !public_data_endorsee.name.is_empty() {
-        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
         endorse_bitcredit_bill(&quote.bill_id, public_data_endorsee.clone(), timestamp);
     }
 
@@ -374,9 +374,9 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     if payed && check_if_already_paid.1.eq(&0) {
         pending = true;
     } else if payed && !check_if_already_paid.1.eq(&0) {
-        let transaction = api::get_transactions_testet(address_to_pay.clone()).await;
-        let txid = api::Txid::get_first_transaction(transaction.clone()).await;
-        let height = api::get_testnet_last_block_height().await;
+        let transaction = external::bitcoin::get_transactions_testet(address_to_pay.clone()).await;
+        let txid = external::bitcoin::Txid::get_first_transaction(transaction.clone()).await;
+        let height = external::bitcoin::get_testnet_last_block_height().await;
         number_of_confirmations = height - txid.status.block_height + 1;
     }
     let address_to_pay = get_address_to_pay(bill.clone());
@@ -451,7 +451,8 @@ async fn generate_link_to_pay(address: String, amount: u64, message: String) -> 
 
 pub async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
     //todo check what net we used
-    let info_about_address = api::AddressInfo::get_testnet_address_info(address.clone()).await;
+    let info_about_address =
+        external::bitcoin::AddressInfo::get_testnet_address_info(address.clone()).await;
     let received_summ = info_about_address.chain_stats.funded_txo_sum;
     let spent_summ = info_about_address.chain_stats.spent_txo_sum;
     let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;
@@ -521,7 +522,7 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
         let form_bill = bill_form.into_inner();
         let drawer = get_whole_identity();
         let mut client = state.inner().clone();
-        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
         let mut bill = BitcreditBill::new_empty();
 
         if form_bill.drawer_is_payee {
@@ -609,7 +610,7 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
             client.put(&bill.name).await;
 
             if form_bill.drawer_is_drawee {
-                let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+                let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
                 let correct = accept_bill(&bill.name, timestamp);
 
@@ -668,7 +669,7 @@ pub async fn sell_bill(
             get_identity_public_data(sell_bill_form.buyer.clone(), client.clone()).await;
 
         if !public_data_buyer.name.is_empty() {
-            let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+            let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
             let correct = sell_bitcredit_bill(
                 &sell_bill_form.bill_name,
@@ -717,7 +718,7 @@ pub async fn endorse_bill(
             get_identity_public_data(endorse_bill_form.endorsee.clone(), client.clone()).await;
 
         if !public_data_endorsee.name.is_empty() {
-            let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+            let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
             let correct = endorse_bitcredit_bill(
                 &endorse_bill_form.bill_name,
@@ -765,7 +766,7 @@ pub async fn request_to_pay_bill(
     } else {
         let mut client = state.inner().clone();
 
-        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
         let correct = request_pay(&request_to_pay_bill_form.bill_name, timestamp);
 
@@ -795,7 +796,7 @@ pub async fn request_to_accept_bill(
     } else {
         let mut client = state.inner().clone();
 
-        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
         let correct = request_acceptance(&request_to_accept_bill_form.bill_name, timestamp);
 
@@ -825,7 +826,7 @@ pub async fn accept_bill_form(
     } else {
         let mut client = state.inner().clone();
 
-        let timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
         let correct = accept_bill(&accept_bill_form.bill_name, timestamp);
 

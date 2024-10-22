@@ -18,8 +18,9 @@ use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
 use crate::constants::{BILLS_FOLDER_PATH, USEDNET};
+use crate::external;
 use crate::{
-    api, bill_from_byte_array, decrypt_bytes, encrypt_bytes, private_key_from_pem_u8,
+    bill_from_byte_array, decrypt_bytes, encrypt_bytes, private_key_from_pem_u8,
     public_key_from_pem_u8, read_keys_from_bill_file, BitcreditBill, IdentityPublicData,
 };
 
@@ -403,7 +404,7 @@ impl Chain {
 
     async fn payment_deadline_has_passed(timestamp: i64, day: i32) -> bool {
         let period: i64 = (86400 * day) as i64;
-        let current_timestamp = api::TimeApi::get_atomic_time().await.timestamp;
+        let current_timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
         let diference = current_timestamp - timestamp;
         diference > period
     }
@@ -548,7 +549,8 @@ impl Chain {
 
     #[tokio::main]
     async fn check_if_paid(address: String, amount: u64) -> bool {
-        let info_about_address = api::AddressInfo::get_testnet_address_info(address.clone()).await;
+        let info_about_address =
+            external::bitcoin::AddressInfo::get_testnet_address_info(address.clone()).await;
         let received_summ = info_about_address.chain_stats.funded_txo_sum;
         let spent_summ = info_about_address.chain_stats.spent_txo_sum;
         // let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;

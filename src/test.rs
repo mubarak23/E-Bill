@@ -14,7 +14,7 @@ mod test {
     use serde::Deserialize;
     use url::Url;
 
-    use crate::numbers_to_words::encode;
+    use crate::util::numbers_to_words::encode;
     use crate::{
         byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
         generation_rsa_key, read_identity_from_file, structure_as_u8_slice, Identity,

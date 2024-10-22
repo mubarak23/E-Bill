@@ -33,15 +33,15 @@ use crate::constants::{
     IDENTITY_PEER_ID_FILE_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH, USEDNET,
 };
 use crate::dht::network::Client;
-use crate::numbers_to_words::encode;
+use crate::util::numbers_to_words::encode;
 
-mod api;
 mod blockchain;
 mod config;
 mod constants;
 mod dht;
-mod numbers_to_words;
+mod external;
 mod test;
+mod util;
 mod web;
 mod work_with_mint;
 
