@@ -6,6 +6,7 @@ services:
       - P2P_PORT=1909
       - HTTP_ADDRESS=0.0.0.0
       - HTTP_PORT=8001
+      - RUST_LOG=info
     ports:
       - "8001:8001"
       - "1909:1909"

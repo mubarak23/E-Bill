@@ -24,6 +24,16 @@ export P2P_PORT=1909
 export P2P_ADDRESS=0.0.0.0
 ```
 
+### Configuration
+
+You can use the following environment variables:
+
+* `P2P_PORT` - the P2P port (default: 1908)
+* `P2P_ADDRESS` - the P2P address (default: 0.0.0.0)
+* `HTTP_PORT` - the HTTP address (default: 8000)
+* `HTTP_ADDRESS` - the HTTP address (default: 127.0.0.1, or 0.0.0.0 in Docker)
+* `RUST_LOG` - the log level, e.g.: info, trace, debug, error (default: error)
+
 ### Frontend
 
 Make sure to have a recent version of Node.js installed.
@@ -66,12 +76,14 @@ docker build -t <image-name> .
 Launch the image:
 
 ```bash
-docker run -p 8000:8000 <image-name>
+docker run -p 8000:8000 -p 1908:1908 <image-name>
 ```
+
+You should be able to open the app at [http://127.0.0.1:8000/bitcredit/]([http://127.0.0.1:8000/bitcredit/])
 
 #### Run with docker-compose
 
-Build and launch the app with docker-compose running on a different port that the default 8000:
+Build and launch the app with docker-compose running on a different port than the default 8000:
 
 ```bash
 # run in foreground
