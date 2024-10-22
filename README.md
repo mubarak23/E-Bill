@@ -26,7 +26,7 @@ export P2P_ADDRESS=0.0.0.0
 
 ### Configuration
 
-You can use the following environment variables:
+You can use the following environment variables to configure the application:
 
 * `P2P_PORT` - the P2P port (default: 1908)
 * `P2P_ADDRESS` - the P2P address (default: 0.0.0.0)
@@ -86,12 +86,16 @@ You should be able to open the app at [http://127.0.0.1:8000/bitcredit/]([http:/
 Build and launch the app with docker-compose running on a different port than the default 8000:
 
 ```bash
-# run in foreground
+# run in foreground, can be stopped using CTRL+C
 docker-compose up
 
-# run in background
+# run in background, can be stopped using docker-compose stop
 docker-compose up -d
 
 # rebuild the image
 docker-compose build
 ```
+
+If you use the above commands, the application state (identity, bills, contacts) will persist between sessions. However, if you use `docker-compose down`, or `docker-compose rm`, the existing container gets removed, along with it's state.
+Of course, rebuilding the image also removes the application state.
+
