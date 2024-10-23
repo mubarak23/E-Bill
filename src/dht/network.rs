@@ -6,8 +6,10 @@ use crate::constants::{
     RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use crate::{
-    decrypt_bytes_with_private_key, encrypt_bytes_with_public_key, generate_dht_logic, get_bills,
-    get_whole_identity, is_not_hidden, read_ed25519_keypair_from_file, read_peer_id_from_file,
+    generate_dht_logic, get_bills, get_whole_identity, read_ed25519_keypair_from_file,
+    read_peer_id_from_file,
+    util::is_not_hidden,
+    util::rsa::{decrypt_bytes_with_private_key, encrypt_bytes_with_public_key},
     IdentityPublicData, IdentityWithAll,
 };
 use async_trait::async_trait;

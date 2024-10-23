@@ -6,7 +6,10 @@ use rocket::fs::FileServer;
 use rocket::http::Header;
 use rocket::{catch, catchers, routes, Build, Request, Response, Rocket};
 
+mod data;
 mod handlers;
+
+pub use data::RequestToMintBitcreditBillForm;
 
 pub fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
     let rocket = rocket::build()

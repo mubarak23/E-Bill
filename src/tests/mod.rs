@@ -15,10 +15,17 @@ mod test {
     use url::Url;
 
     use crate::util::numbers_to_words::encode;
+    use crate::util::rsa::generation_rsa_key;
+    use crate::util::structure_as_u8_slice;
     use crate::{
         byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        generation_rsa_key, read_identity_from_file, structure_as_u8_slice, Identity,
+        read_identity_from_file, BitcreditBill, Identity,
     };
+    use borsh::to_vec;
+
+    fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
+        to_vec(bill).unwrap()
+    }
 
     //TODO: Change. Because we create new bill every time we run tests
 

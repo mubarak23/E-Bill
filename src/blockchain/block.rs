@@ -11,10 +11,10 @@ use crate::blockchain::calculate_hash;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
-use crate::private_key_from_pem_u8;
 use crate::{
-    decrypt_bytes, public_key_from_pem_u8, read_keys_from_bill_file, BitcreditBill,
-    IdentityPublicData,
+    read_keys_from_bill_file,
+    util::rsa::{decrypt_bytes, private_key_from_pem_u8, public_key_from_pem_u8},
+    BitcreditBill, IdentityPublicData,
 };
 use log::info;
 use openssl::sign::Signer;

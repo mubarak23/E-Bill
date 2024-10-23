@@ -11,8 +11,8 @@ use url::Url;
 use crate::{
     add_bitcredit_quote_and_amount_in_quotes_map, add_bitcredit_token_in_quotes_map,
     add_in_quotes_map, get_quote_from_map, read_identity_from_file, read_keys_from_bill_file,
-    read_peer_id_from_file, read_quotes_map, BitcreditEbillQuote, Identity,
-    RequestToMintBitcreditBillForm,
+    read_peer_id_from_file, read_quotes_map, web::RequestToMintBitcreditBillForm,
+    BitcreditEbillQuote, Identity,
 };
 
 #[tokio::main]

@@ -1,6 +1,12 @@
 use std::path::Path;
 use std::{fs, thread};
 
+use super::data::{
+    AcceptBitcreditBillForm, AcceptMintBitcreditBillForm, BitcreditBillForm, DeleteContactForm,
+    EditContactForm, EndorseBitcreditBillForm, IdentityForm, MintBitcreditBillForm, NewContactForm,
+    RequestToAcceptBitcreditBillForm, RequestToMintBitcreditBillForm,
+    RequestToPayBitcreditBillForm, SellBitcreditBillForm,
+};
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
 use crate::dht::Client;
@@ -14,12 +20,9 @@ use crate::{
     get_contacts_vec, get_current_payee_private_key, get_quote_from_map, get_whole_identity,
     issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
     mint_bitcredit_bill, read_bill_from_file, read_identity_from_file, read_peer_id_from_file,
-    request_acceptance, request_pay, sell_bitcredit_bill, write_identity_to_file,
-    AcceptBitcreditBillForm, AcceptMintBitcreditBillForm, BitcreditBill, BitcreditBillForm,
-    BitcreditBillToReturn, BitcreditEbillQuote, Contact, DeleteContactForm, EditContactForm,
-    EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData, IdentityWithAll,
-    MintBitcreditBillForm, NewContactForm, NodeId, RequestToAcceptBitcreditBillForm,
-    RequestToMintBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
+    request_acceptance, request_pay, sell_bitcredit_bill, write_identity_to_file, BitcreditBill,
+    BitcreditBillToReturn, BitcreditEbillQuote, Contact, Identity, IdentityPublicData,
+    IdentityWithAll, NodeId,
 };
 use crate::{external, get_identity_public_data};
 use libp2p::PeerId;

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::{env, fs, mem, thread};
 
@@ -13,9 +12,8 @@ use libp2p::identity::Keypair;
 use libp2p::PeerId;
 use moksha_core::primitives::CheckBitcreditQuoteResponse;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-use openssl::pkey::{Private, Public};
-use openssl::rsa;
-use openssl::rsa::{Padding, Rsa};
+use openssl::pkey::Private;
+use openssl::rsa::Rsa;
 use openssl::sha::sha256;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::FromForm;
@@ -381,244 +379,7 @@ impl IdentityPublicData {
         }
     }
 }
-//--------------------------------------------------------------
 
-//-------------------------RSA----------------------------------
-fn generation_rsa_key() -> Rsa<Private> {
-    Rsa::generate(2048).unwrap()
-}
-
-fn pem_private_key_from_rsa(rsa: &Rsa<Private>) -> String {
-    let private_key: Vec<u8> = rsa.private_key_to_pem().unwrap();
-    String::from_utf8(private_key).unwrap()
-}
-
-fn pem_public_key_from_rsa(rsa: &Rsa<Private>) -> String {
-    let public_key: Vec<u8> = rsa.public_key_to_pem().unwrap();
-    String::from_utf8(public_key).unwrap()
-}
-
-fn private_key_from_pem_u8(private_key_u8: &[u8]) -> Rsa<Private> {
-    rsa::Rsa::private_key_from_pem(private_key_u8).unwrap()
-}
-
-fn public_key_from_pem_u8(public_key_u8: &[u8]) -> Rsa<Public> {
-    rsa::Rsa::public_key_from_pem(public_key_u8).unwrap()
-}
-//--------------------------------------------------------------
-
-//-------------------------Bytes common-------------------------
-fn encrypt_bytes_with_public_key(bytes: &[u8], public_key: String) -> Vec<u8> {
-    let public_key = Rsa::public_key_from_pem(public_key.as_bytes()).unwrap();
-
-    let key_size: usize = (public_key.size() / 2) as usize; //128
-
-    let mut whole_encrypted_buff: Vec<u8> = Vec::new();
-    let mut temp_buff: Vec<u8> = vec![0; key_size];
-    let mut temp_buff_encrypted: Vec<u8> = vec![0; public_key.size() as usize];
-
-    let number_of_key_size_in_whole_bill: usize = bytes.len() / key_size;
-    let remainder: usize = bytes.len() - key_size * number_of_key_size_in_whole_bill;
-
-    for i in 0..number_of_key_size_in_whole_bill {
-        for j in 0..key_size {
-            let byte_number: usize = key_size * i + j;
-            temp_buff[j] = bytes[byte_number];
-        }
-
-        let _encrypted_len: usize = public_key
-            .public_encrypt(&temp_buff, &mut temp_buff_encrypted, Padding::PKCS1)
-            .unwrap();
-
-        whole_encrypted_buff.append(&mut temp_buff_encrypted);
-        temp_buff = vec![0; key_size];
-        temp_buff_encrypted = vec![0; public_key.size() as usize];
-    }
-
-    if remainder != 0 {
-        temp_buff = vec![0; remainder];
-
-        let position: usize = key_size * number_of_key_size_in_whole_bill;
-        let mut index_in_temp_buff: usize = 0;
-
-        for i in position..bytes.len() {
-            temp_buff[index_in_temp_buff] = bytes[i];
-            index_in_temp_buff += 1;
-        }
-
-        index_in_temp_buff = 0;
-
-        let _encrypted_len: usize = public_key
-            .public_encrypt(&temp_buff, &mut temp_buff_encrypted, Padding::PKCS1)
-            .unwrap();
-
-        whole_encrypted_buff.append(&mut temp_buff_encrypted);
-        temp_buff.clear();
-        temp_buff_encrypted.clear();
-    }
-
-    whole_encrypted_buff
-}
-
-fn decrypt_bytes_with_private_key(bytes: &[u8], private_key: String) -> Vec<u8> {
-    let private_key = Rsa::private_key_from_pem(private_key.as_bytes()).unwrap();
-
-    let key_size: usize = private_key.size() as usize; //256
-
-    let mut whole_decrypted_buff: Vec<u8> = Vec::new();
-    let mut temp_buff: Vec<u8> = vec![0; private_key.size() as usize];
-    let mut temp_buff_decrypted: Vec<u8> = vec![0; private_key.size() as usize];
-
-    let number_of_key_size_in_whole_bill: usize = bytes.len() / key_size;
-    // let remainder = bill_bytes.len() - key_size * number_of_key_size_in_whole_bill;
-
-    for i in 0..number_of_key_size_in_whole_bill {
-        for j in 0..key_size {
-            let byte_number = key_size * i + j;
-            temp_buff[j] = bytes[byte_number];
-        }
-
-        let decrypted_len: usize = private_key
-            .private_decrypt(&temp_buff, &mut temp_buff_decrypted, Padding::PKCS1)
-            .unwrap();
-
-        whole_decrypted_buff.append(&mut temp_buff_decrypted[0..decrypted_len].to_vec());
-        temp_buff = vec![0; private_key.size() as usize];
-        temp_buff_decrypted = vec![0; private_key.size() as usize];
-    }
-
-    // if remainder != 0 {
-    //     let position = key_size * number_of_key_size_in_whole_bill;
-    //     let mut index_in_temp_buff = 0;
-    //
-    //     for i in position..bill_bytes.len() {
-    //         temp_buff[index_in_temp_buff] = bill_bytes[i];
-    //         index_in_temp_buff = index_in_temp_buff + 1;
-    //     }
-    //
-    //     index_in_temp_buff = 0;
-    //
-    //     let decrypted_len = rsa_key
-    //         .public_decrypt(&*temp_buff, &mut temp_buff_decrypted, Padding::PKCS1)
-    //         .unwrap();
-    //
-    //     whole_decrypted_buff.append(&mut temp_buff_decrypted);
-    //     temp_buff.clear();
-    //     temp_buff_decrypted.clear();
-    // }
-
-    whole_decrypted_buff
-}
-
-fn encrypt_bytes(bytes: &[u8], rsa_key: &Rsa<Private>) -> Vec<u8> {
-    let key_size: usize = (rsa_key.size() / 2) as usize; //128
-
-    let mut whole_encrypted_buff: Vec<u8> = Vec::new();
-    let mut temp_buff: Vec<u8> = vec![0; key_size];
-    let mut temp_buff_encrypted: Vec<u8> = vec![0; rsa_key.size() as usize];
-
-    let number_of_key_size_in_whole_bill: usize = bytes.len() / key_size;
-    let remainder: usize = bytes.len() - key_size * number_of_key_size_in_whole_bill;
-
-    for i in 0..number_of_key_size_in_whole_bill {
-        for j in 0..key_size {
-            let byte_number: usize = key_size * i + j;
-            temp_buff[j] = bytes[byte_number];
-        }
-
-        let _encrypted_len: usize = rsa_key
-            .public_encrypt(&temp_buff, &mut temp_buff_encrypted, Padding::PKCS1)
-            .unwrap();
-
-        whole_encrypted_buff.append(&mut temp_buff_encrypted);
-        temp_buff = vec![0; key_size];
-        temp_buff_encrypted = vec![0; rsa_key.size() as usize];
-    }
-
-    if remainder != 0 {
-        temp_buff = vec![0; remainder];
-
-        let position: usize = key_size * number_of_key_size_in_whole_bill;
-        let mut index_in_temp_buff: usize = 0;
-
-        for i in position..bytes.len() {
-            temp_buff[index_in_temp_buff] = bytes[i];
-            index_in_temp_buff += 1;
-        }
-
-        index_in_temp_buff = 0;
-
-        let _encrypted_len: usize = rsa_key
-            .public_encrypt(&temp_buff, &mut temp_buff_encrypted, Padding::PKCS1)
-            .unwrap();
-
-        whole_encrypted_buff.append(&mut temp_buff_encrypted);
-        temp_buff.clear();
-        temp_buff_encrypted.clear();
-    }
-
-    whole_encrypted_buff
-}
-
-fn decrypt_bytes(bytes: &[u8], rsa_key: &Rsa<Private>) -> Vec<u8> {
-    let key_size: usize = rsa_key.size() as usize; //256
-
-    let mut whole_decrypted_buff: Vec<u8> = Vec::new();
-    let mut temp_buff: Vec<u8> = vec![0; rsa_key.size() as usize];
-    let mut temp_buff_decrypted: Vec<u8> = vec![0; rsa_key.size() as usize];
-
-    let number_of_key_size_in_whole_bill: usize = bytes.len() / key_size;
-    // let remainder = bill_bytes.len() - key_size * number_of_key_size_in_whole_bill;
-
-    for i in 0..number_of_key_size_in_whole_bill {
-        for j in 0..key_size {
-            let byte_number = key_size * i + j;
-            temp_buff[j] = bytes[byte_number];
-        }
-
-        let decrypted_len: usize = rsa_key
-            .private_decrypt(&temp_buff, &mut temp_buff_decrypted, Padding::PKCS1)
-            .unwrap();
-
-        whole_decrypted_buff.append(&mut temp_buff_decrypted[0..decrypted_len].to_vec());
-        temp_buff = vec![0; rsa_key.size() as usize];
-        temp_buff_decrypted = vec![0; rsa_key.size() as usize];
-    }
-
-    // if remainder != 0 {
-    //     let position = key_size * number_of_key_size_in_whole_bill;
-    //     let mut index_in_temp_buff = 0;
-    //
-    //     for i in position..bill_bytes.len() {
-    //         temp_buff[index_in_temp_buff] = bill_bytes[i];
-    //         index_in_temp_buff = index_in_temp_buff + 1;
-    //     }
-    //
-    //     index_in_temp_buff = 0;
-    //
-    //     let decrypted_len = rsa_key
-    //         .public_decrypt(&*temp_buff, &mut temp_buff_decrypted, Padding::PKCS1)
-    //         .unwrap();
-    //
-    //     whole_decrypted_buff.append(&mut temp_buff_decrypted);
-    //     temp_buff.clear();
-    //     temp_buff_decrypted.clear();
-    // }
-
-    whole_decrypted_buff
-}
-
-unsafe fn structure_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-    std::slice::from_raw_parts((p as *const T) as *const u8, size_of::<T>())
-}
-
-fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| !s.starts_with("."))
-        .unwrap_or(false)
-}
 //--------------------------------------------------------------
 
 //-------------------------Identity-----------------------------
@@ -779,9 +540,9 @@ fn create_new_identity(
     email: String,
     postal_address: String,
 ) -> Identity {
-    let rsa: Rsa<Private> = generation_rsa_key();
-    let private_key_pem: String = pem_private_key_from_rsa(&rsa);
-    let public_key_pem: String = pem_public_key_from_rsa(&rsa);
+    let rsa: Rsa<Private> = util::rsa::generation_rsa_key();
+    let private_key_pem: String = util::rsa::pem_private_key_from_rsa(&rsa);
+    let public_key_pem: String = util::rsa::pem_public_key_from_rsa(&rsa);
 
     let s = bitcoin::secp256k1::Secp256k1::new();
     let private_key = bitcoin::PrivateKey::new(
@@ -813,14 +574,14 @@ fn write_identity_to_file(identity: &Identity) {
 }
 
 fn write_ed25519_keypair_to_file(ed25519_keys: &Keypair) {
-    let data: &[u8] = unsafe { structure_as_u8_slice(ed25519_keys) };
+    let data: &[u8] = unsafe { util::structure_as_u8_slice(ed25519_keys) };
     let data_sized = byte_array_to_size_array_keypair(data);
     fs::write(IDENTITY_ED_25529_KEYS_FILE_PATH, *data_sized)
         .expect("Unable to write keypair ed25519 in file");
 }
 
 fn write_peer_id_to_file(peer_id: &PeerId) {
-    let data: &[u8] = unsafe { structure_as_u8_slice(peer_id) };
+    let data: &[u8] = unsafe { util::structure_as_u8_slice(peer_id) };
     let data_sized = byte_array_to_size_array_peer_id(data);
     fs::write(IDENTITY_PEER_ID_FILE_PATH, *data_sized).expect("Unable to write peer id in file");
 }
@@ -1091,9 +852,9 @@ pub fn issue_new_bill(
     let private_key_bitcoin: String = private_key.to_string();
     let public_key_bitcoin: String = public_key.to_string();
 
-    let rsa: Rsa<Private> = generation_rsa_key();
-    let private_key_pem: String = pem_private_key_from_rsa(&rsa);
-    let public_key_pem: String = pem_public_key_from_rsa(&rsa);
+    let rsa: Rsa<Private> = util::rsa::generation_rsa_key();
+    let private_key_pem: String = util::rsa::pem_private_key_from_rsa(&rsa);
+    let public_key_pem: String = util::rsa::pem_public_key_from_rsa(&rsa);
     write_bill_keys_to_file(
         bill_name.clone(),
         private_key_pem.clone(),
@@ -1178,9 +939,9 @@ pub fn issue_new_bill_drawer_is_payee(
     let private_key_bitcoin: String = private_key.to_string();
     let public_key_bitcoin: String = public_key.to_string();
 
-    let rsa: Rsa<Private> = generation_rsa_key();
-    let private_key_pem: String = pem_private_key_from_rsa(&rsa);
-    let public_key_pem: String = pem_public_key_from_rsa(&rsa);
+    let rsa: Rsa<Private> = util::rsa::generation_rsa_key();
+    let private_key_pem: String = util::rsa::pem_private_key_from_rsa(&rsa);
+    let public_key_pem: String = util::rsa::pem_public_key_from_rsa(&rsa);
     write_bill_keys_to_file(
         bill_name.clone(),
         private_key_pem.clone(),
@@ -1265,9 +1026,9 @@ pub fn issue_new_bill_drawer_is_drawee(
     let private_key_bitcoin: String = private_key.to_string();
     let public_key_bitcoin: String = public_key.to_string();
 
-    let rsa: Rsa<Private> = generation_rsa_key();
-    let private_key_pem: String = pem_private_key_from_rsa(&rsa);
-    let public_key_pem: String = pem_public_key_from_rsa(&rsa);
+    let rsa: Rsa<Private> = util::rsa::generation_rsa_key();
+    let private_key_pem: String = util::rsa::pem_private_key_from_rsa(&rsa);
+    let public_key_pem: String = util::rsa::pem_public_key_from_rsa(&rsa);
     write_bill_keys_to_file(
         bill_name.clone(),
         private_key_pem.clone(),
@@ -1352,7 +1113,7 @@ pub fn get_bills() -> Vec<BitcreditBill> {
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
     for _path in paths {
         let dir = _path.unwrap();
-        if is_not_hidden(&dir) {
+        if util::is_not_hidden(&dir) {
             let file_name = dir
                 .file_name()
                 .to_str()
@@ -1376,7 +1137,7 @@ pub fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
     for _path in paths {
         let dir = _path.unwrap();
-        if is_not_hidden(&dir) {
+        if util::is_not_hidden(&dir) {
             let file_name = dir
                 .file_name()
                 .to_str()
@@ -1440,7 +1201,8 @@ pub fn endorse_bitcredit_bill(
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
-        let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+        let data_for_new_block_encrypted =
+            util::rsa::encrypt_bytes(&data_for_new_block_in_bytes, &key);
         let data_for_new_block_encrypted_in_string_format =
             hex::encode(data_for_new_block_encrypted);
 
@@ -1509,7 +1271,8 @@ pub async fn mint_bitcredit_bill(
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
-        let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+        let data_for_new_block_encrypted =
+            util::rsa::encrypt_bytes(&data_for_new_block_in_bytes, &key);
         let data_for_new_block_encrypted_in_string_format =
             hex::encode(data_for_new_block_encrypted);
 
@@ -1580,7 +1343,8 @@ pub fn sell_bitcredit_bill(
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
-        let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+        let data_for_new_block_encrypted =
+            util::rsa::encrypt_bytes(&data_for_new_block_in_bytes, &key);
         let data_for_new_block_encrypted_in_string_format =
             hex::encode(data_for_new_block_encrypted);
 
@@ -1642,7 +1406,8 @@ pub fn request_pay(bill_name: &String, timestamp: i64) -> bool {
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
-        let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+        let data_for_new_block_encrypted =
+            util::rsa::encrypt_bytes(&data_for_new_block_in_bytes, &key);
         let data_for_new_block_encrypted_in_string_format =
             hex::encode(data_for_new_block_encrypted);
 
@@ -1704,7 +1469,8 @@ pub fn request_acceptance(bill_name: &String, timestamp: i64) -> bool {
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
         let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
-        let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+        let data_for_new_block_encrypted =
+            util::rsa::encrypt_bytes(&data_for_new_block_in_bytes, &key);
         let data_for_new_block_encrypted_in_string_format =
             hex::encode(data_for_new_block_encrypted);
 
@@ -1755,7 +1521,8 @@ pub fn accept_bill(bill_name: &String, timestamp: i64) -> bool {
                 Rsa::private_key_from_pem(keys.private_key_pem.as_bytes()).unwrap();
 
             let data_for_new_block_in_bytes = data_for_new_block.as_bytes().to_vec();
-            let data_for_new_block_encrypted = encrypt_bytes(&data_for_new_block_in_bytes, &key);
+            let data_for_new_block_encrypted =
+                util::rsa::encrypt_bytes(&data_for_new_block_in_bytes, &key);
             let data_for_new_block_encrypted_in_string_format =
                 hex::encode(data_for_new_block_encrypted);
 
@@ -1846,10 +1613,6 @@ fn read_bill_from_file(bill_name: &String) -> BitcreditBill {
     chain.get_last_version_bill()
 }
 
-fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
-    to_vec(bill).unwrap()
-}
-
 fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {
     BitcreditBill::try_from_slice(bill).unwrap()
 }
@@ -1859,109 +1622,3 @@ fn read_keys_from_bill_file(bill_name: &str) -> BillKeys {
     let blockchain_from_file = fs::read(input_path.clone()).expect("file not found");
     serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
 }
-//--------------------------------------------------------------
-
-//-------------------------Forms--------------------------------
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct BitcreditBillForm {
-    pub bill_jurisdiction: String,
-    pub place_of_drawing: String,
-    pub currency_code: String,
-    pub amount_numbers: u64,
-    pub language: String,
-    pub drawee_name: String,
-    pub payee_name: String,
-    pub place_of_payment: String,
-    pub maturity_date: String,
-    pub drawer_is_payee: bool,
-    pub drawer_is_drawee: bool,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct EndorseBitcreditBillForm {
-    pub endorsee: String,
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct MintBitcreditBillForm {
-    pub mint_node: String,
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct AcceptMintBitcreditBillForm {
-    pub interest: u64,
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct RequestToMintBitcreditBillForm {
-    pub mint_node: String,
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct SellBitcreditBillForm {
-    pub buyer: String,
-    pub bill_name: String,
-    pub amount_numbers: u64,
-    pub currency_code: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct RequestToAcceptBitcreditBillForm {
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct RequestToPayBitcreditBillForm {
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct AcceptBitcreditBillForm {
-    pub bill_name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct IdentityForm {
-    name: String,
-    company: String,
-    date_of_birth: String,
-    city_of_birth: String,
-    country_of_birth: String,
-    email: String,
-    postal_address: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct NewContactForm {
-    pub name: String,
-    pub node_id: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct EditContactForm {
-    pub old_name: String,
-    pub name: String,
-}
-
-#[derive(FromForm, Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct DeleteContactForm {
-    pub name: String,
-}
-//-------------------------------------------------------------
