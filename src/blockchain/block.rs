@@ -12,9 +12,8 @@ use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
 use crate::{
-    read_keys_from_bill_file,
+    bill::{contacts::IdentityPublicData, read_keys_from_bill_file, BitcreditBill},
     util::rsa::{decrypt_bytes, private_key_from_pem_u8, public_key_from_pem_u8},
-    BitcreditBill, IdentityPublicData,
 };
 use log::info;
 use openssl::sign::Signer;

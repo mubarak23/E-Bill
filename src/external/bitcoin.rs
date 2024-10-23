@@ -1,4 +1,4 @@
-use crate::{constants::USEDNET, BitcreditBill};
+use crate::{bill::BitcreditBill, constants::USEDNET};
 use serde::Deserialize;
 use std::str::FromStr;
 

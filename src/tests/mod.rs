@@ -1,9 +1,17 @@
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
-    use std::{fs, mem};
-
+    use crate::bill::{
+        identity::{
+            byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id,
+            create_new_identity, read_identity_from_file, Identity,
+        },
+        BitcreditBill,
+    };
+    use crate::util::numbers_to_words::encode;
+    use crate::util::rsa::generation_rsa_key;
+    use crate::util::structure_as_u8_slice;
     use bitcoin::secp256k1::Scalar;
+    use borsh::to_vec;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
     use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
@@ -12,16 +20,9 @@ mod test {
     use moksha_wallet::wallet::Wallet;
     use openssl::rsa::{Padding, Rsa};
     use serde::Deserialize;
+    use std::path::{Path, PathBuf};
+    use std::{fs, mem};
     use url::Url;
-
-    use crate::util::numbers_to_words::encode;
-    use crate::util::rsa::generation_rsa_key;
-    use crate::util::structure_as_u8_slice;
-    use crate::{
-        byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        read_identity_from_file, BitcreditBill, Identity,
-    };
-    use borsh::to_vec;
 
     fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
         to_vec(bill).unwrap()

@@ -6,11 +6,18 @@ use crate::constants::{
     RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use crate::{
-    generate_dht_logic, get_bills, get_whole_identity, read_ed25519_keypair_from_file,
-    read_peer_id_from_file,
-    util::is_not_hidden,
-    util::rsa::{decrypt_bytes_with_private_key, encrypt_bytes_with_public_key},
-    IdentityPublicData, IdentityWithAll,
+    bill::{
+        contacts::IdentityPublicData,
+        get_bills,
+        identity::{
+            generate_dht_logic, get_whole_identity, read_ed25519_keypair_from_file,
+            read_peer_id_from_file, IdentityWithAll,
+        },
+    },
+    util::{
+        is_not_hidden,
+        rsa::{decrypt_bytes_with_private_key, encrypt_bytes_with_public_key},
+    },
 };
 use async_trait::async_trait;
 use futures::channel::mpsc::Receiver;

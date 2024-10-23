@@ -14,8 +14,10 @@ use crate::blockchain::OperationCode::{
 use crate::constants::{BILLS_FOLDER_PATH, USEDNET};
 use crate::external;
 use crate::{
-    bill_from_byte_array, read_keys_from_bill_file, util::rsa::decrypt_bytes, BitcreditBill,
-    IdentityPublicData,
+    bill::{
+        bill_from_byte_array, contacts::IdentityPublicData, read_keys_from_bill_file, BitcreditBill,
+    },
+    util::rsa::decrypt_bytes,
 };
 use borsh_derive::BorshDeserialize;
 use borsh_derive::BorshSerialize;

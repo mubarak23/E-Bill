@@ -1,35 +1,42 @@
-use std::path::Path;
-use std::{fs, thread};
-
 use super::data::{
     AcceptBitcreditBillForm, AcceptMintBitcreditBillForm, BitcreditBillForm, DeleteContactForm,
     EditContactForm, EndorseBitcreditBillForm, IdentityForm, MintBitcreditBillForm, NewContactForm,
     RequestToAcceptBitcreditBillForm, RequestToMintBitcreditBillForm,
     RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
+use crate::bill::{
+    accept_bill,
+    contacts::{
+        add_in_contacts_map, change_contact_name_from_contacts_map, delete_from_contacts_map,
+        get_contacts_vec, get_current_payee_private_key, get_identity_public_data, Contact,
+        IdentityPublicData,
+    },
+    endorse_bitcredit_bill, get_bills, get_bills_for_list,
+    identity::{
+        create_whole_identity, get_whole_identity, read_identity_from_file, read_peer_id_from_file,
+        write_identity_to_file, Identity, IdentityWithAll, NodeId,
+    },
+    issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
+    mint_bitcredit_bill,
+    quotes::get_quote_from_map,
+    read_bill_from_file, request_acceptance, request_pay, sell_bitcredit_bill, BitcreditBill,
+    BitcreditBillToReturn, BitcreditEbillQuote,
+};
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
 use crate::dht::Client;
-use crate::mint::{
+use crate::external;
+use crate::external::mint::{
     accept_mint_bitcredit, check_bitcredit_quote, client_accept_bitcredit_quote,
     request_to_mint_bitcredit,
 };
-use crate::{
-    accept_bill, add_in_contacts_map, change_contact_name_from_contacts_map, create_whole_identity,
-    delete_from_contacts_map, endorse_bitcredit_bill, get_bills, get_bills_for_list,
-    get_contacts_vec, get_current_payee_private_key, get_quote_from_map, get_whole_identity,
-    issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
-    mint_bitcredit_bill, read_bill_from_file, read_identity_from_file, read_peer_id_from_file,
-    request_acceptance, request_pay, sell_bitcredit_bill, write_identity_to_file, BitcreditBill,
-    BitcreditBillToReturn, BitcreditEbillQuote, Contact, Identity, IdentityPublicData,
-    IdentityWithAll, NodeId,
-};
-use crate::{external, get_identity_public_data};
 use libp2p::PeerId;
 use rocket::form::Form;
 use rocket::http::Status;
 use rocket::serde::json::Json;
 use rocket::{delete, get, post, put, State};
+use std::path::Path;
+use std::{fs, thread};
 
 #[get("/")]
 pub async fn exit() {
