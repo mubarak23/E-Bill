@@ -25,46 +25,49 @@ pub fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
         .mount(
             "/identity",
             routes![
-                handlers::create_identity,
-                handlers::change_identity,
-                handlers::return_identity,
-                handlers::return_peer_id
+                handlers::identity::create_identity,
+                handlers::identity::change_identity,
+                handlers::identity::return_identity,
+                handlers::identity::return_peer_id
             ],
         )
         .mount("/bitcredit", FileServer::from("frontend_build"))
         .mount(
             "/contacts",
             routes![
-                handlers::new_contact,
-                handlers::edit_contact,
-                handlers::remove_contact,
-                handlers::return_contacts
+                handlers::contacts::new_contact,
+                handlers::contacts::edit_contact,
+                handlers::contacts::remove_contact,
+                handlers::contacts::return_contacts
             ],
         )
         .mount(
             "/bill",
             routes![
-                handlers::holder,
-                handlers::issue_bill,
-                handlers::endorse_bill,
-                handlers::search_bill,
-                handlers::request_to_accept_bill,
-                handlers::accept_bill_form,
-                handlers::request_to_pay_bill,
-                handlers::return_bill,
-                handlers::return_chain_of_blocks,
-                handlers::return_basic_bill,
-                handlers::sell_bill,
-                handlers::mint_bill,
-                handlers::accept_mint_bill,
-                handlers::find_bill_in_dht,
-                handlers::request_to_mint_bill,
+                handlers::bill::holder,
+                handlers::bill::issue_bill,
+                handlers::bill::endorse_bill,
+                handlers::bill::search_bill,
+                handlers::bill::request_to_accept_bill,
+                handlers::bill::accept_bill_form,
+                handlers::bill::request_to_pay_bill,
+                handlers::bill::return_bill,
+                handlers::bill::return_chain_of_blocks,
+                handlers::bill::return_basic_bill,
+                handlers::bill::sell_bill,
+                handlers::bill::mint_bill,
+                handlers::bill::accept_mint_bill,
+                handlers::bill::find_bill_in_dht,
+                handlers::bill::request_to_mint_bill,
             ],
         )
-        .mount("/bills", routes![handlers::return_bills_list,])
+        .mount("/bills", routes![handlers::bill::return_bills_list,])
         .mount(
             "/quote",
-            routes![handlers::return_quote, handlers::accept_quote],
+            routes![
+                handlers::quotes::return_quote,
+                handlers::quotes::accept_quote
+            ],
         )
         .attach(Cors);
 
