@@ -126,6 +126,8 @@ fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
         .mount("/quote", routes![web::return_quote, web::accept_quote])
         .attach(web::CORS);
 
+    info!("HTTP Server Listening on {}", conf.http_listen_url());
+
     match open::that(format!("{}/bitcredit/", conf.http_listen_url()).as_str()) {
         Ok(_) => {}
         Err(_) => {

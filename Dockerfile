@@ -45,6 +45,10 @@ RUN cargo build --release
 ##############################
 FROM ubuntu:22.04
 
+RUN apt-get update && \
+  apt-get install -y ca-certificates && \
+  apt-get clean
+
 # Import user and group files from builder.
 COPY --from=rust-builder /etc/passwd /etc/passwd
 COPY --from=rust-builder /etc/group /etc/group
