@@ -1,39 +1,32 @@
 use std::path::Path;
-use std::str::FromStr;
 use std::{fs, thread};
 
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
-use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH, USEDNET};
+use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
 use crate::dht::network::Client;
-use crate::external;
 use crate::work_with_mint::{
     accept_mint_bitcredit, check_bitcredit_quote, client_accept_bitcredit_quote,
     request_to_mint_bitcredit,
 };
 use crate::{
-    accept_bill, add_in_contacts_map, change_contact_data_from_dht,
-    change_contact_name_from_contacts_map, create_whole_identity, delete_from_contacts_map,
-    endorse_bitcredit_bill, get_bills, get_bills_for_list, get_contact_from_map, get_contacts_vec,
-    get_quote_from_map, get_whole_identity, issue_new_bill, issue_new_bill_drawer_is_drawee,
-    issue_new_bill_drawer_is_payee, mint_bitcredit_bill, read_bill_from_file,
-    read_identity_from_file, read_peer_id_from_file, request_acceptance, request_pay,
-    sell_bitcredit_bill, write_identity_to_file, AcceptBitcreditBillForm,
-    AcceptMintBitcreditBillForm, BitcreditBill, BitcreditBillForm, BitcreditBillToReturn,
-    BitcreditEbillQuote, Contact, DeleteContactForm, EditContactForm, EndorseBitcreditBillForm,
-    Identity, IdentityForm, IdentityPublicData, IdentityWithAll, MintBitcreditBillForm,
-    NewContactForm, NodeId, RequestToAcceptBitcreditBillForm, RequestToMintBitcreditBillForm,
-    RequestToPayBitcreditBillForm, SellBitcreditBillForm,
+    accept_bill, add_in_contacts_map, change_contact_name_from_contacts_map, create_whole_identity,
+    delete_from_contacts_map, endorse_bitcredit_bill, get_bills, get_bills_for_list,
+    get_contacts_vec, get_current_payee_private_key, get_quote_from_map, get_whole_identity,
+    issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
+    mint_bitcredit_bill, read_bill_from_file, read_identity_from_file, read_peer_id_from_file,
+    request_acceptance, request_pay, sell_bitcredit_bill, write_identity_to_file,
+    AcceptBitcreditBillForm, AcceptMintBitcreditBillForm, BitcreditBill, BitcreditBillForm,
+    BitcreditBillToReturn, BitcreditEbillQuote, Contact, DeleteContactForm, EditContactForm,
+    EndorseBitcreditBillForm, Identity, IdentityForm, IdentityPublicData, IdentityWithAll,
+    MintBitcreditBillForm, NewContactForm, NodeId, RequestToAcceptBitcreditBillForm,
+    RequestToMintBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
-use bitcoin::secp256k1::Scalar;
+use crate::{external, get_identity_public_data};
 use libp2p::PeerId;
-use rocket::fairing::{Fairing, Info, Kind};
 use rocket::form::Form;
-use rocket::http::{Header, Status};
+use rocket::http::Status;
 use rocket::serde::json::Json;
-use rocket::{catch, delete, get, post, put, Request, Response, State};
-use rocket_dyn_templates::handlebars;
-
-use self::handlebars::{Handlebars, JsonRender};
+use rocket::{delete, get, post, put, State};
 
 #[get("/")]
 pub async fn exit() {
@@ -352,21 +345,27 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
         address_for_selling = waiting_for_payment.3;
         amount_for_selling = waiting_for_payment.4;
         let message: String = format!("Payment in relation to a bill {}", bill.name.clone());
-        link_for_buy =
-            generate_link_to_pay(address_for_selling.clone(), amount_for_selling, message).await;
+        link_for_buy = external::bitcoin::generate_link_to_pay(
+            address_for_selling.clone(),
+            amount_for_selling,
+            message,
+        )
+        .await;
     } else {
         buyer = IdentityPublicData::new_empty();
         seller = IdentityPublicData::new_empty();
     }
     let requested_to_pay = chain.exist_block_with_operation_code(OperationCode::RequestToPay);
     let requested_to_accept = chain.exist_block_with_operation_code(OperationCode::RequestToAccept);
-    let address_to_pay = get_address_to_pay(bill.clone());
+    let address_to_pay = external::bitcoin::get_address_to_pay(bill.clone());
     //TODO: add last_sell_block_paid
-    let check_if_already_paid = check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
+    let check_if_already_paid =
+        external::bitcoin::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
     let mut check_if_already_paid = (false, 0u64);
     if requested_to_pay {
         check_if_already_paid =
-            check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone()).await;
+            external::bitcoin::check_if_paid(address_to_pay.clone(), bill.amount_numbers.clone())
+                .await;
     }
     let payed = check_if_already_paid.0;
     let mut number_of_confirmations: u64 = 0;
@@ -379,10 +378,14 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
         let height = external::bitcoin::get_testnet_last_block_height().await;
         number_of_confirmations = height - txid.status.block_height + 1;
     }
-    let address_to_pay = get_address_to_pay(bill.clone());
+    let address_to_pay = external::bitcoin::get_address_to_pay(bill.clone());
     let message: String = format!("Payment in relation to a bill {}", bill.name.clone());
-    let link_to_pay =
-        generate_link_to_pay(address_to_pay.clone(), bill.amount_numbers, message).await;
+    let link_to_pay = external::bitcoin::generate_link_to_pay(
+        address_to_pay.clone(),
+        bill.amount_numbers,
+        message,
+    )
+    .await;
     let mut pr_key_bill = String::new();
     if !endorsed
         && bill
@@ -441,62 +444,6 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
         chain_of_blocks: chain_to_return,
     };
     Json(full_bill)
-}
-
-async fn generate_link_to_pay(address: String, amount: u64, message: String) -> String {
-    //todo check what net we used
-    let link = format!("bitcoin:{}?amount={}&message={}", address, amount, message);
-    link
-}
-
-pub async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
-    //todo check what net we used
-    let info_about_address =
-        external::bitcoin::AddressInfo::get_testnet_address_info(address.clone()).await;
-    let received_summ = info_about_address.chain_stats.funded_txo_sum;
-    let spent_summ = info_about_address.chain_stats.spent_txo_sum;
-    let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;
-    let spent_summ_mempool = info_about_address.mempool_stats.spent_txo_sum;
-    if amount.eq(&(received_summ + spent_summ + received_summ_mempool + spent_summ_mempool)) {
-        (true, received_summ)
-    } else {
-        (false, 0)
-    }
-}
-
-pub fn get_address_to_pay(bill: BitcreditBill) -> String {
-    let public_key_bill = bitcoin::PublicKey::from_str(&bill.public_key).unwrap();
-
-    let mut person_to_pay = bill.payee.clone();
-
-    if !bill.endorsee.name.is_empty() {
-        person_to_pay = bill.endorsee.clone();
-    }
-
-    let public_key_holder = person_to_pay.bitcoin_public_key;
-    let public_key_bill_holder = bitcoin::PublicKey::from_str(&public_key_holder).unwrap();
-
-    let public_key_bill = public_key_bill
-        .inner
-        .combine(&public_key_bill_holder.inner)
-        .unwrap();
-    let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
-
-    bitcoin::Address::p2pkh(&pub_key_bill, USEDNET).to_string()
-}
-
-fn get_current_payee_private_key(identity: Identity, bill: BitcreditBill) -> String {
-    let private_key_bill = bitcoin::PrivateKey::from_str(&bill.private_key).unwrap();
-
-    let private_key_bill_holder =
-        bitcoin::PrivateKey::from_str(&identity.bitcoin_private_key).unwrap();
-
-    let privat_key_bill = private_key_bill
-        .inner
-        .add_tweak(&Scalar::from(private_key_bill_holder.inner))
-        .unwrap();
-
-    bitcoin::PrivateKey::new(privat_key_bill, USEDNET).to_string()
 }
 
 #[get("/dht")]
@@ -631,28 +578,6 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
 
         status
     }
-}
-
-pub async fn get_identity_public_data(
-    identity_real_name: String,
-    mut client: Client,
-) -> IdentityPublicData {
-    let mut identity = get_contact_from_map(&identity_real_name);
-
-    let identity_public_data = client
-        .get_identity_public_data_from_dht(identity.peer_id.clone())
-        .await;
-
-    if !identity_public_data.name.is_empty() {
-        change_contact_data_from_dht(
-            identity_real_name,
-            identity_public_data.clone(),
-            identity.clone(),
-        );
-        identity = identity_public_data;
-    }
-
-    identity
 }
 
 #[put("/sell", data = "<sell_bill_form>")]
@@ -889,64 +814,5 @@ pub async fn edit_contact(
         );
 
         Ok(Json(get_contacts_vec()))
-    }
-}
-
-#[catch(404)]
-pub fn not_found(req: &Request) -> String {
-    format!("We couldn't find the requested path '{}'", req.uri())
-}
-
-pub fn customize(hbs: &mut Handlebars) {
-    hbs.register_helper("wow", Box::new(wow_helper));
-    hbs.register_template_string(
-        "hbs/about.html",
-        r#"
-        {{#*inline "page"}}
-        <section id="about">
-        <h1>About - Here's another page!</h1>
-        </section>
-        {{/inline}}
-        {{> hbs/layout}}
-    "#,
-    )
-    .expect("valid HBS template");
-}
-
-fn wow_helper(
-    h: &handlebars::Helper<'_>,
-    _: &Handlebars,
-    _: &handlebars::Context,
-    _: &mut handlebars::RenderContext<'_, '_>,
-    out: &mut dyn handlebars::Output,
-) -> handlebars::HelperResult {
-    if let Some(param) = h.param(0) {
-        out.write("<b><i>")?;
-        out.write(&param.value().render())?;
-        out.write("</b></i>")?;
-    }
-
-    Ok(())
-}
-
-pub struct CORS;
-
-#[rocket::async_trait]
-impl Fairing for CORS {
-    fn info(&self) -> Info {
-        Info {
-            name: "Add CORS headers to responses",
-            kind: Kind::Response,
-        }
-    }
-
-    async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
-        response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
-        response.set_header(Header::new(
-            "Access-Control-Allow-Methods",
-            "POST, GET, PATCH, OPTIONS",
-        ));
-        response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
-        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
     }
 }

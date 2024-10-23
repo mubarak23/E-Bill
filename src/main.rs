@@ -3,7 +3,7 @@ use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::{env, fs, mem, thread};
 
-use bitcoin::PublicKey;
+use bitcoin::{secp256k1::Scalar, PublicKey};
 use borsh::{to_vec, BorshDeserialize};
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
@@ -11,17 +11,15 @@ use clap::Parser;
 use config::Config;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
-use log::info;
 use moksha_core::primitives::CheckBitcreditQuoteResponse;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use openssl::pkey::{Private, Public};
 use openssl::rsa;
 use openssl::rsa::{Padding, Rsa};
 use openssl::sha::sha256;
-use rocket::fs::FileServer;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::yansi::Paint;
-use rocket::{catchers, routes, Build, FromForm, Rocket};
+use rocket::FromForm;
 
 use crate::blockchain::{
     start_blockchain_for_new_bill, Block, Chain, ChainToReturn, OperationCode,
@@ -34,6 +32,7 @@ use crate::constants::{
 };
 use crate::dht::network::Client;
 use crate::util::numbers_to_words::encode;
+use std::str::FromStr;
 
 mod blockchain;
 mod config;
@@ -69,73 +68,7 @@ async fn main() {
     dht.start_provide().await;
     dht.receive_updates_for_all_bills_topics().await;
     dht.put_identity_public_data_in_dht().await;
-    let _rocket = rocket_main(dht, &conf).launch().await.unwrap();
-}
-
-fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
-    let rocket = rocket::build()
-        .configure(
-            rocket::Config::figment()
-                .merge(("port", conf.http_port))
-                .merge(("address", conf.http_address.to_owned())),
-        )
-        .register("/", catchers![web::not_found])
-        .manage(dht)
-        .mount("/exit", routes![web::exit])
-        .mount("/opcodes", routes![web::return_operation_codes])
-        .mount(
-            "/identity",
-            routes![
-                web::create_identity,
-                web::change_identity,
-                web::return_identity,
-                web::return_peer_id
-            ],
-        )
-        .mount("/bitcredit", FileServer::from("frontend_build"))
-        .mount(
-            "/contacts",
-            routes![
-                web::new_contact,
-                web::edit_contact,
-                web::remove_contact,
-                web::return_contacts
-            ],
-        )
-        .mount(
-            "/bill",
-            routes![
-                web::holder,
-                web::issue_bill,
-                web::endorse_bill,
-                web::search_bill,
-                web::request_to_accept_bill,
-                web::accept_bill_form,
-                web::request_to_pay_bill,
-                web::return_bill,
-                web::return_chain_of_blocks,
-                web::return_basic_bill,
-                web::sell_bill,
-                web::mint_bill,
-                web::accept_mint_bill,
-                web::find_bill_in_dht,
-                web::request_to_mint_bill,
-            ],
-        )
-        .mount("/bills", routes![web::return_bills_list,])
-        .mount("/quote", routes![web::return_quote, web::accept_quote])
-        .attach(web::CORS);
-
-    info!("HTTP Server Listening on {}", conf.http_listen_url());
-
-    match open::that(format!("{}/bitcredit/", conf.http_listen_url()).as_str()) {
-        Ok(_) => {}
-        Err(_) => {
-            info!("Can't open browser.")
-        }
-    }
-
-    rocket
+    let _rocket = web::rocket_main(dht, &conf).launch().await.unwrap();
 }
 
 fn init_folders() {
@@ -315,6 +248,42 @@ async fn add_in_contacts_map(name: String, peer_id: String, mut client: Client) 
 
     contacts.insert(name, identity_public_data);
     write_contacts_map(contacts);
+}
+
+fn get_current_payee_private_key(identity: Identity, bill: BitcreditBill) -> String {
+    let private_key_bill = bitcoin::PrivateKey::from_str(&bill.private_key).unwrap();
+
+    let private_key_bill_holder =
+        bitcoin::PrivateKey::from_str(&identity.bitcoin_private_key).unwrap();
+
+    let privat_key_bill = private_key_bill
+        .inner
+        .add_tweak(&Scalar::from(private_key_bill_holder.inner))
+        .unwrap();
+
+    bitcoin::PrivateKey::new(privat_key_bill, USEDNET).to_string()
+}
+
+pub async fn get_identity_public_data(
+    identity_real_name: String,
+    mut client: Client,
+) -> IdentityPublicData {
+    let mut identity = get_contact_from_map(&identity_real_name);
+
+    let identity_public_data = client
+        .get_identity_public_data_from_dht(identity.peer_id.clone())
+        .await;
+
+    if !identity_public_data.name.is_empty() {
+        change_contact_data_from_dht(
+            identity_real_name,
+            identity_public_data.clone(),
+            identity.clone(),
+        );
+        identity = identity_public_data;
+    }
+
+    identity
 }
 
 pub fn change_contact_data_from_dht(
@@ -1823,9 +1792,9 @@ async fn read_bill_with_chain_from_file(id: &String) -> BitcreditBillToReturn {
     let accepted = chain.exist_block_with_operation_code(OperationCode::Accept);
     let requested_to_pay = chain.exist_block_with_operation_code(OperationCode::RequestToPay);
     let requested_to_accept = chain.exist_block_with_operation_code(OperationCode::RequestToAccept);
-    let address_to_pay = web::get_address_to_pay(bill.clone());
+    let address_to_pay = external::bitcoin::get_address_to_pay(bill.clone());
     let check_if_already_paid =
-        web::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
+        external::bitcoin::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
     let payed = check_if_already_paid.0;
 
     BitcreditBillToReturn {

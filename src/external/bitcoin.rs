@@ -1,4 +1,6 @@
+use crate::{constants::USEDNET, BitcreditBill};
 use serde::Deserialize;
+use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
 pub struct ChainStats {
@@ -159,4 +161,45 @@ pub async fn get_mainnet_last_block_height() -> u64 {
         .expect("Failed to read response");
 
     height
+}
+
+pub async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
+    //todo check what net we used
+    let info_about_address = AddressInfo::get_testnet_address_info(address.clone()).await;
+    let received_summ = info_about_address.chain_stats.funded_txo_sum;
+    let spent_summ = info_about_address.chain_stats.spent_txo_sum;
+    let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;
+    let spent_summ_mempool = info_about_address.mempool_stats.spent_txo_sum;
+    if amount.eq(&(received_summ + spent_summ + received_summ_mempool + spent_summ_mempool)) {
+        (true, received_summ)
+    } else {
+        (false, 0)
+    }
+}
+
+pub fn get_address_to_pay(bill: BitcreditBill) -> String {
+    let public_key_bill = bitcoin::PublicKey::from_str(&bill.public_key).unwrap();
+
+    let mut person_to_pay = bill.payee.clone();
+
+    if !bill.endorsee.name.is_empty() {
+        person_to_pay = bill.endorsee.clone();
+    }
+
+    let public_key_holder = person_to_pay.bitcoin_public_key;
+    let public_key_bill_holder = bitcoin::PublicKey::from_str(&public_key_holder).unwrap();
+
+    let public_key_bill = public_key_bill
+        .inner
+        .combine(&public_key_bill_holder.inner)
+        .unwrap();
+    let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
+
+    bitcoin::Address::p2pkh(&pub_key_bill, USEDNET).to_string()
+}
+
+pub async fn generate_link_to_pay(address: String, amount: u64, message: String) -> String {
+    //todo check what net we used
+    let link = format!("bitcoin:{}?amount={}&message={}", address, amount, message);
+    link
 }
