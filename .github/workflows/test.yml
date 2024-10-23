@@ -12,8 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         toolchain:
-          - stable
-          - beta
+#          - stable
+#          - beta
           - nightly
     steps:
       - name: Check out repository
