@@ -3,8 +3,8 @@ use std::{fs, thread};
 
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
-use crate::dht::network::Client;
-use crate::work_with_mint::{
+use crate::dht::Client;
+use crate::mint::{
     accept_mint_bitcredit, check_bitcredit_quote, client_accept_bitcredit_quote,
     request_to_mint_bitcredit,
 };

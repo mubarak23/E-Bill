@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::dht::network::Client;
+use crate::dht::Client;
 use log::info;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::fs::FileServer;
@@ -8,7 +8,7 @@ use rocket::{catch, catchers, routes, Build, Request, Response, Rocket};
 
 mod handlers;
 
-pub(crate) fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
+pub fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
     let rocket = rocket::build()
         .configure(
             rocket::Config::figment()

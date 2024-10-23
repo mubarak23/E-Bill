@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
-pub(crate) struct TimeApi {
+pub struct TimeApi {
     status: String,
     message: String,
     countryCode: String,
@@ -20,7 +20,7 @@ pub(crate) struct TimeApi {
 }
 
 impl TimeApi {
-    pub(crate) async fn get_atomic_time() -> Self {
+    pub async fn get_atomic_time() -> Self {
         let request_url = "https://api.timezonedb.com/v2.1/get-time-zone?key=RQ6ZFDOXPVLR&format=json&by=zone&zone=Europe/Vienna".to_string();
 
         reqwest::get(&request_url)

@@ -18,7 +18,6 @@ use openssl::rsa;
 use openssl::rsa::{Padding, Rsa};
 use openssl::sha::sha256;
 use rocket::serde::{Deserialize, Serialize};
-use rocket::yansi::Paint;
 use rocket::FromForm;
 
 use crate::blockchain::{
@@ -30,7 +29,7 @@ use crate::constants::{
     IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_FOLDER_PATH,
     IDENTITY_PEER_ID_FILE_PATH, QUOTES_MAP_FOLDER_PATH, QUOTE_MAP_FILE_PATH, USEDNET,
 };
-use crate::dht::network::Client;
+use crate::dht::Client;
 use crate::util::numbers_to_words::encode;
 use std::str::FromStr;
 
@@ -39,10 +38,11 @@ mod config;
 mod constants;
 mod dht;
 mod external;
-mod test;
+mod mint;
+#[cfg(test)]
+mod tests;
 mod util;
 mod web;
-mod work_with_mint;
 
 // MAIN
 #[tokio::main]
@@ -68,7 +68,10 @@ async fn main() {
     dht.start_provide().await;
     dht.receive_updates_for_all_bills_topics().await;
     dht.put_identity_public_data_in_dht().await;
-    let _rocket = web::rocket_main(dht, &conf).launch().await.unwrap();
+    let _rocket = web::rocket_main(dht, &conf)
+        .launch()
+        .await
+        .expect("can run web server");
 }
 
 fn init_folders() {

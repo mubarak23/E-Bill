@@ -1,1 +1,1 @@
-pub(crate) mod numbers_to_words;
+pub mod numbers_to_words;
