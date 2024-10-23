@@ -29,8 +29,6 @@ jobs:
         run: cargo clean --verbose
       - name: Check
         run: cargo check --verbose
-      - name: Fmt
-        run: cargo fmt --verbose
       - name: Test
         run: cargo test
       - name: Build

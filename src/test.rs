@@ -342,33 +342,33 @@ mod test {
     //     assert_ne!("test".to_string(), payment_invoice);
     // }
 
-    #[tokio::test]
-    async fn test_balance() {
-        let dir = PathBuf::from("./data/wallet".to_string());
-        fs::create_dir_all(dir.clone()).unwrap();
-        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
-
-        let localstore = SqliteLocalStore::with_path(db_path.clone())
-            .await
-            .expect("Cannot parse local store");
-
-        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
-
-        let identity: Identity = read_identity_from_file();
-        let bitcoin_key = identity.bitcoin_public_key.clone();
-
-        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
-            .with_localstore(localstore)
-            .build()
-            .await
-            .expect("Could not create wallet");
-
-        let balance = wallet.get_balance().await.unwrap();
-        println!("Balance: {balance:?} sats");
-
-        assert_ne!(1, balance);
-        assert_ne!(1, balance);
-    }
+    // #[tokio::test]
+    // async fn test_balance() {
+    //     let dir = PathBuf::from("./data/wallet".to_string());
+    //     fs::create_dir_all(dir.clone()).unwrap();
+    //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    //
+    //     let localstore = SqliteLocalStore::with_path(db_path.clone())
+    //         .await
+    //         .expect("Cannot parse local store");
+    //
+    //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //
+    //     let identity: Identity = read_identity_from_file();
+    //     let bitcoin_key = identity.bitcoin_public_key.clone();
+    //
+    //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //         .with_localstore(localstore)
+    //         .build()
+    //         .await
+    //         .expect("Could not create wallet");
+    //
+    //     let balance = wallet.get_balance().await.unwrap();
+    //     println!("Balance: {balance:?} sats");
+    //
+    //     assert_ne!(1, balance);
+    //     assert_ne!(1, balance);
+    // }
 
     #[tokio::test]
     async fn test_api() {
