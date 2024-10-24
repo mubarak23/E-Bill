@@ -121,9 +121,9 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     if payed && check_if_already_paid.1.eq(&0) {
         pending = true;
     } else if payed && !check_if_already_paid.1.eq(&0) {
-        let transaction = external::bitcoin::get_transactions_testet(address_to_pay.clone()).await;
+        let transaction = external::bitcoin::get_transactions(address_to_pay.clone()).await;
         let txid = external::bitcoin::Txid::get_first_transaction(transaction.clone()).await;
-        let height = external::bitcoin::get_testnet_last_block_height().await;
+        let height = external::bitcoin::get_last_block_height().await;
         number_of_confirmations = height - txid.status.block_height + 1;
     }
     let address_to_pay = external::bitcoin::get_address_to_pay(bill.clone());
