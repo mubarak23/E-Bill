@@ -6,6 +6,7 @@ use clap::Parser;
 use config::Config;
 use std::path::Path;
 use std::{env, fs};
+use anyhow::Result;
 
 mod bill;
 mod blockchain;
@@ -20,7 +21,7 @@ mod web;
 
 // MAIN
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     env::set_var("RUST_BACKTRACE", "full");
 
     env_logger::init();
@@ -42,16 +43,14 @@ async fn main() {
     dht.start_provide().await;
     dht.receive_updates_for_all_bills_topics().await;
     dht.put_identity_public_data_in_dht().await;
-    let _rocket = web::rocket_main(dht, &conf)
+    let service_context = create_service_context(conf.clone(), dht.clone()).await?;
+    let _rocket = web::rocket_main(service_context)
         .launch()
-        .await
-        .expect("can run web server");
+        .await?;
+    Ok(())
 }
 
 fn init_folders() {
-    if !Path::new(CONTACT_MAP_FOLDER_PATH).exists() {
-        fs::create_dir(CONTACT_MAP_FOLDER_PATH).expect("Can't create folder contacts.");
-    }
     if !Path::new(QUOTES_MAP_FOLDER_PATH).exists() {
         fs::create_dir(QUOTES_MAP_FOLDER_PATH).expect("Can't create folder quotes.");
     }
