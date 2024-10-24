@@ -6,6 +6,8 @@ Core for Bitcredit project.
 
 ## Contribute
 
+Check out the project [documentation](./docs/index.md).
+
 ### Backend
 
 Make sure to have a recent version of the Rust toolchain installed.
@@ -23,16 +25,6 @@ cargo run -- --http-port 8001 --http-address 0.0.0.0
 export P2P_PORT=1909
 export P2P_ADDRESS=0.0.0.0
 ```
-
-### Configuration
-
-You can use the following environment variables to configure the application:
-
-* `P2P_PORT` - the P2P port (default: 1908)
-* `P2P_ADDRESS` - the P2P address (default: 0.0.0.0)
-* `HTTP_PORT` - the HTTP address (default: 8000)
-* `HTTP_ADDRESS` - the HTTP address (default: 127.0.0.1, or 0.0.0.0 in Docker)
-* `RUST_LOG` - the log level, e.g.: info, trace, debug, error (default: error)
 
 ### Frontend
 

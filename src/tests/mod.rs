@@ -1,9 +1,17 @@
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
-    use std::{fs, mem};
-
+    use crate::bill::{
+        identity::{
+            byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id,
+            create_new_identity, read_identity_from_file, Identity,
+        },
+        BitcreditBill,
+    };
+    use crate::util::numbers_to_words::encode;
+    use crate::util::rsa::generation_rsa_key;
+    use crate::util::structure_as_u8_slice;
     use bitcoin::secp256k1::Scalar;
+    use borsh::to_vec;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
     use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
@@ -12,13 +20,13 @@ mod test {
     use moksha_wallet::wallet::Wallet;
     use openssl::rsa::{Padding, Rsa};
     use serde::Deserialize;
+    use std::path::{Path, PathBuf};
+    use std::{fs, mem};
     use url::Url;
 
-    use crate::numbers_to_words::encode;
-    use crate::{
-        byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        generation_rsa_key, read_identity_from_file, structure_as_u8_slice, Identity,
-    };
+    fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
+        to_vec(bill).unwrap()
+    }
 
     //TODO: Change. Because we create new bill every time we run tests
 
@@ -227,19 +235,19 @@ mod test {
     //     let dir = PathBuf::from("./data/wallet".to_string());
     //     fs::create_dir_all(dir.clone()).unwrap();
     //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
-    //
+
     //     let localstore = SqliteLocalStore::with_path(db_path.clone())
     //         .await
     //         .expect("Cannot parse local store");
-    //
+
     //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
-    //
+
     //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
     //         .with_localstore(localstore)
     //         .build()
     //         .await
     //         .expect("Could not create wallet");
-    //
+
     //     let wallet_keysets = wallet
     //         .add_mint_keysets_by_id(
     //             &Url::parse("http://127.0.0.1:3338").unwrap(),
@@ -249,10 +257,10 @@ mod test {
     //         .await
     //         .unwrap();
     //     let wallet_keyset = wallet_keysets.first().unwrap();
-    //
+
     //     let balance = wallet.get_balance().await.unwrap();
     //     println!("Balance: {balance:?} sats");
-    //
+
     //     let result = wallet
     //         .mint_tokens(
     //             wallet_keyset,
@@ -262,54 +270,54 @@ mod test {
     //             CurrencyUnit::CrSat,
     //         )
     //         .await;
-    //
+
     //     let token = result
     //         .unwrap()
     //         .serialize(Option::from(CurrencyUnit::CrSat))
     //         .unwrap();
     //     println!("Token: {token:?}");
-    //
+
     //     let balance2 = wallet.get_balance().await.unwrap();
     //     println!("Balance2: {balance2:?} sats");
-    //
+
     //     assert_eq!(1, 2);
     // }
 
-    // #[tokio::test]
-    // async fn test_check_quote() {
-    //     let dir = PathBuf::from("./data/wallet".to_string());
-    //     fs::create_dir_all(dir.clone()).unwrap();
-    //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
-    //
-    //     let localstore = SqliteLocalStore::with_path(db_path.clone())
-    //         .await
-    //         .expect("Cannot parse local store");
-    //
-    //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
-    //
-    //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
-    //         .with_localstore(localstore)
-    //         .build()
-    //         .await
-    //         .expect("Could not create wallet");
-    //
-    //     let result = wallet
-    //         .check_bitcredit_quote(
-    //             &mint_url,
-    //             "9d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(),
-    //             "12D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string(),
-    //         )
-    //         .await;
-    //
-    //     //bad
-    //     // let result = wallet
-    //     //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
-    //     //     .await;
-    //
-    //     println!("Quote: {result:?}");
-    //
-    //     assert_eq!(1, 2);
-    // }
+    //#[tokio::test]
+    //async fn test_check_quote() {
+    //    let dir = PathBuf::from("./data/wallet".to_string());
+    //    fs::create_dir_all(dir.clone()).unwrap();
+    //    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    //    let localstore = SqliteLocalStore::with_path(db_path.clone())
+    //        .await
+    //        .expect("Cannot parse local store");
+
+    //    let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+
+    //    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //        .with_localstore(localstore)
+    //        .build()
+    //        .await
+    //        .expect("Could not create wallet");
+
+    //    let result = wallet
+    //        .check_bitcredit_quote(
+    //            &mint_url,
+    //            "9d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(),
+    //            "12D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string(),
+    //        )
+    //        .await;
+
+    //    //bad
+    //    // let result = wallet
+    //    //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
+    //    //     .await;
+
+    //    println!("Quote: {result:?}");
+
+    //    assert_eq!(1, 2);
+    //}
 
     // #[tokio::test]
     // async fn test_send() {
@@ -347,26 +355,26 @@ mod test {
     //     let dir = PathBuf::from("./data/wallet".to_string());
     //     fs::create_dir_all(dir.clone()).unwrap();
     //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
-    //
+
     //     let localstore = SqliteLocalStore::with_path(db_path.clone())
     //         .await
     //         .expect("Cannot parse local store");
-    //
+
     //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
-    //
+
     //     let identity: Identity = read_identity_from_file();
     //     let bitcoin_key = identity.bitcoin_public_key.clone();
-    //
+
     //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
     //         .with_localstore(localstore)
     //         .build()
     //         .await
     //         .expect("Could not create wallet");
-    //
+
     //     let balance = wallet.get_balance().await.unwrap();
     //     println!("Balance: {balance:?} sats");
-    //
-    //     assert_ne!(1, balance);
+
+    //     assert_eq!(1, balance);
     //     assert_ne!(1, balance);
     // }
 
