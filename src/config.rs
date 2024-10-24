@@ -1,9 +1,8 @@
-use std::net::Ipv4Addr;
-
 use anyhow::Result;
 use clap::Parser;
 use libp2p::multiaddr::Protocol;
 use libp2p::Multiaddr;
+use std::net::Ipv4Addr;
 
 /// Configuration for the bitcredit application
 /// Allows to set the ports and addresses for the http and p2p connections
