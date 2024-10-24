@@ -64,8 +64,6 @@ pub fn encrypt_bytes_with_public_key(bytes: &[u8], public_key: String) -> Vec<u8
             index_in_temp_buff += 1;
         }
 
-        index_in_temp_buff = 0;
-
         let _encrypted_len: usize = public_key
             .public_encrypt(&temp_buff, &mut temp_buff_encrypted, Padding::PKCS1)
             .unwrap();
@@ -163,8 +161,6 @@ pub fn encrypt_bytes(bytes: &[u8], rsa_key: &Rsa<Private>) -> Vec<u8> {
             temp_buff[index_in_temp_buff] = bytes[i];
             index_in_temp_buff += 1;
         }
-
-        index_in_temp_buff = 0;
 
         let _encrypted_len: usize = rsa_key
             .public_encrypt(&temp_buff, &mut temp_buff_encrypted, Padding::PKCS1)
