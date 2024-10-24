@@ -60,13 +60,13 @@ pub async fn get_transactions(address: String) -> Transactions {
     let request_url = match USEDNET {
         Network::Bitcoin => {
             format!(
-                "https://blockstream.info/testnet/api/address/{address}/txs",
+                "https://blockstream.info/api/address/{address}/txs",
                 address = address
             )
         }
         _ => {
             format!(
-                "https://blockstream.info/api/address/{address}/txs",
+                "https://blockstream.info/testnet/api/address/{address}/txs",
                 address = address
             )
         }
@@ -89,8 +89,8 @@ impl Txid {
 
 pub async fn get_last_block_height() -> u64 {
     let request_url = match USEDNET {
-        Network::Bitcoin => "https://blockstream.info/testnet/api/blocks/tip/height",
-        _ => "https://blockstream.info/api/blocks/tip/height",
+        Network::Bitcoin => "https://blockstream.info/api/blocks/tip/height",
+        _ => "https://blockstream.info/testnet/api/blocks/tip/height",
     };
     let height: u64 = reqwest::get(request_url)
         .await
