@@ -541,7 +541,7 @@ impl Chain {
     #[tokio::main]
     async fn check_if_paid(address: String, amount: u64) -> bool {
         let info_about_address =
-            external::bitcoin::AddressInfo::get_testnet_address_info(address.clone()).await;
+            external::bitcoin::AddressInfo::get_address_info(address.clone()).await;
         let received_summ = info_about_address.chain_stats.funded_txo_sum;
         let spent_summ = info_about_address.chain_stats.spent_txo_sum;
         // let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;

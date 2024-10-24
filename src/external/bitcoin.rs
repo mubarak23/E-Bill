@@ -1,53 +1,44 @@
 use crate::{bill::BitcreditBill, constants::USEDNET};
+use bitcoin::Network;
 use serde::Deserialize;
 use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
-pub struct ChainStats {
+pub struct Stats {
+    #[allow(dead_code)]
     pub funded_txo_count: u64,
     pub funded_txo_sum: u64,
+    #[allow(dead_code)]
     pub spent_txo_count: u64,
     pub spent_txo_sum: u64,
-    pub tx_count: u64,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct MempoolStats {
-    pub funded_txo_count: u64,
-    pub funded_txo_sum: u64,
-    pub spent_txo_count: u64,
-    pub spent_txo_sum: u64,
+    #[allow(dead_code)]
     pub tx_count: u64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct AddressInfo {
+    #[allow(dead_code)]
     address: String,
-    pub chain_stats: ChainStats,
-    pub mempool_stats: MempoolStats,
+    pub chain_stats: Stats,
+    pub mempool_stats: Stats,
 }
 
 impl AddressInfo {
-    pub async fn get_testnet_address_info(address: String) -> Self {
-        let request_url = format!(
-            "https://blockstream.info/testnet/api/address/{address}",
-            address = address
-        );
-        let address: AddressInfo = reqwest::get(&request_url)
-            .await
-            .expect("Failed to send request")
-            .json()
-            .await
-            .expect("Failed to read response");
-
-        address
-    }
-
-    async fn get_mainnet_address_info(address: String) -> Self {
-        let request_url = format!(
-            "https://blockstream.info/api/address/{address}",
-            address = address
-        );
+    pub async fn get_address_info(address: String) -> Self {
+        let request_url = match USEDNET {
+            Network::Bitcoin => {
+                format!(
+                    "https://blockstream.info/api/address/{address}",
+                    address = address
+                )
+            }
+            _ => {
+                format!(
+                    "https://blockstream.info/testnet/api/address/{address}",
+                    address = address
+                )
+            }
+        };
         let address: AddressInfo = reqwest::get(&request_url)
             .await
             .expect("Failed to send request")
@@ -165,7 +156,7 @@ pub async fn get_mainnet_last_block_height() -> u64 {
 
 pub async fn check_if_paid(address: String, amount: u64) -> (bool, u64) {
     //todo check what net we used
-    let info_about_address = AddressInfo::get_testnet_address_info(address.clone()).await;
+    let info_about_address = AddressInfo::get_address_info(address.clone()).await;
     let received_summ = info_about_address.chain_stats.funded_txo_sum;
     let spent_summ = info_about_address.chain_stats.spent_txo_sum;
     let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;
