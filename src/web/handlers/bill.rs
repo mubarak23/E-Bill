@@ -17,6 +17,7 @@ use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
 use crate::dht::Client;
 use crate::external;
 use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
+use log::{info, warn};
 use rocket::form::Form;
 use rocket::http::Status;
 use rocket::serde::json::Json;
@@ -289,7 +290,7 @@ pub async fn issue_bill(state: &State<Client>, bill_form: Form<BitcreditBillForm
 
             for node in nodes {
                 if !node.is_empty() {
-                    println!("Add {} for node {}", &bill.name, &node);
+                    info!("issue bill: add {} for node {}", &bill.name, &node);
                     client.add_bill_to_dht_for_node(&bill.name, &node).await;
                 }
             }
@@ -633,7 +634,7 @@ pub async fn mint_bill(
                     )
                     .await;
             } else {
-                println!("Can't mint");
+                warn!("Can't mint");
             }
 
             Status::Ok

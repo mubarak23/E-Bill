@@ -20,6 +20,7 @@ use futures::prelude::*;
 use libp2p::kad::record::Record;
 use libp2p::request_response::ResponseChannel;
 use libp2p::PeerId;
+use log::error;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
@@ -268,7 +269,7 @@ impl Client {
     pub async fn get_bill(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {
-            eprintln!("No providers was found.");
+            error!("No providers was found.");
             Vec::new()
         } else {
             //TODO: If it's me - don't continue.
@@ -286,7 +287,7 @@ impl Client {
             let file_content_await = file_content.await;
 
             if file_content_await.is_err() {
-                println!("None of the providers returned file.");
+                error!("None of the providers returned file.");
                 Vec::new()
             } else {
                 file_content_await
@@ -300,7 +301,7 @@ impl Client {
     pub async fn get_key(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {
-            eprintln!("No providers was found.");
+            error!("No providers was found.");
             Vec::new()
         } else {
             //TODO: If it's me - don't continue.
@@ -318,7 +319,7 @@ impl Client {
             let file_content_await = file_content.await;
 
             if file_content_await.is_err() {
-                println!("None of the providers returned file.");
+                error!("None of the providers returned file.");
                 Vec::new()
             } else {
                 file_content_await
@@ -486,7 +487,7 @@ impl Client {
                     match args.next() {
                         Some(name) => String::from(name),
                         None => {
-                            eprintln!("Expected name.");
+                            error!("Expected name.");
                             return;
                         }
                     }
@@ -499,7 +500,7 @@ impl Client {
                     match args.next() {
                         Some(name) => String::from(name),
                         None => {
-                            eprintln!("Expected name.");
+                            error!("Expected name.");
                             return;
                         }
                     }
@@ -512,7 +513,7 @@ impl Client {
                     match args.next() {
                         Some(name) => String::from(name),
                         None => {
-                            eprintln!("Expected name.");
+                            error!("Expected name.");
                             return;
                         }
                     }
@@ -525,7 +526,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected key");
+                            error!("Expected key");
                             return;
                         }
                     }
@@ -534,7 +535,7 @@ impl Client {
                     match args.next() {
                         Some(value) => String::from(value),
                         None => {
-                            eprintln!("Expected value");
+                            error!("Expected value");
                             return;
                         }
                     }
@@ -548,7 +549,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected topic");
+                            error!("Expected topic");
                             return;
                         }
                     }
@@ -557,7 +558,7 @@ impl Client {
                     match args.next() {
                         Some(value) => String::from(value),
                         None => {
-                            eprintln!("Expected msg");
+                            error!("Expected msg");
                             return;
                         }
                     }
@@ -571,7 +572,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected topic");
+                            error!("Expected topic");
                             return;
                         }
                     }
@@ -585,7 +586,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected key");
+                            error!("Expected key");
                             return;
                         }
                     }
@@ -598,7 +599,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected key");
+                            error!("Expected key");
                             return;
                         }
                     }
@@ -607,7 +608,7 @@ impl Client {
             }
 
             _ => {
-                eprintln!(
+                error!(
                         "expected GET, PUT, SEND_MESSAGE, SUBSCRIBE, GET_RECORD, PUT_RECORD or GET_PROVIDERS."
                     );
             }

@@ -30,6 +30,7 @@ mod client;
 mod event_loop;
 
 pub use client::Client;
+use log::{error, info};
 
 pub async fn dht_main(conf: &Config) -> Result<Client, Box<dyn Error + Send + Sync>> {
     let (network_client, network_events, network_event_loop) = new(conf)
@@ -59,7 +60,7 @@ async fn new(
 
     let local_public_key = read_ed25519_keypair_from_file();
     let local_peer_id = read_peer_id_from_file();
-    println!("Local peer id: {local_peer_id:?}");
+    info!("Local peer id: {local_peer_id:?}");
 
     let (relay_transport, client) = relay::client::new(local_peer_id);
 
@@ -92,7 +93,7 @@ async fn new(
                 event = swarm.next() => {
                     match event.unwrap() {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            println!("Listening on {:?}", address);
+                            info!("Listening on {:?}", address);
                         }
                         SwarmEvent::Behaviour { .. } => {
                         }
@@ -115,7 +116,7 @@ async fn new(
         .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
         .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
         .with(Protocol::P2p(Multihash::from(relay_peer_id)));
-    println!("Relay address: {:?}", relay_address);
+    info!("Relay address: {:?}", relay_address);
 
     swarm.dial(relay_address.clone()).unwrap();
     block_on(async {
@@ -130,14 +131,14 @@ async fn new(
                 SwarmEvent::Behaviour(ComposedEvent::Identify(identify::Event::Sent {
                     ..
                 })) => {
-                    println!("Told relay its public address.");
+                    info!("Told relay its public address.");
                     told_relay_observed_addr = true;
                 }
                 SwarmEvent::Behaviour(ComposedEvent::Identify(identify::Event::Received {
                     info: identify::Info { observed_addr, .. },
                     ..
                 })) => {
-                    println!("Relay told us our public address: {:?}", observed_addr);
+                    info!("Relay told us our public address: {:?}", observed_addr);
                     learned_observed_addr = true;
                 }
                 SwarmEvent::Behaviour { .. } => {}
@@ -160,33 +161,33 @@ async fn new(
         loop {
             match swarm.next().await.unwrap() {
                 SwarmEvent::NewListenAddr { address, .. } => {
-                    println!("Listening on {:?}", address);
+                    info!("Listening on {:?}", address);
                     break;
                 }
                 SwarmEvent::Behaviour(ComposedEvent::Relay(
                     relay::client::Event::ReservationReqAccepted { .. },
                 )) => {
-                    println!("Relay accepted our reservation request.");
+                    info!("Relay accepted our reservation request.");
                 }
                 SwarmEvent::Behaviour(ComposedEvent::Relay(event)) => {
-                    println!("{:?}", event)
+                    info!("Relay event: {:?}", event)
                 }
                 SwarmEvent::Behaviour(ComposedEvent::Dcutr(event)) => {
-                    println!("{:?}", event)
+                    info!("Dcutr event: {:?}", event)
                 }
                 SwarmEvent::Behaviour(ComposedEvent::Identify(event)) => {
-                    println!("{:?}", event)
+                    info!("Identify event: {:?}", event)
                 }
                 SwarmEvent::ConnectionEstablished {
                     peer_id, endpoint, ..
                 } => {
-                    println!("Established connection to {:?} via {:?}", peer_id, endpoint);
+                    info!("Established connection to {:?} via {:?}", peer_id, endpoint);
                 }
                 SwarmEvent::OutgoingConnectionError { peer_id, error } => {
-                    println!("Outgoing connection error to {:?}: {:?}", peer_id, error);
+                    error!("Outgoing connection error to {:?}: {:?}", peer_id, error);
                 }
                 SwarmEvent::Behaviour(event) => {
-                    println!("{event:?}")
+                    info!("Behaviour event: {event:?}")
                 }
                 _ => {}
             }

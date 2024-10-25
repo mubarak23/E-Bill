@@ -32,7 +32,6 @@ pub async fn return_peer_id() -> Json<NodeId> {
 
 #[post("/create", data = "<identity_form>")]
 pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
-    println!("Create identity");
     let identity: IdentityForm = identity_form.into_inner();
     create_whole_identity(
         identity.name,
@@ -52,8 +51,6 @@ pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Cl
 
 #[put("/change", data = "<identity_form>")]
 pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
-    println!("Change identity");
-
     let identity_form: IdentityForm = identity_form.into_inner();
     let mut identity_changes: Identity = Identity::new_empty();
     identity_changes.name = identity_form.name.trim().to_string();

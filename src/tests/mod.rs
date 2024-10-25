@@ -10,6 +10,7 @@ mod test {
     use bitcoin::secp256k1::Scalar;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
+    use log::info;
     use openssl::rsa::{Padding, Rsa};
     use std::path::Path;
     use std::{fs, mem};
@@ -187,6 +188,7 @@ mod test {
 
     #[test]
     fn test_bitcoin() {
+        let _ = env_logger::try_init();
         let s1 = bitcoin::secp256k1::Secp256k1::new();
         let private_key1 = bitcoin::PrivateKey::new(
             s1.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
@@ -214,14 +216,15 @@ mod test {
         let pub_key3 = bitcoin::PublicKey::new(public_key3);
         let address3 = bitcoin::Address::p2pkh(pub_key3, bitcoin::Network::Testnet);
 
-        println!("private key: {}", pr_key3);
-        println!("public key: {}", pub_key3);
-        println!("address: {}", address3);
-        println!("{}", address3.is_spend_standard());
+        info!("private key: {}", pr_key3);
+        info!("public key: {}", pub_key3);
+        info!("address: {}", address3);
+        info!("{}", address3.is_spend_standard());
     }
 
     // #[tokio::test]
     // async fn test_mint() {
+    //     let _ = env_logger::try_init();
     //     let dir = PathBuf::from("./data/wallet".to_string());
     //     fs::create_dir_all(dir.clone()).unwrap();
     //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
@@ -249,7 +252,7 @@ mod test {
     //     let wallet_keyset = wallet_keysets.first().unwrap();
 
     //     let balance = wallet.get_balance().await.unwrap();
-    //     println!("Balance: {balance:?} sats");
+    //     info!("Balance: {balance:?} sats");
 
     //     let result = wallet
     //         .mint_tokens(
@@ -265,16 +268,17 @@ mod test {
     //         .unwrap()
     //         .serialize(Option::from(CurrencyUnit::CrSat))
     //         .unwrap();
-    //     println!("Token: {token:?}");
+    //     info!("Token: {token:?}");
 
     //     let balance2 = wallet.get_balance().await.unwrap();
-    //     println!("Balance2: {balance2:?} sats");
+    //     info!("Balance2: {balance2:?} sats");
 
     //     assert_eq!(1, 2);
     // }
 
     //#[tokio::test]
     //async fn test_check_quote() {
+    //    let _ = env_logger::try_init();
     //    let dir = PathBuf::from("./data/wallet".to_string());
     //    fs::create_dir_all(dir.clone()).unwrap();
     //    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
@@ -304,13 +308,14 @@ mod test {
     //    //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
     //    //     .await;
 
-    //    println!("Quote: {result:?}");
+    //    info!("Quote: {result:?}");
 
     //    assert_eq!(1, 2);
     //}
 
     // #[tokio::test]
     // async fn test_send() {
+    //     let _ = env_logger::try_init();
     //     let dir = PathBuf::from("./data/wallet".to_string());
     //     fs::create_dir_all(dir.clone()).unwrap();
     //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
@@ -330,8 +335,8 @@ mod test {
     //     let result = wallet.send_tokens(10).await.expect("Cannot send tokens");
     //     let payment_invoice: String = result.try_into().unwrap();
     //
-    //     println!("Result:\n{payment_invoice}");
-    //     println!(
+    //     info!("Result:\n{payment_invoice}");
+    //     info!(
     //         "\nNew balance: {:?} sats",
     //         wallet.get_balance().await.unwrap()
     //     );
@@ -362,7 +367,7 @@ mod test {
     //         .expect("Could not create wallet");
 
     //     let balance = wallet.get_balance().await.unwrap();
-    //     println!("Balance: {balance:?} sats");
+    //     info!("Balance: {balance:?} sats");
 
     //     assert_eq!(1, balance);
     //     assert_ne!(1, balance);
@@ -370,25 +375,26 @@ mod test {
 
     #[tokio::test]
     async fn test_api() {
+        let _ = env_logger::try_init();
         let request_url = format!(
             "https://blockstream.info/testnet/api/address/{address}",
             address = "mzYHxNxTTGrrxnwSc1RvqTusK4EM88o6yj"
         );
-        println!("{}", request_url);
+        info!("{}", request_url);
         let response1 = reqwest::get(&request_url)
             .await
             .expect("Failed to send request")
             .text()
             .await
             .expect("Failed to read response");
-        println!("{:?}", response1);
+        info!("{:?}", response1);
         let response: AddressInfo = reqwest::get(&request_url)
             .await
             .expect("Failed to send request")
             .json()
             .await
             .expect("Failed to read response");
-        println!("{:?}", response);
+        info!("{:?}", response);
     }
 
     #[test]
