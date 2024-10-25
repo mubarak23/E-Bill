@@ -16,10 +16,10 @@ Start the backend server in development mode:
 
 ```bash
 # Run with defaults
-cargo run
+RUST_LOG=info cargo run
 
 # configure listening ports and addresses
-cargo run -- --http-port 8001 --http-address 0.0.0.0
+RUST_LOG=info cargo run -- --http-port 8001 --http-address 0.0.0.0
 
 # Configuration can also be set via environment variables
 export P2P_PORT=1909
@@ -44,11 +44,23 @@ Start the app in development mode with frontend and backend hot reloading (requi
 
 ```bash
 # Terminal 1
-cargo watch -x run  # watch can be installed with cargo install cargo-watch
+RUST_LOG=info cargo watch -x run  # watch can be installed with cargo install cargo-watch
 
 # Terminal 2
 cd frontend
 npm run start
+```
+
+### Tests
+
+You can run the existing tests using the following commands:
+
+```bash
+// without logs
+cargo test
+
+// with logs - (env_logger needs to be activated in the test to show logs)
+RUST_LOG=info cargo test -- --nocapture
 ```
 
 ### Docker
