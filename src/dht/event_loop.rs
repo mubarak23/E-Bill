@@ -86,7 +86,11 @@ impl EventLoop {
                     record, ..
                 }))) => {
                     if let Some(sender) = self.pending_get_records.remove(&id) {
-                        info!("Got record {:?} {:?}", record.key.as_ref(), &record.value,);
+                        info!(
+                            "Got record {:?} {:?}",
+                            std::str::from_utf8(record.key.as_ref()).unwrap(),
+                            std::str::from_utf8(&record.value).unwrap(),
+                        );
 
                         sender.send(record).expect("Receiver not to be dropped.");
 
