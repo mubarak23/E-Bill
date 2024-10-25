@@ -5,12 +5,12 @@ use crate::constants::{
     BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, COMPOUNDING_INTEREST_RATE_ZERO, USEDNET,
 };
 use crate::external;
+use crate::service::contact_service::IdentityPublicData;
 use crate::util::{self, numbers_to_words};
 use bitcoin::PublicKey;
 use borsh::BorshDeserialize;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
-use contacts::IdentityPublicData;
 use identity::{get_whole_identity, read_peer_id_from_file, IdentityWithAll};
 use openssl::pkey::Private;
 use openssl::rsa::Rsa;

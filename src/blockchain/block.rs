@@ -11,8 +11,9 @@ use crate::blockchain::calculate_hash;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
+use crate::service::contact_service::IdentityPublicData;
 use crate::{
-    bill::{contacts::IdentityPublicData, read_keys_from_bill_file, BitcreditBill},
+    bill::{read_keys_from_bill_file, BitcreditBill},
     util::rsa::{decrypt_bytes, private_key_from_pem_u8, public_key_from_pem_u8},
 };
 use log::info;

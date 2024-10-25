@@ -3,9 +3,9 @@ use crate::blockchain::{Chain, GossipsubEvent, GossipsubEventId};
 use crate::constants::{
     BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BILLS_PREFIX, IDENTITY_FILE_PATH,
 };
+use crate::service::contact_service::IdentityPublicData;
 use crate::{
     bill::{
-        contacts::IdentityPublicData,
         get_bills,
         identity::{get_whole_identity, read_peer_id_from_file, IdentityWithAll},
     },

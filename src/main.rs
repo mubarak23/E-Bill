@@ -1,12 +1,13 @@
 use crate::constants::{
-    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH, CONTACT_MAP_FOLDER_PATH,
-    IDENTITY_FOLDER_PATH, QUOTES_MAP_FOLDER_PATH,
+    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH, IDENTITY_FOLDER_PATH,
+    QUOTES_MAP_FOLDER_PATH,
 };
+use anyhow::Result;
 use clap::Parser;
 use config::Config;
+use service::create_service_context;
 use std::path::Path;
 use std::{env, fs};
-use anyhow::Result;
 
 mod bill;
 mod blockchain;
@@ -14,6 +15,8 @@ mod config;
 mod constants;
 mod dht;
 mod external;
+mod persistence;
+mod service;
 #[cfg(test)]
 mod tests;
 mod util;
@@ -44,9 +47,7 @@ async fn main() -> Result<()> {
     dht.receive_updates_for_all_bills_topics().await;
     dht.put_identity_public_data_in_dht().await;
     let service_context = create_service_context(conf.clone(), dht.clone()).await?;
-    let _rocket = web::rocket_main(service_context)
-        .launch()
-        .await?;
+    let _rocket = web::rocket_main(service_context).launch().await?;
     Ok(())
 }
 

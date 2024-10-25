@@ -3,23 +3,25 @@ use super::super::data::{
     EndorseBitcreditBillForm, MintBitcreditBillForm, RequestToAcceptBitcreditBillForm,
     RequestToMintBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
-use crate::bill::{
-    accept_bill,
-    contacts::{get_current_payee_private_key, get_identity_public_data, IdentityPublicData},
-    endorse_bitcredit_bill, get_bills, get_bills_for_list,
-    identity::{
-        get_whole_identity, read_identity_from_file, read_peer_id_from_file, Identity,
-        IdentityWithAll,
-    },
-    issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
-    mint_bitcredit_bill, read_bill_from_file, request_acceptance, request_pay, sell_bitcredit_bill,
-    BitcreditBill, BitcreditBillToReturn,
-};
+use crate::bill::contacts::get_current_payee_private_key;
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
-use crate::dht::Client;
 use crate::external;
 use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
+use crate::service::contact_service::IdentityPublicData;
+use crate::{
+    bill::{
+        accept_bill, endorse_bitcredit_bill, get_bills, get_bills_for_list,
+        identity::{
+            get_whole_identity, read_identity_from_file, read_peer_id_from_file, Identity,
+            IdentityWithAll,
+        },
+        issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
+        mint_bitcredit_bill, read_bill_from_file, request_acceptance, request_pay,
+        sell_bitcredit_bill, BitcreditBill, BitcreditBillToReturn,
+    },
+    service::ServiceContext,
+};
 use rocket::form::Form;
 use rocket::http::Status;
 use rocket::serde::json::Json;
@@ -107,8 +109,7 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     let requested_to_accept = chain.exist_block_with_operation_code(OperationCode::RequestToAccept);
     let address_to_pay = external::bitcoin::get_address_to_pay(bill.clone());
     //TODO: add last_sell_block_paid
-    let check_if_already_paid =
-        external::bitcoin::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
+    let _ = external::bitcoin::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
     let mut check_if_already_paid = (false, 0u64);
     if requested_to_pay {
         check_if_already_paid =
@@ -545,7 +546,7 @@ pub async fn accept_bill_form(
 //PUT
 // #[post("/try_mint", data = "<mint_bill_form>")]
 // pub async fn try_mint_bill(
-//     state: &State<Client>,
+//     state: &State<ServiceContext>,
 //     mint_bill_form: Form<MintBitcreditBillForm>,
 // ) -> Status {
 //     if !Path::new(IDENTITY_FILE_PATH).exists() {
@@ -575,12 +576,15 @@ pub async fn accept_bill_form(
 //TODO: add try_mint_bill here?
 #[put("/request_to_mint", data = "<request_to_mint_bill_form>")]
 pub async fn request_to_mint_bill(
-    state: &State<Client>,
+    state: &State<ServiceContext>,
     request_to_mint_bill_form: Form<RequestToMintBitcreditBillForm>,
 ) -> Status {
-    let mut client = state.inner().clone();
-    let public_mint_node =
-        get_identity_public_data(request_to_mint_bill_form.mint_node.clone(), client.clone()).await;
+    let mut client = state.dht_client();
+    let public_mint_node = state
+        .contact_service
+        .get_identity_by_name(&request_to_mint_bill_form.mint_node)
+        .await
+        .expect("could not get identity by name");
     if !public_mint_node.name.is_empty() {
         client
             .add_bill_to_dht_for_node(
@@ -598,10 +602,7 @@ pub async fn request_to_mint_bill(
 
 //This is function for mint software
 #[put("/accept_mint", data = "<accept_mint_bill_form>")]
-pub async fn accept_mint_bill(
-    state: &State<Client>,
-    accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>,
-) -> Status {
+pub async fn accept_mint_bill(accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>) -> Status {
     let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone());
     let bill_amount = bill.amount_numbers;
     let holder_node_id = bill.payee.peer_id.clone();
@@ -623,18 +624,21 @@ pub async fn accept_mint_bill(
 //After accept mint on client side
 #[put("/mint", data = "<mint_bill_form>")]
 pub async fn mint_bill(
-    state: &State<Client>,
+    state: &State<ServiceContext>,
     mint_bill_form: Form<MintBitcreditBillForm>,
 ) -> Status {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
         Status::NotAcceptable
     } else {
-        let mut client = state.inner().clone();
+        let mut client = state.dht_client();
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let public_mint_node =
-            get_identity_public_data(mint_bill_form.mint_node.clone(), client.clone()).await;
+        let public_mint_node = state
+            .contact_service
+            .get_identity_by_name(&mint_bill_form.mint_node)
+            .await
+            .expect("could not get identity by name");
 
         if !public_mint_node.name.is_empty() {
             let correct = mint_bitcredit_bill(

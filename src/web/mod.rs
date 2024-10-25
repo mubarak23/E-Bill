@@ -1,5 +1,4 @@
-use crate::config::Config;
-use crate::dht::Client;
+use crate::service::ServiceContext;
 use log::info;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::fs::FileServer;
@@ -11,7 +10,8 @@ mod handlers;
 
 pub use data::RequestToMintBitcreditBillForm;
 
-pub fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
+pub fn rocket_main(context: ServiceContext) -> Rocket<Build> {
+    let conf = context.config.clone();
     let rocket = rocket::build()
         .configure(
             rocket::Config::figment()
@@ -19,7 +19,7 @@ pub fn rocket_main(dht: Client, conf: &Config) -> Rocket<Build> {
                 .merge(("address", conf.http_address.to_owned())),
         )
         .register("/", catchers![not_found])
-        .manage(dht)
+        .manage(context)
         .mount("/exit", routes![handlers::exit])
         .mount("/opcodes", routes![handlers::return_operation_codes])
         .mount(

@@ -10,10 +10,8 @@ use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
 use crate::constants::BILLS_FOLDER_PATH;
-use crate::{
-    bill::{contacts::IdentityPublicData, BitcreditBill},
-    util::rsa::encrypt_bytes,
-};
+use crate::service::contact_service::IdentityPublicData;
+use crate::{bill::BitcreditBill, util::rsa::encrypt_bytes};
 
 pub use block::Block;
 pub use chain::Chain;

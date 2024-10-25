@@ -1,13 +1,16 @@
 use super::super::data::IdentityForm;
-use crate::bill::{
-    get_bills,
-    identity::{
-        create_whole_identity, get_whole_identity, read_identity_from_file, read_peer_id_from_file,
-        write_identity_to_file, Identity, IdentityWithAll, NodeId,
-    },
-};
 use crate::constants::IDENTITY_FILE_PATH;
 use crate::dht::Client;
+use crate::{
+    bill::{
+        get_bills,
+        identity::{
+            create_whole_identity, get_whole_identity, read_identity_from_file,
+            read_peer_id_from_file, write_identity_to_file, Identity, IdentityWithAll, NodeId,
+        },
+    },
+    service::ServiceContext,
+};
 use libp2p::PeerId;
 use rocket::form::Form;
 use rocket::http::Status;
@@ -34,7 +37,10 @@ pub async fn return_peer_id() -> Json<NodeId> {
 }
 
 #[post("/create", data = "<identity_form>")]
-pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
+pub async fn create_identity(
+    identity_form: Form<IdentityForm>,
+    state: &State<ServiceContext>,
+) -> Status {
     println!("Create identity");
     let identity: IdentityForm = identity_form.into_inner();
     create_whole_identity(
@@ -47,16 +53,19 @@ pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Cl
         identity.postal_address,
     );
 
-    let mut client = state.inner().clone();
-    let identity: IdentityWithAll = get_whole_identity();
-    let bills = get_bills();
+    let mut client = state.dht_client();
+    let _: IdentityWithAll = get_whole_identity();
+    let _ = get_bills();
     client.put_identity_public_data_in_dht().await;
 
     Status::Ok
 }
 
 #[put("/change", data = "<identity_form>")]
-pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
+pub async fn change_identity(
+    identity_form: Form<IdentityForm>,
+    state: &State<ServiceContext>,
+) -> Status {
     println!("Change identity");
 
     let identity_form: IdentityForm = identity_form.into_inner();
@@ -78,8 +87,7 @@ pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Cl
     my_identity.update_from(&identity_changes);
 
     write_identity_to_file(&my_identity);
-    let mut client = state.inner().clone();
-    client.put_identity_public_data_in_dht().await;
+    state.dht_client().put_identity_public_data_in_dht().await;
 
     Status::Ok
 }

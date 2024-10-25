@@ -5,7 +5,7 @@ use std::sync::Arc;
 use rocket::{http::Status, response::Responder};
 use thiserror::Error;
 
-use super::{Client, Config};
+use super::{dht::Client, Config};
 use crate::persistence;
 use crate::persistence::FileBasedContactStore;
 use contact_service::{ContactService, ContactServiceApi};

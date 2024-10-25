@@ -1,9 +1,9 @@
 use crate::service::contact_service::IdentityPublicData;
-use borsh::{self, BorshDeserialize, BorshSerialize};
+use borsh::{to_vec, BorshDeserialize};
 use std::{collections::HashMap, fs, path::Path};
 
 use super::{file_storage_path, Error, Result};
-use async_trait;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait ContactStoreApi: Send + Sync {
@@ -89,7 +89,7 @@ impl ContactStoreApi for FileBasedContactStore {
 }
 
 fn write_contacts_map(file: &str, map: HashMap<String, IdentityPublicData>) -> Result<()> {
-    let contacts_byte = map.try_to_vec()?;
+    let contacts_byte = to_vec(&map)?;
     fs::write(file, contacts_byte)?;
     Ok(())
 }
