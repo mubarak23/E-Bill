@@ -133,14 +133,13 @@ pub struct Contact {
 
 // converts identity data to contact data
 fn as_contacts(identities: HashMap<String, IdentityPublicData>) -> Vec<Contact> {
-    let mut contacts_vec: Vec<Contact> = Vec::new();
-    for (name, public_data) in identities {
-        contacts_vec.push(Contact {
+    identities
+        .into_iter()
+        .map(|(name, public_data)| Contact {
             name,
             peer_id: public_data.peer_id,
-        });
-    }
-    contacts_vec
+        })
+        .collect()
 }
 
 #[derive(
