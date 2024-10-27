@@ -39,7 +39,7 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
     }
 }
 
-/// A depencency container for all services that are used by the application
+/// A dependency container for all services that are used by the application
 #[derive(Clone)]
 pub struct ServiceContext {
     pub config: Config,
