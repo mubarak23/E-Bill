@@ -5,15 +5,18 @@ use moksha_core::primitives::{
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
 use moksha_wallet::wallet::Wallet;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 use url::Url;
 
-use crate::{
-    add_bitcredit_quote_and_amount_in_quotes_map, add_bitcredit_token_in_quotes_map,
-    add_in_quotes_map, get_quote_from_map, read_identity_from_file, read_keys_from_bill_file,
-    read_peer_id_from_file, read_quotes_map, BitcreditEbillQuote, Identity,
-    RequestToMintBitcreditBillForm,
+use crate::bill::{
+    identity::read_peer_id_from_file,
+    quotes::{
+        add_bitcredit_quote_and_amount_in_quotes_map, add_bitcredit_token_in_quotes_map,
+        add_in_quotes_map, get_quote_from_map, read_quotes_map,
+    },
+    read_keys_from_bill_file, BitcreditEbillQuote,
 };
+use crate::web::RequestToMintBitcreditBillForm;
 
 #[tokio::main]
 pub async fn accept_mint_bitcredit(
@@ -28,9 +31,6 @@ pub async fn accept_mint_bitcredit(
         .expect("Cannot parse local store");
 
     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
-
-    let identity: Identity = read_identity_from_file();
-    let bitcoin_key = identity.bitcoin_public_key.clone();
 
     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
         .with_localstore(localstore)
@@ -171,4 +171,28 @@ pub fn safe_ebill_quote_locally(quote: BitcreditEbillQuote) {
     if !map.contains_key(&quote.bill_id) {
         add_in_quotes_map(quote);
     }
+}
+
+pub async fn init_wallet() {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    if !dir.exists() {
+        fs::create_dir_all(dir.clone()).unwrap();
+    }
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let _localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    // //TODO: take from params
+    // let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //
+    // let identity: Identity = read_identity_from_file();
+    // let bitcoin_key = identity.bitcoin_public_key.clone();
+    //
+    // let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //     .with_localstore(localstore)
+    //     .build()
+    //     .await
+    //     .expect("Could not create wallet");
 }

@@ -1,24 +1,22 @@
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
-    use std::{fs, mem};
-
+    use crate::bill::identity::{
+        byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
+    };
+    use crate::external::bitcoin::AddressInfo;
+    use crate::util::numbers_to_words::encode;
+    use crate::util::rsa::generation_rsa_key;
+    use crate::util::structure_as_u8_slice;
     use bitcoin::secp256k1::Scalar;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
-    use moksha_core::primitives::{CurrencyUnit, PaymentMethod};
-    use moksha_wallet::http::CrossPlatformHttpClient;
-    use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-    use moksha_wallet::wallet::Wallet;
     use openssl::rsa::{Padding, Rsa};
-    use serde::Deserialize;
-    use url::Url;
+    use std::path::Path;
+    use std::{fs, mem};
 
-    use crate::numbers_to_words::encode;
-    use crate::{
-        byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-        generation_rsa_key, read_identity_from_file, structure_as_u8_slice, Identity,
-    };
+    // fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
+    //     to_vec(bill).unwrap()
+    // }
 
     //TODO: Change. Because we create new bill every time we run tests
 
@@ -196,7 +194,7 @@ mod test {
             bitcoin::Network::Testnet,
         );
         let public_key1 = private_key1.public_key(&s1);
-        let address1 = bitcoin::Address::p2pkh(&public_key1, bitcoin::Network::Testnet);
+        let _address1 = bitcoin::Address::p2pkh(public_key1, bitcoin::Network::Testnet);
 
         let s2 = bitcoin::secp256k1::Secp256k1::new();
         let private_key2 = bitcoin::PrivateKey::new(
@@ -205,16 +203,16 @@ mod test {
             bitcoin::Network::Testnet,
         );
         let public_key2 = private_key1.public_key(&s2);
-        let address2 = bitcoin::Address::p2pkh(&public_key2, bitcoin::Network::Testnet);
+        let _address2 = bitcoin::Address::p2pkh(public_key2, bitcoin::Network::Testnet);
 
         let private_key3 = private_key1
             .inner
-            .add_tweak(&Scalar::from(private_key2.inner.clone()))
+            .add_tweak(&Scalar::from(private_key2.inner))
             .unwrap();
         let pr_key3 = bitcoin::PrivateKey::new(private_key3, bitcoin::Network::Testnet);
         let public_key3 = public_key1.inner.combine(&public_key2.inner).unwrap();
         let pub_key3 = bitcoin::PublicKey::new(public_key3);
-        let address3 = bitcoin::Address::p2pkh(&pub_key3, bitcoin::Network::Testnet);
+        let address3 = bitcoin::Address::p2pkh(pub_key3, bitcoin::Network::Testnet);
 
         println!("private key: {}", pr_key3);
         println!("public key: {}", pub_key3);
@@ -222,94 +220,94 @@ mod test {
         println!("{}", address3.is_spend_standard());
     }
 
-    #[tokio::test]
-    async fn test_mint() {
-        let dir = PathBuf::from("./data/wallet".to_string());
-        fs::create_dir_all(dir.clone()).unwrap();
-        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    // #[tokio::test]
+    // async fn test_mint() {
+    //     let dir = PathBuf::from("./data/wallet".to_string());
+    //     fs::create_dir_all(dir.clone()).unwrap();
+    //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
 
-        let localstore = SqliteLocalStore::with_path(db_path.clone())
-            .await
-            .expect("Cannot parse local store");
+    //     let localstore = SqliteLocalStore::with_path(db_path.clone())
+    //         .await
+    //         .expect("Cannot parse local store");
 
-        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
-        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
-            .with_localstore(localstore)
-            .build()
-            .await
-            .expect("Could not create wallet");
+    //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //         .with_localstore(localstore)
+    //         .build()
+    //         .await
+    //         .expect("Could not create wallet");
 
-        let wallet_keysets = wallet
-            .add_mint_keysets_by_id(
-                &Url::parse("http://127.0.0.1:3338").unwrap(),
-                "cr-sat".to_string(),
-                "5ee3478d7e11534d332dffe67dfad8c6def74d2130d8af3e9035cd180d0f70f6".to_string(),
-            )
-            .await
-            .unwrap();
-        let wallet_keyset = wallet_keysets.first().unwrap();
+    //     let wallet_keysets = wallet
+    //         .add_mint_keysets_by_id(
+    //             &Url::parse("http://127.0.0.1:3338").unwrap(),
+    //             "cr-sat".to_string(),
+    //             "5ee3478d7e11534d332dffe67dfad8c6def74d2130d8af3e9035cd180d0f70f6".to_string(),
+    //         )
+    //         .await
+    //         .unwrap();
+    //     let wallet_keyset = wallet_keysets.first().unwrap();
 
-        let balance = wallet.get_balance().await.unwrap();
-        println!("Balance: {balance:?} sats");
+    //     let balance = wallet.get_balance().await.unwrap();
+    //     println!("Balance: {balance:?} sats");
 
-        let result = wallet
-            .mint_tokens(
-                wallet_keyset,
-                &PaymentMethod::Bitcredit,
-                45.into(),
-                "f4f35d70-813f-4310-9c10-fdd4953c0f9a".to_string(),
-                CurrencyUnit::CrSat,
-            )
-            .await;
+    //     let result = wallet
+    //         .mint_tokens(
+    //             wallet_keyset,
+    //             &PaymentMethod::Bitcredit,
+    //             45.into(),
+    //             "f4f35d70-813f-4310-9c10-fdd4953c0f9a".to_string(),
+    //             CurrencyUnit::CrSat,
+    //         )
+    //         .await;
 
-        let token = result
-            .unwrap()
-            .serialize(Option::from(CurrencyUnit::CrSat))
-            .unwrap();
-        println!("Token: {token:?}");
+    //     let token = result
+    //         .unwrap()
+    //         .serialize(Option::from(CurrencyUnit::CrSat))
+    //         .unwrap();
+    //     println!("Token: {token:?}");
 
-        let balance2 = wallet.get_balance().await.unwrap();
-        println!("Balance2: {balance2:?} sats");
+    //     let balance2 = wallet.get_balance().await.unwrap();
+    //     println!("Balance2: {balance2:?} sats");
 
-        assert_eq!(1, 2);
-    }
+    //     assert_eq!(1, 2);
+    // }
 
-    #[tokio::test]
-    async fn test_check_quote() {
-        let dir = PathBuf::from("./data/wallet".to_string());
-        fs::create_dir_all(dir.clone()).unwrap();
-        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    //#[tokio::test]
+    //async fn test_check_quote() {
+    //    let dir = PathBuf::from("./data/wallet".to_string());
+    //    fs::create_dir_all(dir.clone()).unwrap();
+    //    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
 
-        let localstore = SqliteLocalStore::with_path(db_path.clone())
-            .await
-            .expect("Cannot parse local store");
+    //    let localstore = SqliteLocalStore::with_path(db_path.clone())
+    //        .await
+    //        .expect("Cannot parse local store");
 
-        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //    let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
-        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
-            .with_localstore(localstore)
-            .build()
-            .await
-            .expect("Could not create wallet");
+    //    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //        .with_localstore(localstore)
+    //        .build()
+    //        .await
+    //        .expect("Could not create wallet");
 
-        let result = wallet
-            .check_bitcredit_quote(
-                &mint_url,
-                "9d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(),
-                "12D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string(),
-            )
-            .await;
+    //    let result = wallet
+    //        .check_bitcredit_quote(
+    //            &mint_url,
+    //            "9d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(),
+    //            "12D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string(),
+    //        )
+    //        .await;
 
-        //bad
-        // let result = wallet
-        //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
-        //     .await;
+    //    //bad
+    //    // let result = wallet
+    //    //     .check_bitcredit_quote(&mint_url, "19d676f0425295dacb5724fb3f0488934f97aff8d044c7a2eb051275671f1a5de".to_string(), "112D3KooWRzpBaZnydS4eMA74yaKEoGZFP7WFRvC8yQR7HyGoWfAk".to_string())
+    //    //     .await;
 
-        println!("Quote: {result:?}");
+    //    println!("Quote: {result:?}");
 
-        assert_eq!(1, 2);
-    }
+    //    assert_eq!(1, 2);
+    //}
 
     // #[tokio::test]
     // async fn test_send() {
@@ -342,61 +340,36 @@ mod test {
     //     assert_ne!("test".to_string(), payment_invoice);
     // }
 
-    #[tokio::test]
-    async fn test_balance() {
-        let dir = PathBuf::from("./data/wallet".to_string());
-        fs::create_dir_all(dir.clone()).unwrap();
-        let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+    // #[tokio::test]
+    // async fn test_balance() {
+    //     let dir = PathBuf::from("./data/wallet".to_string());
+    //     fs::create_dir_all(dir.clone()).unwrap();
+    //     let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
 
-        let localstore = SqliteLocalStore::with_path(db_path.clone())
-            .await
-            .expect("Cannot parse local store");
+    //     let localstore = SqliteLocalStore::with_path(db_path.clone())
+    //         .await
+    //         .expect("Cannot parse local store");
 
-        let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
+    //     let mint_url = Url::parse("http://127.0.0.1:3338").expect("Invalid url");
 
-        let identity: Identity = read_identity_from_file();
-        let bitcoin_key = identity.bitcoin_public_key.clone();
+    //     let identity: Identity = read_identity_from_file();
+    //     let bitcoin_key = identity.bitcoin_public_key.clone();
 
-        let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
-            .with_localstore(localstore)
-            .build()
-            .await
-            .expect("Could not create wallet");
+    //     let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //         .with_localstore(localstore)
+    //         .build()
+    //         .await
+    //         .expect("Could not create wallet");
 
-        let balance = wallet.get_balance().await.unwrap();
-        println!("Balance: {balance:?} sats");
+    //     let balance = wallet.get_balance().await.unwrap();
+    //     println!("Balance: {balance:?} sats");
 
-        assert_eq!(1, balance);
-        assert_ne!(1, balance);
-    }
+    //     assert_eq!(1, balance);
+    //     assert_ne!(1, balance);
+    // }
 
     #[tokio::test]
     async fn test_api() {
-        #[derive(Deserialize, Debug)]
-        struct ChainStats {
-            funded_txo_count: u32,
-            funded_txo_sum: u32,
-            spent_txo_count: u32,
-            spent_txo_sum: u32,
-            tx_count: u32,
-        }
-
-        #[derive(Deserialize, Debug)]
-        struct MempoolStats {
-            funded_txo_count: u32,
-            funded_txo_sum: u32,
-            spent_txo_count: u32,
-            spent_txo_sum: u32,
-            tx_count: u32,
-        }
-
-        #[derive(Deserialize, Debug)]
-        struct User {
-            address: String,
-            chain_stats: ChainStats,
-            mempool_stats: MempoolStats,
-        }
-
         let request_url = format!(
             "https://blockstream.info/testnet/api/address/{address}",
             address = "mzYHxNxTTGrrxnwSc1RvqTusK4EM88o6yj"
@@ -409,7 +382,7 @@ mod test {
             .await
             .expect("Failed to read response");
         println!("{:?}", response1);
-        let response: User = reqwest::get(&request_url)
+        let response: AddressInfo = reqwest::get(&request_url)
             .await
             .expect("Failed to send request")
             .json()
@@ -428,11 +401,11 @@ mod test {
         let secp2 = bitcoin::secp256k1::Secp256k1::new();
         let key_pair2 =
             bitcoin::secp256k1::Keypair::new(&secp2, &mut bitcoin::secp256k1::rand::thread_rng());
-        let xonly2 = bitcoin::secp256k1::XOnlyPublicKey::from_keypair(&key_pair2);
+        let _xonly2 = bitcoin::secp256k1::XOnlyPublicKey::from_keypair(&key_pair2);
 
-        let msg = bitcoin::secp256k1::Message::from_slice(&[0xab; 32]).unwrap();
+        let msg = bitcoin::secp256k1::Message::from_digest_slice(&[0xab; 32]).unwrap();
         let a = secp1.sign_schnorr(&msg, &key_pair1);
-        let b = secp2
+        secp2
             .verify_schnorr(&a, &msg, &xonly1.0)
             .expect("verify failed");
     }
@@ -441,7 +414,7 @@ mod test {
     fn structure_to_bytes() {
         let ed25519_keys = Keypair::generate_ed25519();
         let peer_id = PeerId::from(ed25519_keys.public());
-        let id = create_new_identity(
+        let _id = create_new_identity(
             "qwq".to_string(),
             "adsda".to_string(),
             "ewqe".to_string(),
@@ -465,11 +438,11 @@ mod test {
 
         let data_key = fs::read("test/keys").expect("Unable to read file with keypair");
         let key_pair_bytes_sized = byte_array_to_size_array_keypair(data_key.as_slice());
-        let key_pair2: Keypair = unsafe { mem::transmute_copy(key_pair_bytes_sized) };
+        let _key_pair2: Keypair = unsafe { mem::transmute_copy(key_pair_bytes_sized) };
 
         let data_peer_id = fs::read("test/peer_id").expect("Unable to read file with peer_id");
         let peer_id_bytes_sized = byte_array_to_size_array_peer_id(data_peer_id.as_slice());
-        let peer_id2: PeerId = unsafe { mem::transmute_copy(peer_id_bytes_sized) };
+        let _peer_id2: PeerId = unsafe { mem::transmute_copy(peer_id_bytes_sized) };
     }
 
     // #[test]
@@ -603,7 +576,7 @@ mod test {
 
         let public_key =
             Rsa::public_key_from_pem(rsa_key.public_key_to_pem().unwrap().as_slice()).unwrap();
-        let private_key =
+        let _private_key =
             Rsa::private_key_from_pem(rsa_key.private_key_to_pem().unwrap().as_slice()).unwrap();
 
         // Encrypt with public key
@@ -630,7 +603,7 @@ mod test {
         // Generate a keypair
         let rsa_key = generation_rsa_key();
 
-        let p_key =
+        let _p_key =
             Rsa::public_key_from_pem(rsa_key.public_key_to_pem().unwrap().as_slice()).unwrap();
 
         // Encrypt with public key
