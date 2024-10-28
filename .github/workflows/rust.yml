@@ -38,6 +38,9 @@ jobs:
       - name: Install required cargo
         run: cargo install clippy-sarif sarif-fmt
 
+      - name: Add clippy
+        run: rustup component add clippy
+
       - name: Clippy
         run:
           cargo clippy
