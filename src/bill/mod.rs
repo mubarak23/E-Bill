@@ -17,8 +17,8 @@ use openssl::rsa::Rsa;
 use openssl::sha::sha256;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::FromForm;
+use std::fs;
 use std::path::PathBuf;
-use std::{fs, thread};
 
 pub mod contacts;
 pub mod identity;
@@ -478,8 +478,8 @@ pub fn get_path_for_bill_keys(key_name: &str) -> PathBuf {
 pub fn get_bills() -> Vec<BitcreditBill> {
     let mut bills = Vec::new();
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
-    for _path in paths {
-        let dir = _path.unwrap();
+    for path in paths {
+        let dir = path.unwrap();
         if util::is_not_hidden(&dir) {
             let bill = read_bill_from_file(
                 dir.path()
@@ -494,23 +494,20 @@ pub fn get_bills() -> Vec<BitcreditBill> {
     bills
 }
 
-pub fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
+pub async fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     let mut bills = Vec::new();
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
-    for _path in paths {
-        let dir = _path.unwrap();
+    for path in paths {
+        let dir = path.unwrap();
         if util::is_not_hidden(&dir) {
-            let bill = thread::spawn(move || {
-                read_bill_with_chain_from_file(
-                    dir.path()
-                        .file_stem()
-                        .expect("File name error")
-                        .to_str()
-                        .expect("File name error"),
-                )
-            })
-            .join()
-            .expect("Thread panicked");
+            let bill = read_bill_with_chain_from_file(
+                dir.path()
+                    .file_stem()
+                    .expect("File name error")
+                    .to_str()
+                    .expect("File name error"),
+            )
+            .await;
             bills.push(bill);
         }
     }
@@ -910,7 +907,6 @@ pub fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
     }
 }
 
-#[tokio::main]
 async fn read_bill_with_chain_from_file(id: &str) -> BitcreditBillToReturn {
     let bill: BitcreditBill = read_bill_from_file(id);
     let chain = Chain::read_chain_from_file(&bill.name);

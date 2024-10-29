@@ -38,7 +38,7 @@ pub async fn holder(id: String) -> Json<bool> {
 
 #[get("/return")]
 pub async fn return_bills_list() -> Json<Vec<BitcreditBillToReturn>> {
-    let bills: Vec<BitcreditBillToReturn> = get_bills_for_list();
+    let bills: Vec<BitcreditBillToReturn> = get_bills_for_list().await;
     Json(bills)
 }
 
