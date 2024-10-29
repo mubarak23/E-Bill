@@ -588,6 +588,8 @@ pub async fn request_to_mint_bill(
             .await;
     }
 
+    // Usage of thread::spawn is necessary here, because we spawn a new tokio runtime in the
+    // thread, but this logic will be replaced soon
     thread::spawn(move || request_to_mint_bitcredit(request_to_mint_bill_form.clone()))
         .join()
         .expect("Thread panicked");
@@ -602,6 +604,8 @@ pub async fn accept_mint_bill(accept_mint_bill_form: Form<AcceptMintBitcreditBil
     let holder_node_id = bill.payee.peer_id.clone();
 
     //TODO: calculate percent
+    // Usage of thread::spawn is necessary here, because we spawn a new tokio runtime in the
+    // thread, but this logic will be replaced soon
     thread::spawn(move || {
         accept_mint_bitcredit(
             bill_amount,
