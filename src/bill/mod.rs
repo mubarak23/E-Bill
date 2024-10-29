@@ -475,7 +475,7 @@ pub fn get_path_for_bill_keys(key_name: &str) -> PathBuf {
     path
 }
 
-pub fn get_bills() -> Vec<BitcreditBill> {
+pub async fn get_bills() -> Vec<BitcreditBill> {
     let mut bills = Vec::new();
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
     for path in paths {
@@ -487,7 +487,8 @@ pub fn get_bills() -> Vec<BitcreditBill> {
                     .expect("File name error")
                     .to_str()
                     .expect("File name error"),
-            );
+            )
+            .await;
             bills.push(bill);
         }
     }
@@ -514,13 +515,13 @@ pub async fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     bills
 }
 
-pub fn endorse_bitcredit_bill(
+pub async fn endorse_bitcredit_bill(
     bill_name: &str,
     endorsee: IdentityPublicData,
     timestamp: i64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -590,7 +591,7 @@ pub async fn mint_bitcredit_bill(
     timestamp: i64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -657,14 +658,14 @@ pub async fn mint_bitcredit_bill(
     }
 }
 
-pub fn sell_bitcredit_bill(
+pub async fn sell_bitcredit_bill(
     bill_name: &str,
     buyer: IdentityPublicData,
     timestamp: i64,
     amount_numbers: u64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -726,9 +727,9 @@ pub fn sell_bitcredit_bill(
     }
 }
 
-pub fn request_pay(bill_name: &str, timestamp: i64) -> bool {
+pub async fn request_pay(bill_name: &str, timestamp: i64) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -789,9 +790,9 @@ pub fn request_pay(bill_name: &str, timestamp: i64) -> bool {
     }
 }
 
-pub fn request_acceptance(bill_name: &str, timestamp: i64) -> bool {
+pub async fn request_acceptance(bill_name: &str, timestamp: i64) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -852,9 +853,9 @@ pub fn request_acceptance(bill_name: &str, timestamp: i64) -> bool {
     }
 }
 
-pub fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
+pub async fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -908,7 +909,7 @@ pub fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
 }
 
 async fn read_bill_with_chain_from_file(id: &str) -> BitcreditBillToReturn {
-    let bill: BitcreditBill = read_bill_from_file(id);
+    let bill: BitcreditBill = read_bill_from_file(id).await;
     let chain = Chain::read_chain_from_file(&bill.name);
     let drawer = chain.get_drawer();
     let chain_to_return = ChainToReturn::new(chain.clone());
@@ -962,9 +963,9 @@ async fn read_bill_with_chain_from_file(id: &str) -> BitcreditBillToReturn {
     }
 }
 
-pub fn read_bill_from_file(bill_name: &str) -> BitcreditBill {
+pub async fn read_bill_from_file(bill_name: &str) -> BitcreditBill {
     let chain = Chain::read_chain_from_file(bill_name);
-    chain.get_last_version_bill()
+    chain.get_last_version_bill().await
 }
 
 pub fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {

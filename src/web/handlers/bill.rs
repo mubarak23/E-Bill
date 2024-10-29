@@ -31,7 +31,7 @@ use std::{fs, thread};
 #[get("/holder/<id>")]
 pub async fn holder(id: String) -> Json<bool> {
     let identity: IdentityWithAll = get_whole_identity();
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(&id).await;
     let am_i_holder = identity.peer_id.to_string().eq(&bill.payee.peer_id);
     Json(am_i_holder)
 }
@@ -44,7 +44,7 @@ pub async fn return_bills_list() -> Json<Vec<BitcreditBillToReturn>> {
 
 #[get("/return/basic/<id>")]
 pub async fn return_basic_bill(id: String) -> Json<BitcreditBill> {
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(&id).await;
     Json(bill)
 }
 
@@ -67,7 +67,7 @@ pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) {
 #[get("/return/<id>")]
 pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     let identity: IdentityWithAll = get_whole_identity();
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(&id).await;
     let chain = Chain::read_chain_from_file(&bill.name);
     let drawer = chain.get_drawer();
     let mut link_for_buy = "".to_string();
@@ -76,7 +76,7 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     let accepted = chain.exist_block_with_operation_code(OperationCode::Accept);
     let mut address_for_selling: String = String::new();
     let mut amount_for_selling = 0;
-    let waiting_for_payment = chain.waiting_for_payment();
+    let waiting_for_payment = chain.waiting_for_payment().await;
     let mut payment_deadline_has_passed = false;
     let mut waited_for_payment = waiting_for_payment.0;
     if waited_for_payment {
@@ -320,7 +320,7 @@ pub async fn issue_bill(
             if form_bill.drawer_is_drawee {
                 let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-                let correct = accept_bill(&bill.name, timestamp);
+                let correct = accept_bill(&bill.name, timestamp).await;
 
                 if correct {
                     let chain: Chain = Chain::read_chain_from_file(&bill.name);
@@ -365,7 +365,8 @@ pub async fn sell_bill(
                 public_data_buyer.clone(),
                 timestamp,
                 sell_bill_form.amount_numbers,
-            );
+            )
+            .await;
 
             if correct {
                 let chain: Chain = Chain::read_chain_from_file(&sell_bill_form.bill_name);
@@ -416,7 +417,8 @@ pub async fn endorse_bill(
                 &endorse_bill_form.bill_name,
                 public_data_endorsee.clone(),
                 timestamp,
-            );
+            )
+            .await;
 
             if correct {
                 let chain: Chain = Chain::read_chain_from_file(&endorse_bill_form.bill_name);
@@ -457,7 +459,7 @@ pub async fn request_to_pay_bill(
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = request_pay(&request_to_pay_bill_form.bill_name, timestamp);
+        let correct = request_pay(&request_to_pay_bill_form.bill_name, timestamp).await;
 
         if correct {
             let chain: Chain = Chain::read_chain_from_file(&request_to_pay_bill_form.bill_name);
@@ -487,7 +489,7 @@ pub async fn request_to_accept_bill(
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = request_acceptance(&request_to_accept_bill_form.bill_name, timestamp);
+        let correct = request_acceptance(&request_to_accept_bill_form.bill_name, timestamp).await;
 
         if correct {
             let chain: Chain = Chain::read_chain_from_file(&request_to_accept_bill_form.bill_name);
@@ -517,7 +519,7 @@ pub async fn accept_bill_form(
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = accept_bill(&accept_bill_form.bill_name, timestamp);
+        let correct = accept_bill(&accept_bill_form.bill_name, timestamp).await;
 
         if correct {
             let chain: Chain = Chain::read_chain_from_file(&accept_bill_form.bill_name);
@@ -599,7 +601,7 @@ pub async fn request_to_mint_bill(
 //This is function for mint software
 #[put("/accept_mint", data = "<accept_mint_bill_form>")]
 pub async fn accept_mint_bill(accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>) -> Status {
-    let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone());
+    let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone()).await;
     let bill_amount = bill.amount_numbers;
     let holder_node_id = bill.payee.peer_id.clone();
 

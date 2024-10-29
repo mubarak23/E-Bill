@@ -332,7 +332,7 @@ impl Client {
     }
 
     pub async fn put_bills_for_parties(&mut self) {
-        let bills = get_bills();
+        let bills = get_bills().await;
 
         for bill in bills {
             let chain = Chain::read_chain_from_file(&bill.name);
@@ -344,7 +344,7 @@ impl Client {
     }
 
     pub async fn subscribe_to_all_bills_topics(&mut self) {
-        let bills = get_bills();
+        let bills = get_bills().await;
 
         for bill in bills {
             self.subscribe_to_topic(bill.name).await;
@@ -352,7 +352,7 @@ impl Client {
     }
 
     pub async fn receive_updates_for_all_bills_topics(&mut self) {
-        let bills = get_bills();
+        let bills = get_bills().await;
 
         for bill in bills {
             let event = GossipsubEvent::new(GossipsubEventId::CommandGetChain, vec![0; 24]);

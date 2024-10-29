@@ -157,7 +157,7 @@ mod test {
     //         public_data_payee,
     //     );
     //
-    //     let bill2 = read_bill_from_file(&bill.name);
+    //     let bill2 = read_bill_from_file(&bill.name).await;
     //
     //     assert_eq!(bill.bill_jurisdiction, bill2.bill_jurisdiction);
     // }
@@ -181,7 +181,7 @@ mod test {
     //
     //     let bill = read_bill_from_file(
     //         &"5f58c116fa86af48dc4442e7daa4cf062564415fad31a889b3ed7e02f76bcf8b".to_string(),
-    //     );
+    //     ).await;
     //
     //     assert_eq!(bill.bill_jurisdiction, "bill.bill_jurisdiction".to_string());
     // }
