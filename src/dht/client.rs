@@ -132,13 +132,13 @@ impl Client {
             for file in fs::read_dir(BILLS_FOLDER_PATH).unwrap() {
                 let dir = file.unwrap();
                 if is_not_hidden(&dir) {
-                    let mut bill_name = dir.file_name().into_string().unwrap();
-
-                    bill_name = Path::file_stem(Path::new(&bill_name))
+                    let bill_name = dir
+                        .path()
+                        .file_stem()
                         .expect("File name error")
                         .to_str()
                         .expect("File name error")
-                        .to_string();
+                        .to_owned();
 
                     if !record_in_dht.contains(&bill_name) {
                         new_record += (",".to_string() + &bill_name.clone()).as_str();
@@ -154,12 +154,13 @@ impl Client {
             for file in fs::read_dir(BILLS_FOLDER_PATH).unwrap() {
                 let dir = file.unwrap();
                 if is_not_hidden(&dir) {
-                    let mut bill_name = dir.file_name().into_string().unwrap();
-                    bill_name = Path::file_stem(Path::new(&bill_name))
+                    let bill_name = dir
+                        .path()
+                        .file_stem()
                         .expect("File name error")
                         .to_str()
                         .expect("File name error")
-                        .to_string();
+                        .to_owned();
 
                     if new_record.is_empty() {
                         new_record = bill_name.clone();
@@ -180,12 +181,13 @@ impl Client {
         for file in fs::read_dir(BILLS_FOLDER_PATH).unwrap() {
             let dir = file.unwrap();
             if is_not_hidden(&dir) {
-                let mut bill_name = dir.file_name().into_string().unwrap();
-                bill_name = Path::file_stem(Path::new(&bill_name))
+                let bill_name = dir
+                    .path()
+                    .file_stem()
                     .expect("File name error")
                     .to_str()
                     .expect("File name error")
-                    .to_string();
+                    .to_owned();
                 self.put(&bill_name).await;
             }
         }

@@ -8,9 +8,8 @@ pub unsafe fn structure_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 }
 
 pub fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| !s.starts_with("."))
-        .unwrap_or(false)
+    match hf::is_hidden(entry.path()) {
+        Ok(res) => !res,
+        Err(_) => false,
+    }
 }

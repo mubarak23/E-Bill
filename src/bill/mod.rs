@@ -17,7 +17,7 @@ use openssl::rsa::Rsa;
 use openssl::sha::sha256;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::FromForm;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::{fs, thread};
 
 pub mod contacts;
@@ -481,18 +481,13 @@ pub fn get_bills() -> Vec<BitcreditBill> {
     for _path in paths {
         let dir = _path.unwrap();
         if util::is_not_hidden(&dir) {
-            let file_name = dir
-                .file_name()
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            //TODO change
-            let path_without_extension = Path::file_stem(Path::new(&file_name))
-                .expect("File name error")
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            let bill = read_bill_from_file(&path_without_extension);
+            let bill = read_bill_from_file(
+                dir.path()
+                    .file_stem()
+                    .expect("File name error")
+                    .to_str()
+                    .expect("File name error"),
+            );
             bills.push(bill);
         }
     }
@@ -505,21 +500,17 @@ pub fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     for _path in paths {
         let dir = _path.unwrap();
         if util::is_not_hidden(&dir) {
-            let file_name = dir
-                .file_name()
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            //TODO change
-            let path_without_extension = Path::file_stem(Path::new(&file_name))
-                .expect("File name error")
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            let bill =
-                thread::spawn(move || read_bill_with_chain_from_file(&path_without_extension))
-                    .join()
-                    .expect("Thread panicked");
+            let bill = thread::spawn(move || {
+                read_bill_with_chain_from_file(
+                    dir.path()
+                        .file_stem()
+                        .expect("File name error")
+                        .to_str()
+                        .expect("File name error"),
+                )
+            })
+            .join()
+            .expect("Thread panicked");
             bills.push(bill);
         }
     }
