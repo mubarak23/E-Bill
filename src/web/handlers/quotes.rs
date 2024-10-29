@@ -1,10 +1,7 @@
-use crate::bill::{
-    contacts::get_identity_public_data, endorse_bitcredit_bill, quotes::get_quote_from_map,
-    BitcreditEbillQuote,
-};
-use crate::dht::Client;
+use crate::bill::{endorse_bitcredit_bill, quotes::get_quote_from_map, BitcreditEbillQuote};
 use crate::external;
 use crate::external::mint::{check_bitcredit_quote, client_accept_bitcredit_quote};
+use crate::service::{Result, ServiceContext};
 use rocket::serde::json::Json;
 use rocket::{get, put, State};
 use std::thread;
@@ -23,12 +20,17 @@ pub async fn return_quote(id: String) -> Json<BitcreditEbillQuote> {
 }
 
 #[put("/accept/<id>")]
-pub async fn accept_quote(state: &State<Client>, id: String) -> Json<BitcreditEbillQuote> {
+pub async fn accept_quote(
+    state: &State<ServiceContext>,
+    id: String,
+) -> Result<Json<BitcreditEbillQuote>> {
     let mut quote = get_quote_from_map(&id);
-    let client = state.inner().clone();
 
-    let public_data_endorsee =
-        get_identity_public_data(quote.mint_node_id.clone(), client.clone()).await;
+    let public_data_endorsee = state
+        .contact_service
+        .get_identity_by_name(&quote.mint_node_id)
+        .await?;
+
     if !public_data_endorsee.name.is_empty() {
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
         endorse_bitcredit_bill(&quote.bill_id, public_data_endorsee.clone(), timestamp);
@@ -41,5 +43,5 @@ pub async fn accept_quote(state: &State<Client>, id: String) -> Json<BitcreditEb
             .expect("Thread panicked");
     }
     quote = get_quote_from_map(&id);
-    Json(quote)
+    Ok(Json(quote))
 }

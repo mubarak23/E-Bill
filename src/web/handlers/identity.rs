@@ -1,10 +1,12 @@
 use super::super::data::IdentityForm;
-use crate::bill::identity::{
-    create_whole_identity, get_whole_identity, read_identity_from_file, read_peer_id_from_file,
-    write_identity_to_file, Identity, IdentityWithAll, NodeId,
-};
 use crate::constants::IDENTITY_FILE_PATH;
-use crate::dht::Client;
+use crate::{
+    bill::identity::{
+        create_whole_identity, get_whole_identity, read_identity_from_file, read_peer_id_from_file,
+        write_identity_to_file, Identity, IdentityWithAll, NodeId,
+    },
+    service::ServiceContext,
+};
 use libp2p::PeerId;
 use rocket::form::Form;
 use rocket::http::Status;
@@ -31,7 +33,10 @@ pub async fn return_peer_id() -> Json<NodeId> {
 }
 
 #[post("/create", data = "<identity_form>")]
-pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
+pub async fn create_identity(
+    identity_form: Form<IdentityForm>,
+    state: &State<ServiceContext>,
+) -> Status {
     let identity: IdentityForm = identity_form.into_inner();
     create_whole_identity(
         identity.name,
@@ -43,14 +48,17 @@ pub async fn create_identity(identity_form: Form<IdentityForm>, state: &State<Cl
         identity.postal_address,
     );
 
-    let mut client = state.inner().clone();
+    let mut client = state.dht_client();
     client.put_identity_public_data_in_dht().await;
 
     Status::Ok
 }
 
 #[put("/change", data = "<identity_form>")]
-pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Client>) -> Status {
+pub async fn change_identity(
+    identity_form: Form<IdentityForm>,
+    state: &State<ServiceContext>,
+) -> Status {
     let identity_form: IdentityForm = identity_form.into_inner();
     let mut identity_changes: Identity = Identity::new_empty();
     identity_changes.name = identity_form.name.trim().to_string();
@@ -70,8 +78,7 @@ pub async fn change_identity(identity_form: Form<IdentityForm>, state: &State<Cl
     my_identity.update_from(&identity_changes);
 
     write_identity_to_file(&my_identity);
-    let mut client = state.inner().clone();
-    client.put_identity_public_data_in_dht().await;
+    state.dht_client().put_identity_public_data_in_dht().await;
 
     Status::Ok
 }

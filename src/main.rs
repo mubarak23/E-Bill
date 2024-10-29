@@ -1,9 +1,11 @@
 use crate::constants::{
-    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH, CONTACT_MAP_FOLDER_PATH,
-    IDENTITY_FOLDER_PATH, QUOTES_MAP_FOLDER_PATH,
+    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH, IDENTITY_FOLDER_PATH,
+    QUOTES_MAP_FOLDER_PATH,
 };
+use anyhow::Result;
 use clap::Parser;
 use config::Config;
+use service::create_service_context;
 use std::path::Path;
 use std::{env, fs};
 
@@ -13,6 +15,8 @@ mod config;
 mod constants;
 mod dht;
 mod external;
+mod persistence;
+mod service;
 #[cfg(test)]
 mod tests;
 mod util;
@@ -20,7 +24,7 @@ mod web;
 
 // MAIN
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     env::set_var("RUST_BACKTRACE", "full");
 
     env_logger::init();
@@ -42,16 +46,12 @@ async fn main() {
     dht.start_provide().await;
     dht.receive_updates_for_all_bills_topics().await;
     dht.put_identity_public_data_in_dht().await;
-    let _rocket = web::rocket_main(dht, &conf)
-        .launch()
-        .await
-        .expect("can run web server");
+    let service_context = create_service_context(conf.clone(), dht.clone()).await?;
+    let _rocket = web::rocket_main(service_context).launch().await?;
+    Ok(())
 }
 
 fn init_folders() {
-    if !Path::new(CONTACT_MAP_FOLDER_PATH).exists() {
-        fs::create_dir(CONTACT_MAP_FOLDER_PATH).expect("Can't create folder contacts.");
-    }
     if !Path::new(QUOTES_MAP_FOLDER_PATH).exists() {
         fs::create_dir(QUOTES_MAP_FOLDER_PATH).expect("Can't create folder quotes.");
     }

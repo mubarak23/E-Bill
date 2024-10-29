@@ -1,10 +1,7 @@
 use super::super::data::{DeleteContactForm, EditContactForm, NewContactForm};
-use crate::bill::contacts::{
-    add_in_contacts_map, change_contact_name_from_contacts_map, delete_from_contacts_map,
-    get_contacts_vec, Contact,
-};
 use crate::constants::IDENTITY_FILE_PATH;
-use crate::dht::Client;
+use crate::service::contact_service::Contact;
+use crate::service::{self, Result, ServiceContext};
 use rocket::form::Form;
 use rocket::http::Status;
 use rocket::serde::json::Json;
@@ -12,53 +9,57 @@ use rocket::{delete, get, post, put, State};
 use std::path::Path;
 
 #[get("/return")]
-pub async fn return_contacts() -> Json<Vec<Contact>> {
-    let contacts: Vec<Contact> = get_contacts_vec();
-    Json(contacts)
+pub async fn return_contacts(state: &State<ServiceContext>) -> Result<Json<Vec<Contact>>> {
+    let contacts: Vec<Contact> = state.contact_service.get_contacts().await?;
+    Ok(Json(contacts))
 }
 
 #[delete("/remove", data = "<remove_contact_form>")]
-pub async fn remove_contact(remove_contact_form: Form<DeleteContactForm>) -> Status {
+pub async fn remove_contact(
+    remove_contact_form: Form<DeleteContactForm>,
+    state: &State<ServiceContext>,
+) -> Result<Status> {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Status::NotAcceptable
+        Err(service::Error::PreconditionFailed)
     } else {
-        delete_from_contacts_map(remove_contact_form.name.clone());
-
-        Status::Ok
+        state
+            .contact_service
+            .delete_identity_by_name(&remove_contact_form.name)
+            .await?;
+        Ok(Status::Ok)
     }
 }
 
 #[post("/new", data = "<new_contact_form>")]
 pub async fn new_contact(
-    state: &State<Client>,
+    state: &State<ServiceContext>,
     new_contact_form: Form<NewContactForm>,
-) -> Result<Json<Vec<Contact>>, Status> {
+) -> Result<Json<Vec<Contact>>> {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Err(Status::NotAcceptable)
+        Err(service::Error::PreconditionFailed)
     } else {
-        add_in_contacts_map(
-            new_contact_form.name.clone(),
-            new_contact_form.node_id.clone(),
-            state.inner().clone(),
-        )
-        .await;
-
-        Ok(Json(get_contacts_vec()))
+        state
+            .contact_service
+            .add_peer_identity(&new_contact_form.name, &new_contact_form.node_id)
+            .await?;
+        let res = state.contact_service.get_contacts().await?;
+        Ok(Json(res))
     }
 }
 
 #[put("/edit", data = "<edit_contact_form>")]
 pub async fn edit_contact(
     edit_contact_form: Form<EditContactForm>,
-) -> Result<Json<Vec<Contact>>, Status> {
+    state: &State<ServiceContext>,
+) -> Result<Json<Vec<Contact>>> {
     if !Path::new(IDENTITY_FILE_PATH).exists() {
-        Err(Status::NotAcceptable)
+        Err(service::Error::PreconditionFailed)
     } else {
-        change_contact_name_from_contacts_map(
-            edit_contact_form.old_name.clone(),
-            edit_contact_form.name.clone(),
-        );
-
-        Ok(Json(get_contacts_vec()))
+        state
+            .contact_service
+            .update_identity_name(&edit_contact_form.old_name, &edit_contact_form.name)
+            .await?;
+        let res = state.contact_service.get_contacts().await?;
+        Ok(Json(res))
     }
 }
