@@ -11,11 +11,8 @@ use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
 use crate::service::contact_service::IdentityPublicData;
 use crate::{
     bill::{
-        accept_bill, endorse_bitcredit_bill, get_bills, get_bills_for_list,
-        identity::{
-            get_whole_identity, read_identity_from_file, read_peer_id_from_file, Identity,
-            IdentityWithAll,
-        },
+        accept_bill, endorse_bitcredit_bill, get_bills_for_list,
+        identity::{get_whole_identity, read_peer_id_from_file, IdentityWithAll},
         issue_new_bill, issue_new_bill_drawer_is_drawee, issue_new_bill_drawer_is_payee,
         mint_bitcredit_bill, read_bill_from_file, request_acceptance, request_pay,
         sell_bitcredit_bill, BitcreditBill, BitcreditBillToReturn,

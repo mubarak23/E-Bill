@@ -18,13 +18,6 @@ pub trait ContactServiceApi: Send + Sync {
     /// call so some sort of caching might be needed in the future.
     async fn get_identity_by_name(&self, name: &str) -> Result<IdentityPublicData>;
 
-    /// Creates a new identity with the given name and data.
-    async fn create_identity(
-        &self,
-        name: &str,
-        identity: IdentityPublicData,
-    ) -> Result<IdentityPublicData>;
-
     /// Deletes the identity with the given name.
     async fn delete_identity_by_name(&self, name: &str) -> Result<()>;
 
@@ -80,15 +73,6 @@ impl ContactServiceApi for ContactService {
         } else {
             Ok(IdentityPublicData::new_empty())
         }
-    }
-
-    async fn create_identity(
-        &self,
-        name: &str,
-        identity: IdentityPublicData,
-    ) -> Result<IdentityPublicData> {
-        self.store.insert(name, identity.to_owned()).await?;
-        Ok(identity)
     }
 
     async fn update_identity(&self, name: &str, identity: IdentityPublicData) -> Result<()> {

@@ -7,7 +7,6 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait ContactStoreApi: Send + Sync {
-    async fn list(&self) -> Result<Vec<IdentityPublicData>>;
     async fn get_map(&self) -> Result<HashMap<String, IdentityPublicData>>;
     async fn by_name(&self, name: &str) -> Result<Option<IdentityPublicData>>;
     async fn insert(&self, name: &str, data: IdentityPublicData) -> Result<()>;
@@ -41,11 +40,6 @@ impl FileBasedContactStore {
 
 #[async_trait]
 impl ContactStoreApi for FileBasedContactStore {
-    async fn list(&self) -> Result<Vec<IdentityPublicData>> {
-        let list = self.read()?.values().cloned().collect();
-        Ok(list)
-    }
-
     async fn get_map(&self) -> Result<HashMap<String, IdentityPublicData>> {
         Ok(self.read()?)
     }

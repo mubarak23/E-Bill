@@ -1,13 +1,9 @@
 use super::super::data::IdentityForm;
 use crate::constants::IDENTITY_FILE_PATH;
-use crate::dht::Client;
 use crate::{
-    bill::{
-        get_bills,
-        identity::{
-            create_whole_identity, get_whole_identity, read_identity_from_file,
-            read_peer_id_from_file, write_identity_to_file, Identity, IdentityWithAll, NodeId,
-        },
+    bill::identity::{
+        create_whole_identity, get_whole_identity, read_identity_from_file, read_peer_id_from_file,
+        write_identity_to_file, Identity, IdentityWithAll, NodeId,
     },
     service::ServiceContext,
 };
