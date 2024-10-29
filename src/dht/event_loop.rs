@@ -18,6 +18,7 @@ use libp2p::multihash::Multihash;
 use libp2p::request_response::{self, RequestId};
 use libp2p::swarm::{Swarm, SwarmEvent};
 use libp2p::{gossipsub, relay, PeerId};
+use log::{error, info, warn};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::iter;
@@ -85,7 +86,7 @@ impl EventLoop {
                     record, ..
                 }))) => {
                     if let Some(sender) = self.pending_get_records.remove(&id) {
-                        println!(
+                        info!(
                             "Got record {:?} {:?}",
                             std::str::from_utf8(record.key.as_ref()).unwrap(),
                             std::str::from_utf8(&record.value).unwrap(),
@@ -108,7 +109,7 @@ impl EventLoop {
                     ..
                 })) => {
                     self.pending_get_records.remove(&id);
-                    println!("No records.");
+                    info!("No records.");
                 }
 
                 QueryResult::GetRecord(Err(GetRecordError::NotFound { key, .. })) => {
@@ -161,7 +162,7 @@ impl EventLoop {
                 })) => {
                     if let Some(sender) = self.pending_get_providers.remove(&id) {
                         for peer in &providers {
-                            println!("PEER {peer:?}");
+                            info!("Get Providers: PEER {peer:?}");
                         }
 
                         sender.send(providers).expect("Receiver not to be dropped.");
@@ -223,29 +224,29 @@ impl EventLoop {
             SwarmEvent::Behaviour(ComposedEvent::RequestResponse(
                 request_response::Event::ResponseSent { .. },
             )) => {
-                println!("{event:?}")
+                info!("ResponseSent event: {event:?}")
             }
 
             //--------------IDENTIFY EVENTS--------------
             SwarmEvent::Behaviour(ComposedEvent::Identify(event)) => {
-                println!("{:?}", event)
+                info!("Identify event: {:?}", event)
             }
 
             //--------------DCUTR EVENTS--------------
             SwarmEvent::Behaviour(ComposedEvent::Dcutr(event)) => {
-                println!("{:?}", event)
+                info!("Dcutr event: {:?}", event)
             }
 
             //--------------RELAY EVENTS--------------
             SwarmEvent::Behaviour(ComposedEvent::Relay(
                 relay::client::Event::ReservationReqAccepted { .. },
             )) => {
-                println!("{event:?}");
-                println!("Relay accepted our reservation request.");
+                info!("ReservationReqAccepted event: {event:?}");
+                info!("Relay accepted our reservation request.");
             }
 
             SwarmEvent::Behaviour(ComposedEvent::Relay(event)) => {
-                println!("{:?}", event)
+                info!("{:?}", event)
             }
 
             //--------------GOSSIPSUB EVENTS--------------
@@ -255,7 +256,7 @@ impl EventLoop {
                 message,
             })) => {
                 let bill_name = message.topic.clone().into_string();
-                println!("Got message with id: {id} from peer: {peer_id} in topic: {bill_name}",);
+                info!("Got message with id: {id} from peer: {peer_id} in topic: {bill_name}",);
                 let event = GossipsubEvent::from_byte_array(&message.data);
 
                 if event.id.eq(&GossipsubEventId::Block) {
@@ -282,21 +283,21 @@ impl EventLoop {
                         .publish(gossipsub::IdentTopic::new(bill_name.clone()), message)
                         .expect("Can not publish message.");
                 } else {
-                    println!("Unknown event id: {id} from peer: {peer_id} in topic: {bill_name}");
+                    warn!("Unknown event id: {id} from peer: {peer_id} in topic: {bill_name}");
                 }
             }
             //--------------OTHERS BEHAVIOURS EVENTS--------------
             SwarmEvent::Behaviour(event) => {
-                println!("{event:?}")
+                info!("Behaviour event: {event:?}")
             }
 
             //--------------COMMON EVENTS--------------
             SwarmEvent::NewListenAddr { address, .. } => {
-                println!("Listening on {:?}", address);
+                info!("Listening on {:?}", address);
             }
 
             SwarmEvent::IncomingConnection { .. } => {
-                println!("{event:?}")
+                info!("IncomingConnection event: {event:?}")
             }
 
             SwarmEvent::ConnectionEstablished {
@@ -310,11 +311,11 @@ impl EventLoop {
             }
 
             SwarmEvent::ConnectionClosed { .. } => {
-                println!("{event:?}")
+                info!("ConnectionClosed event: {event:?}")
             }
 
             SwarmEvent::OutgoingConnectionError { .. } => {
-                // println!("Outgoing connection error to {:?}: {:?}", peer_id, error);
+                error!("OutgoingConnectionError event {event:?}");
                 // if let Some(peer_id) = peer_id {
                 //     if let Some(sender) = self.pending_dial.remove(&peer_id) {
                 //         let _ = sender.send(Err(Box::new(error)));
@@ -323,7 +324,7 @@ impl EventLoop {
             }
 
             SwarmEvent::IncomingConnectionError { .. } => {
-                println!("{event:?}")
+                error!("IncomingConnectionError event: {event:?}")
             }
 
             _ => {}
@@ -333,7 +334,7 @@ impl EventLoop {
     async fn handle_command(&mut self, command: Command) {
         match command {
             Command::StartProviding { file_name, sender } => {
-                println!("Start providing {file_name:?}");
+                info!("Start providing {file_name:?}");
                 let query_id = self
                     .swarm
                     .behaviour_mut()
@@ -344,7 +345,7 @@ impl EventLoop {
             }
 
             Command::PutRecord { key, value } => {
-                println!("Put record {key:?}");
+                info!("Put record {key:?}");
                 let key_record = Key::new(&key);
                 let value_bytes = value.as_bytes().to_vec();
                 let record = Record {
@@ -368,7 +369,7 @@ impl EventLoop {
             }
 
             Command::SendMessage { msg, topic } => {
-                println!("Send message to topic {topic:?}");
+                info!("Send message to topic {topic:?}");
                 let swarm = self.swarm.behaviour_mut();
                 //TODO: check if topic not empty.
                 swarm
@@ -378,7 +379,7 @@ impl EventLoop {
             }
 
             Command::SubscribeToTopic { topic } => {
-                println!("Subscribe to topic {topic:?}");
+                info!("Subscribe to topic {topic:?}");
                 self.swarm
                     .behaviour_mut()
                     .gossipsub
@@ -387,14 +388,14 @@ impl EventLoop {
             }
 
             Command::GetRecord { key, sender } => {
-                println!("Get record {key:?}");
+                info!("Get record {key:?}");
                 let key_record = Key::new(&key);
                 let query_id = self.swarm.behaviour_mut().kademlia.get_record(key_record);
                 self.pending_get_records.insert(query_id, sender);
             }
 
             Command::GetProviders { file_name, sender } => {
-                println!("Get providers {file_name:?}");
+                info!("Get providers {file_name:?}");
                 let query_id = self
                     .swarm
                     .behaviour_mut()
@@ -408,7 +409,7 @@ impl EventLoop {
                 peer,
                 sender,
             } => {
-                println!("Request file {file_name:?}");
+                info!("Request file {file_name:?}");
 
                 let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
                     .to_string()
@@ -430,7 +431,7 @@ impl EventLoop {
             }
 
             Command::RespondFile { file, channel } => {
-                println!("Respond file");
+                info!("Respond file");
                 self.swarm
                     .behaviour_mut()
                     .request_response
