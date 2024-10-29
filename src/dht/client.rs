@@ -40,7 +40,7 @@ impl Client {
         mut network_events: Receiver<Event>,
     ) {
         loop {
-            futures::select! {
+            tokio::select! {
                 line = stdin.select_next_some() => self.handle_input_line(line.expect("Stdin not to close.")).await,
                 event = network_events.next() => self.handle_event(event.expect("Swarm stream to be infinite.")).await,
             }

@@ -81,11 +81,11 @@ async fn new(
     swarm.listen_on(conf.p2p_listen_url().unwrap()).unwrap();
 
     // Wait to listen on all interfaces.
-    let sleep = tokio::time::sleep(std::time::Duration::from_secs(1)).fuse();
+    let sleep = tokio::time::sleep(std::time::Duration::from_secs(1));
     tokio::pin!(sleep);
 
     loop {
-        futures::select! {
+        tokio::select! {
             event = swarm.next() => {
                 match event.unwrap() {
                     SwarmEvent::NewListenAddr { address, .. } => {
@@ -96,7 +96,7 @@ async fn new(
                     event => panic!("{event:?}"),
                 }
             }
-            _ = sleep => {
+            _ = &mut sleep => {
                 // Likely listening on all interfaces now, thus continuing by breaking the loop.
                 break;
             }
