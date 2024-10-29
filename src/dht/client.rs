@@ -1,7 +1,8 @@
 use super::behaviour::{Command, Event, FileResponse};
 use crate::blockchain::{Chain, GossipsubEvent, GossipsubEventId};
 use crate::constants::{
-    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BILLS_PREFIX, IDENTITY_FILE_PATH,
+    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BILLS_PREFIX, BILL_PREFIX, IDENTITY_FILE_PATH,
+    KEY_PREFIX,
 };
 use crate::service::contact_service::IdentityPublicData;
 use crate::{
@@ -20,6 +21,7 @@ use futures::prelude::*;
 use libp2p::kad::record::Record;
 use libp2p::request_response::ResponseChannel;
 use libp2p::PeerId;
+use log::error;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
@@ -233,7 +235,7 @@ impl Client {
 
     pub async fn add_bill_to_dht_for_node(&mut self, bill_name: &String, node_id: &String) {
         let node_request = BILLS_PREFIX.to_string() + node_id;
-        let mut record_for_saving_in_dht = String::new();
+        let mut record_for_saving_in_dht;
         let list_bills_for_node = self.get_record(node_request.clone()).await;
         let value = list_bills_for_node.value;
         if !value.is_empty() {
@@ -268,7 +270,7 @@ impl Client {
     pub async fn get_bill(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {
-            eprintln!("No providers was found.");
+            error!("No providers was found.");
             Vec::new()
         } else {
             //TODO: If it's me - don't continue.
@@ -276,7 +278,7 @@ impl Client {
                 let mut network_client = self.clone();
                 let local_peer_id = read_peer_id_from_file().to_string();
                 let mut name = name.clone();
-                name = "BILL_".to_string() + name.as_str();
+                name = BILL_PREFIX.to_string() + name.as_str();
                 name = local_peer_id + "_" + name.as_str();
                 async move { network_client.request_file(peer, name).await }.boxed()
             });
@@ -286,7 +288,7 @@ impl Client {
             let file_content_await = file_content.await;
 
             if file_content_await.is_err() {
-                println!("None of the providers returned file.");
+                error!("None of the providers returned file.");
                 Vec::new()
             } else {
                 file_content_await
@@ -300,7 +302,7 @@ impl Client {
     pub async fn get_key(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {
-            eprintln!("No providers was found.");
+            error!("No providers was found.");
             Vec::new()
         } else {
             //TODO: If it's me - don't continue.
@@ -308,7 +310,7 @@ impl Client {
                 let mut network_client = self.clone();
                 let local_peer_id = read_peer_id_from_file().to_string();
                 let mut name = name.clone();
-                name = "KEY_".to_string() + name.as_str();
+                name = KEY_PREFIX.to_string() + name.as_str();
                 name = local_peer_id + "_" + name.as_str();
                 async move { network_client.request_file(peer, name).await }.boxed()
             });
@@ -318,7 +320,7 @@ impl Client {
             let file_content_await = file_content.await;
 
             if file_content_await.is_err() {
-                println!("None of the providers returned file.");
+                error!("None of the providers returned file.");
                 Vec::new()
             } else {
                 file_content_await
@@ -433,48 +435,47 @@ impl Client {
     }
 
     async fn handle_event(&mut self, event: Event) {
-        if let Event::InboundRequest { request, channel } = event {
-            let size_request = request.split("_").collect::<Vec<&str>>();
-            if size_request.len().eq(&3) {
-                let request_node_id: String =
-                    request.splitn(2, "_").collect::<Vec<&str>>()[0].to_string();
-                let request = request.splitn(2, "_").collect::<Vec<&str>>()[1].to_string();
+        let Event::InboundRequest { request, channel } = event;
+        let size_request = request.split("_").collect::<Vec<&str>>();
+        if size_request.len().eq(&3) {
+            let request_node_id: String =
+                request.splitn(2, "_").collect::<Vec<&str>>()[0].to_string();
+            let request = request.splitn(2, "_").collect::<Vec<&str>>()[1].to_string();
 
-                let mut bill_name = request.clone();
-                if request.starts_with("KEY_") {
-                    bill_name = request.splitn(2, "KEY_").collect::<Vec<&str>>()[1].to_string();
-                } else if request.starts_with("BILL_") {
-                    bill_name = request.split("BILL_").collect::<Vec<&str>>()[1].to_string();
+            let mut bill_name = request.clone();
+            if request.starts_with(KEY_PREFIX) {
+                bill_name = request.splitn(2, KEY_PREFIX).collect::<Vec<&str>>()[1].to_string();
+            } else if request.starts_with(BILL_PREFIX) {
+                bill_name = request.split(BILL_PREFIX).collect::<Vec<&str>>()[1].to_string();
+            }
+            let chain = Chain::read_chain_from_file(&bill_name);
+
+            let bill_contain_node = chain.bill_contain_node(request_node_id.clone());
+
+            if request.starts_with(KEY_PREFIX) {
+                if bill_contain_node {
+                    let public_key = self
+                        .get_identity_public_data_from_dht(request_node_id.clone())
+                        .await
+                        .rsa_public_key_pem;
+
+                    let key_name =
+                        request.splitn(2, KEY_PREFIX).collect::<Vec<&str>>()[1].to_string();
+                    let path_to_key =
+                        BILLS_KEYS_FOLDER_PATH.to_string() + "/" + &key_name + ".json";
+                    let file = fs::read(&path_to_key).unwrap();
+
+                    let file_encrypted = encrypt_bytes_with_public_key(&file, public_key);
+
+                    self.respond_file(file_encrypted, channel).await;
                 }
-                let chain = Chain::read_chain_from_file(&bill_name);
+            } else if request.starts_with(BILL_PREFIX) {
+                let bill_name =
+                    request.splitn(2, BILL_PREFIX).collect::<Vec<&str>>()[1].to_string();
+                let path_to_bill = BILLS_FOLDER_PATH.to_string() + "/" + &bill_name + ".json";
+                let file = fs::read(&path_to_bill).unwrap();
 
-                let bill_contain_node = chain.bill_contain_node(request_node_id.clone());
-
-                if request.starts_with("KEY_") {
-                    if bill_contain_node {
-                        let public_key = self
-                            .get_identity_public_data_from_dht(request_node_id.clone())
-                            .await
-                            .rsa_public_key_pem;
-
-                        let key_name =
-                            request.splitn(2, "KEY_").collect::<Vec<&str>>()[1].to_string();
-                        let path_to_key =
-                            BILLS_KEYS_FOLDER_PATH.to_string() + "/" + &key_name + ".json";
-                        let file = fs::read(&path_to_key).unwrap();
-
-                        let file_encrypted = encrypt_bytes_with_public_key(&file, public_key);
-
-                        self.respond_file(file_encrypted, channel).await;
-                    }
-                } else if request.starts_with("BILL_") {
-                    let bill_name =
-                        request.splitn(2, "BILL_").collect::<Vec<&str>>()[1].to_string();
-                    let path_to_bill = BILLS_FOLDER_PATH.to_string() + "/" + &bill_name + ".json";
-                    let file = fs::read(&path_to_bill).unwrap();
-
-                    self.respond_file(file, channel).await;
-                }
+                self.respond_file(file, channel).await;
             }
         }
     }
@@ -489,7 +490,7 @@ impl Client {
                     match args.next() {
                         Some(name) => String::from(name),
                         None => {
-                            eprintln!("Expected name.");
+                            error!("Expected name.");
                             return;
                         }
                     }
@@ -502,7 +503,7 @@ impl Client {
                     match args.next() {
                         Some(name) => String::from(name),
                         None => {
-                            eprintln!("Expected name.");
+                            error!("Expected name.");
                             return;
                         }
                     }
@@ -515,7 +516,7 @@ impl Client {
                     match args.next() {
                         Some(name) => String::from(name),
                         None => {
-                            eprintln!("Expected name.");
+                            error!("Expected name.");
                             return;
                         }
                     }
@@ -528,7 +529,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected key");
+                            error!("Expected key");
                             return;
                         }
                     }
@@ -537,7 +538,7 @@ impl Client {
                     match args.next() {
                         Some(value) => String::from(value),
                         None => {
-                            eprintln!("Expected value");
+                            error!("Expected value");
                             return;
                         }
                     }
@@ -551,7 +552,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected topic");
+                            error!("Expected topic");
                             return;
                         }
                     }
@@ -560,7 +561,7 @@ impl Client {
                     match args.next() {
                         Some(value) => String::from(value),
                         None => {
-                            eprintln!("Expected msg");
+                            error!("Expected msg");
                             return;
                         }
                     }
@@ -574,7 +575,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected topic");
+                            error!("Expected topic");
                             return;
                         }
                     }
@@ -588,7 +589,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected key");
+                            error!("Expected key");
                             return;
                         }
                     }
@@ -601,7 +602,7 @@ impl Client {
                     match args.next() {
                         Some(key) => String::from(key),
                         None => {
-                            eprintln!("Expected key");
+                            error!("Expected key");
                             return;
                         }
                     }
@@ -610,7 +611,7 @@ impl Client {
             }
 
             _ => {
-                eprintln!(
+                error!(
                         "expected GET, PUT, SEND_MESSAGE, SUBSCRIBE, GET_RECORD, PUT_RECORD or GET_PROVIDERS."
                     );
             }

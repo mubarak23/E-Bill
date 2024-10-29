@@ -13,7 +13,7 @@ The following options are available:
 ## Example
 
 ```bash
-cargo run -- --http-port 8001
+RUST_LOG=info cargo run -- --http-port 8001
 
 RUST_LOG=info HTTP_PORT=8001 cargo run
 ```

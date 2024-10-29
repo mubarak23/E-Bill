@@ -3,6 +3,8 @@ use std::net::Ipv4Addr;
 
 // General
 pub const BILLS_PREFIX: &str = "BILLS";
+pub const BILL_PREFIX: &str = "BILL_";
+pub const KEY_PREFIX: &str = "KEY_";
 
 // Paths
 pub const IDENTITY_FOLDER_PATH: &str = "identity";
