@@ -8,10 +8,11 @@ use std::thread;
 use super::block::Block;
 use super::calculate_hash;
 use super::OperationCode;
+use crate::bill::get_path_for_bill;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
-use crate::constants::{BILLS_FOLDER_PATH, USEDNET};
+use crate::constants::USEDNET;
 use crate::external;
 use crate::service::contact_service::IdentityPublicData;
 use crate::{
@@ -43,18 +44,16 @@ impl Chain {
     }
 
     pub fn read_chain_from_file(bill_name: &str) -> Self {
-        let input_path = BILLS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
-        let blockchain_from_file = std::fs::read(input_path.clone()).expect("file not found");
+        let input_path = get_path_for_bill(bill_name);
+
+        let blockchain_from_file = std::fs::read(input_path).expect("file not found");
         serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
     }
 
     pub fn write_chain_to_file(&self, bill_name: &str) {
-        let output_path = BILLS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
-        std::fs::write(
-            output_path.clone(),
-            serde_json::to_string_pretty(&self).unwrap(),
-        )
-        .unwrap();
+        let output_path = get_path_for_bill(bill_name);
+
+        std::fs::write(output_path, serde_json::to_string_pretty(&self).unwrap()).unwrap();
     }
 
     pub fn is_chain_valid(&self) -> bool {
@@ -104,13 +103,12 @@ impl Chain {
     }
 
     pub fn exist_block_with_operation_code(&self, operation_code: OperationCode) -> bool {
-        let mut exist_block_with_operation_code = false;
         for block in &self.blocks {
             if block.operation_code == operation_code {
-                exist_block_with_operation_code = true;
+                return true;
             }
         }
-        exist_block_with_operation_code
+        false
     }
 
     pub fn get_last_version_bill(&self) -> BitcreditBill {

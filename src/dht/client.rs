@@ -1,8 +1,8 @@
 use super::behaviour::{Command, Event, FileResponse};
+use crate::bill::{get_path_for_bill, get_path_for_bill_keys};
 use crate::blockchain::{Chain, GossipsubEvent, GossipsubEventId};
 use crate::constants::{
-    BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BILLS_PREFIX, BILL_PREFIX, IDENTITY_FILE_PATH,
-    KEY_PREFIX,
+    BILLS_FOLDER_PATH, BILLS_PREFIX, BILL_PREFIX, IDENTITY_FILE_PATH, KEY_PREFIX,
 };
 use crate::service::contact_service::IdentityPublicData;
 use crate::{
@@ -58,12 +58,11 @@ impl Client {
                 .to_string();
             let bills = record_for_saving_in_dht.split(',');
             for bill_id in bills {
-                if !Path::new((BILLS_FOLDER_PATH.to_string() + "/" + bill_id + ".json").as_str())
-                    .exists()
-                {
+                let path = get_path_for_bill(bill_id);
+                let path_for_keys = get_path_for_bill_keys(bill_id);
+                if !path.exists() {
                     let bill_bytes = self.get_bill(bill_id.to_string().clone()).await;
                     if !bill_bytes.is_empty() {
-                        let path = BILLS_FOLDER_PATH.to_string() + "/" + bill_id + ".json";
                         fs::write(path, bill_bytes.clone()).expect("Can't write file.");
                     }
 
@@ -74,8 +73,7 @@ impl Client {
                         let key_bytes_decrypted =
                             decrypt_bytes_with_private_key(&key_bytes, pr_key);
 
-                        let path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_id + ".json";
-                        fs::write(path, key_bytes_decrypted).expect("Can't write file.");
+                        fs::write(path_for_keys, key_bytes_decrypted).expect("Can't write file.");
                     }
 
                     if !bill_bytes.is_empty() {
@@ -461,8 +459,7 @@ impl Client {
 
                     let key_name =
                         request.splitn(2, KEY_PREFIX).collect::<Vec<&str>>()[1].to_string();
-                    let path_to_key =
-                        BILLS_KEYS_FOLDER_PATH.to_string() + "/" + &key_name + ".json";
+                    let path_to_key = get_path_for_bill_keys(&key_name);
                     let file = fs::read(&path_to_key).unwrap();
 
                     let file_encrypted = encrypt_bytes_with_public_key(&file, public_key);
@@ -472,7 +469,7 @@ impl Client {
             } else if request.starts_with(BILL_PREFIX) {
                 let bill_name =
                     request.splitn(2, BILL_PREFIX).collect::<Vec<&str>>()[1].to_string();
-                let path_to_bill = BILLS_FOLDER_PATH.to_string() + "/" + &bill_name + ".json";
+                let path_to_bill = get_path_for_bill(&bill_name);
                 let file = fs::read(&path_to_bill).unwrap();
 
                 self.respond_file(file, channel).await;

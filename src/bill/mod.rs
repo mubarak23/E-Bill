@@ -17,7 +17,7 @@ use openssl::rsa::Rsa;
 use openssl::sha::sha256;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::FromForm;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{fs, thread};
 
 pub mod contacts;
@@ -449,7 +449,7 @@ fn write_bill_keys_to_file(bill_name: String, private_key: String, public_key: S
         public_key_pem: public_key,
     };
 
-    let output_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name.as_str() + ".json";
+    let output_path = get_path_for_bill_keys(&bill_name);
     fs::write(
         output_path.clone(),
         serde_json::to_string_pretty(&keys).unwrap(),
@@ -461,6 +461,18 @@ fn create_bill_name(public_key: &PublicKey) -> String {
     let bill_name_hash: Vec<u8> = sha256(&public_key.to_bytes()).to_vec();
 
     hex::encode(bill_name_hash)
+}
+
+pub fn get_path_for_bill(bill_name: &str) -> PathBuf {
+    let mut path = PathBuf::from(BILLS_FOLDER_PATH).join(bill_name);
+    path.set_extension("json");
+    path
+}
+
+pub fn get_path_for_bill_keys(key_name: &str) -> PathBuf {
+    let mut path = PathBuf::from(BILLS_KEYS_FOLDER_PATH).join(key_name);
+    path.set_extension("json");
+    path
 }
 
 pub fn get_bills() -> Vec<BitcreditBill> {
@@ -973,7 +985,7 @@ pub fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {
 }
 
 pub fn read_keys_from_bill_file(bill_name: &str) -> BillKeys {
-    let input_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
+    let input_path = get_path_for_bill_keys(bill_name);
     let blockchain_from_file = fs::read(input_path.clone()).expect("file not found");
     serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
 }

@@ -9,10 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
-use crate::constants::BILLS_FOLDER_PATH;
 use crate::service::contact_service::IdentityPublicData;
-use crate::{bill::BitcreditBill, util::rsa::encrypt_bytes};
-
+use crate::{bill::{BitcreditBill, get_path_for_bill}, util::rsa::encrypt_bytes};
 pub use block::Block;
 pub use chain::Chain;
 
@@ -148,12 +146,8 @@ pub fn start_blockchain_for_new_bill(
     );
 
     let chain = Chain::new(first_block);
-    let output_path = BILLS_FOLDER_PATH.to_string() + "/" + bill.name.clone().as_str() + ".json";
-    std::fs::write(
-        output_path.clone(),
-        serde_json::to_string_pretty(&chain).unwrap(),
-    )
-    .unwrap();
+    let output_path = get_path_for_bill(&bill.name);
+    std::fs::write(output_path, serde_json::to_string_pretty(&chain).unwrap()).unwrap();
 }
 
 fn calculate_hash(

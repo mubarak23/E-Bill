@@ -4,8 +4,9 @@ use super::super::data::{
     RequestToMintBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
 use crate::bill::contacts::get_current_payee_private_key;
+use crate::bill::get_path_for_bill;
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
-use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
+use crate::constants::IDENTITY_FILE_PATH;
 use crate::external;
 use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
 use crate::service::contact_service::IdentityPublicData;
@@ -58,7 +59,7 @@ pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) {
     let mut client = state.dht_client();
     let bill_bytes = client.get_bill(bill_id.to_string().clone()).await;
     if !bill_bytes.is_empty() {
-        let path = BILLS_FOLDER_PATH.to_string() + "/" + &bill_id + ".json";
+        let path = get_path_for_bill(&bill_id);
         fs::write(path, bill_bytes.clone()).expect("Can't write file.");
     }
 }
