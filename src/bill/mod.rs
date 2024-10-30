@@ -17,8 +17,8 @@ use openssl::rsa::Rsa;
 use openssl::sha::sha256;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::FromForm;
-use std::path::Path;
-use std::{fs, thread};
+use std::fs;
+use std::path::PathBuf;
 
 pub mod contacts;
 pub mod identity;
@@ -449,7 +449,7 @@ fn write_bill_keys_to_file(bill_name: String, private_key: String, public_key: S
         public_key_pem: public_key,
     };
 
-    let output_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name.as_str() + ".json";
+    let output_path = get_path_for_bill_keys(&bill_name);
     fs::write(
         output_path.clone(),
         serde_json::to_string_pretty(&keys).unwrap(),
@@ -463,64 +463,65 @@ fn create_bill_name(public_key: &PublicKey) -> String {
     hex::encode(bill_name_hash)
 }
 
-pub fn get_bills() -> Vec<BitcreditBill> {
+pub fn get_path_for_bill(bill_name: &str) -> PathBuf {
+    let mut path = PathBuf::from(BILLS_FOLDER_PATH).join(bill_name);
+    path.set_extension("json");
+    path
+}
+
+pub fn get_path_for_bill_keys(key_name: &str) -> PathBuf {
+    let mut path = PathBuf::from(BILLS_KEYS_FOLDER_PATH).join(key_name);
+    path.set_extension("json");
+    path
+}
+
+pub async fn get_bills() -> Vec<BitcreditBill> {
     let mut bills = Vec::new();
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
-    for _path in paths {
-        let dir = _path.unwrap();
+    for path in paths {
+        let dir = path.unwrap();
         if util::is_not_hidden(&dir) {
-            let file_name = dir
-                .file_name()
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            //TODO change
-            let path_without_extension = Path::file_stem(Path::new(&file_name))
-                .expect("File name error")
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            let bill = read_bill_from_file(&path_without_extension);
+            let bill = read_bill_from_file(
+                dir.path()
+                    .file_stem()
+                    .expect("File name error")
+                    .to_str()
+                    .expect("File name error"),
+            )
+            .await;
             bills.push(bill);
         }
     }
     bills
 }
 
-pub fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
+pub async fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
     let mut bills = Vec::new();
     let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
-    for _path in paths {
-        let dir = _path.unwrap();
+    for path in paths {
+        let dir = path.unwrap();
         if util::is_not_hidden(&dir) {
-            let file_name = dir
-                .file_name()
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            //TODO change
-            let path_without_extension = Path::file_stem(Path::new(&file_name))
-                .expect("File name error")
-                .to_str()
-                .expect("File name error")
-                .to_string();
-            let bill =
-                thread::spawn(move || read_bill_with_chain_from_file(&path_without_extension))
-                    .join()
-                    .expect("Thread panicked");
+            let bill = read_bill_with_chain_from_file(
+                dir.path()
+                    .file_stem()
+                    .expect("File name error")
+                    .to_str()
+                    .expect("File name error"),
+            )
+            .await;
             bills.push(bill);
         }
     }
     bills
 }
 
-pub fn endorse_bitcredit_bill(
+pub async fn endorse_bitcredit_bill(
     bill_name: &str,
     endorsee: IdentityPublicData,
     timestamp: i64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -590,7 +591,7 @@ pub async fn mint_bitcredit_bill(
     timestamp: i64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -657,14 +658,14 @@ pub async fn mint_bitcredit_bill(
     }
 }
 
-pub fn sell_bitcredit_bill(
+pub async fn sell_bitcredit_bill(
     bill_name: &str,
     buyer: IdentityPublicData,
     timestamp: i64,
     amount_numbers: u64,
 ) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -726,9 +727,9 @@ pub fn sell_bitcredit_bill(
     }
 }
 
-pub fn request_pay(bill_name: &str, timestamp: i64) -> bool {
+pub async fn request_pay(bill_name: &str, timestamp: i64) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -789,9 +790,9 @@ pub fn request_pay(bill_name: &str, timestamp: i64) -> bool {
     }
 }
 
-pub fn request_acceptance(bill_name: &str, timestamp: i64) -> bool {
+pub async fn request_acceptance(bill_name: &str, timestamp: i64) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -852,9 +853,9 @@ pub fn request_acceptance(bill_name: &str, timestamp: i64) -> bool {
     }
 }
 
-pub fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
+pub async fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
     let my_peer_id = read_peer_id_from_file().to_string();
-    let bill = read_bill_from_file(bill_name);
+    let bill = read_bill_from_file(bill_name).await;
 
     let mut blockchain_from_file = Chain::read_chain_from_file(bill_name);
     let last_block = blockchain_from_file.get_latest_block();
@@ -907,9 +908,8 @@ pub fn accept_bill(bill_name: &str, timestamp: i64) -> bool {
     }
 }
 
-#[tokio::main]
 async fn read_bill_with_chain_from_file(id: &str) -> BitcreditBillToReturn {
-    let bill: BitcreditBill = read_bill_from_file(id);
+    let bill: BitcreditBill = read_bill_from_file(id).await;
     let chain = Chain::read_chain_from_file(&bill.name);
     let drawer = chain.get_drawer();
     let chain_to_return = ChainToReturn::new(chain.clone());
@@ -963,9 +963,9 @@ async fn read_bill_with_chain_from_file(id: &str) -> BitcreditBillToReturn {
     }
 }
 
-pub fn read_bill_from_file(bill_name: &str) -> BitcreditBill {
+pub async fn read_bill_from_file(bill_name: &str) -> BitcreditBill {
     let chain = Chain::read_chain_from_file(bill_name);
-    chain.get_last_version_bill()
+    chain.get_last_version_bill().await
 }
 
 pub fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {
@@ -973,7 +973,7 @@ pub fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {
 }
 
 pub fn read_keys_from_bill_file(bill_name: &str) -> BillKeys {
-    let input_path = BILLS_KEYS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
+    let input_path = get_path_for_bill_keys(bill_name);
     let blockchain_from_file = fs::read(input_path.clone()).expect("file not found");
     serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
 }

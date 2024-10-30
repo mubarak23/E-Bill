@@ -45,4 +45,5 @@ thiserror = "1.0.64"
 moksha-core = { git = "https://github.com/mtbitcr/moksha" }
 moksha-mint = { git = "https://github.com/mtbitcr/moksha" }
 moksha-wallet = { git = "https://github.com/mtbitcr/moksha" }
+hf = { version = "0.3.6", default-features = false }
 

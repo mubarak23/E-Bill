@@ -1,17 +1,11 @@
-use log::error;
-use openssl::pkey::Private;
-use openssl::rsa::Rsa;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use std::thread;
-
 use super::block::Block;
 use super::calculate_hash;
 use super::OperationCode;
+use crate::bill::get_path_for_bill;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
-use crate::constants::{BILLS_FOLDER_PATH, USEDNET};
+use crate::constants::USEDNET;
 use crate::external;
 use crate::service::contact_service::IdentityPublicData;
 use crate::{
@@ -20,8 +14,13 @@ use crate::{
 };
 use borsh_derive::BorshDeserialize;
 use borsh_derive::BorshSerialize;
+use log::error;
 use log::warn;
+use openssl::pkey::Private;
+use openssl::rsa::Rsa;
 use rocket::FromForm;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Chain {
@@ -43,18 +42,16 @@ impl Chain {
     }
 
     pub fn read_chain_from_file(bill_name: &str) -> Self {
-        let input_path = BILLS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
-        let blockchain_from_file = std::fs::read(input_path.clone()).expect("file not found");
+        let input_path = get_path_for_bill(bill_name);
+
+        let blockchain_from_file = std::fs::read(input_path).expect("file not found");
         serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
     }
 
     pub fn write_chain_to_file(&self, bill_name: &str) {
-        let output_path = BILLS_FOLDER_PATH.to_string() + "/" + bill_name + ".json";
-        std::fs::write(
-            output_path.clone(),
-            serde_json::to_string_pretty(&self).unwrap(),
-        )
-        .unwrap();
+        let output_path = get_path_for_bill(bill_name);
+
+        std::fs::write(output_path, serde_json::to_string_pretty(&self).unwrap()).unwrap();
     }
 
     pub fn is_chain_valid(&self) -> bool {
@@ -104,16 +101,15 @@ impl Chain {
     }
 
     pub fn exist_block_with_operation_code(&self, operation_code: OperationCode) -> bool {
-        let mut exist_block_with_operation_code = false;
         for block in &self.blocks {
             if block.operation_code == operation_code {
-                exist_block_with_operation_code = true;
+                return true;
             }
         }
-        exist_block_with_operation_code
+        false
     }
 
-    pub fn get_last_version_bill(&self) -> BitcreditBill {
+    pub async fn get_last_version_bill(&self) -> BitcreditBill {
         let first_block = self.get_first_block();
 
         let bill_keys = read_keys_from_bill_file(&first_block.bill_name);
@@ -144,7 +140,7 @@ impl Chain {
             let last_version_block_sell = self.get_last_version_block_with_operation_code(Sell);
             let last_block = self.get_latest_block();
 
-            let paid = Self::check_if_last_sell_block_is_paid(self);
+            let paid = Self::check_if_last_sell_block_is_paid(self).await;
 
             if (last_version_block_endorse.id < last_version_block_sell.id)
                 && (last_version_block_mint.id < last_version_block_sell.id)
@@ -261,7 +257,7 @@ impl Chain {
         }
     }
 
-    pub fn waiting_for_payment(
+    pub async fn waiting_for_payment(
         &self,
     ) -> (bool, IdentityPublicData, IdentityPublicData, String, u64) {
         let last_block = self.get_latest_block();
@@ -334,9 +330,8 @@ impl Chain {
 
             let address_to_pay_for_async = address_to_pay.clone();
 
-            let paid = thread::spawn(move || Self::check_if_paid(address_to_pay_for_async, amount))
-                .join()
-                .expect("Thread panicked");
+            let (paid, _amount) =
+                external::bitcoin::check_if_paid(address_to_pay_for_async, amount).await;
 
             (
                 !paid,
@@ -369,7 +364,7 @@ impl Chain {
         diference > period
     }
 
-    fn check_if_last_sell_block_is_paid(&self) -> bool {
+    async fn check_if_last_sell_block_is_paid(&self) -> bool {
         if self.exist_block_with_operation_code(Sell) {
             let last_version_block_sell = self.get_last_version_block_with_operation_code(Sell);
 
@@ -410,9 +405,9 @@ impl Chain {
             let address_to_pay =
                 Self::get_address_to_pay_for_block_sell(last_version_block_sell.clone(), bill);
 
-            thread::spawn(move || Self::check_if_paid(address_to_pay, amount))
-                .join()
-                .expect("Thread panicked")
+            external::bitcoin::check_if_paid(address_to_pay, amount)
+                .await
+                .0
         } else {
             false
         }
@@ -467,24 +462,6 @@ impl Chain {
         let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
 
         bitcoin::Address::p2pkh(pub_key_bill, USEDNET).to_string()
-    }
-
-    #[tokio::main]
-    async fn check_if_paid(address: String, amount: u64) -> bool {
-        let info_about_address =
-            external::bitcoin::AddressInfo::get_address_info(address.clone()).await;
-        let received_summ = info_about_address.chain_stats.funded_txo_sum;
-        let spent_summ = info_about_address.chain_stats.spent_txo_sum;
-        // let received_summ_mempool = info_about_address.mempool_stats.funded_txo_sum;
-        let spent_summ_mempool = info_about_address.mempool_stats.spent_txo_sum;
-        if amount.eq(&(received_summ + spent_summ
-                // + received_summ_mempool
-                + spent_summ_mempool))
-        {
-            true
-        } else {
-            false
-        }
     }
 
     pub(super) fn get_first_version_bill(&self) -> BitcreditBill {

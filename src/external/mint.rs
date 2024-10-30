@@ -18,6 +18,8 @@ use crate::bill::{
 };
 use crate::web::RequestToMintBitcreditBillForm;
 
+// Usage of tokio::main to spawn a new runtime is necessary here, because Wallet is'nt Send - but
+// this logic will be replaced soon
 #[tokio::main]
 pub async fn accept_mint_bitcredit(
     amount: u64,
@@ -43,6 +45,8 @@ pub async fn accept_mint_bitcredit(
     req.await.unwrap()
 }
 
+// Usage of tokio::main to spawn a new runtime is necessary here, because Wallet is'nt Send - but
+// this logic will be replaced soon
 #[tokio::main]
 pub async fn check_bitcredit_quote(bill_id: &str) {
     let dir = PathBuf::from("./data/wallet".to_string());
@@ -74,6 +78,8 @@ pub async fn check_bitcredit_quote(bill_id: &str) {
     // quote
 }
 
+// Usage of tokio::main to spawn a new runtime is necessary here, because Wallet is'nt Send - but
+// this logic will be replaced soon
 #[tokio::main]
 pub async fn client_accept_bitcredit_quote(bill_id: &String) -> String {
     let dir = PathBuf::from("./data/wallet".to_string());
@@ -126,6 +132,8 @@ pub async fn client_accept_bitcredit_quote(bill_id: &String) -> String {
     token
 }
 
+// Usage of tokio::main to spawn a new runtime is necessary here, because Wallet is'nt Send - but
+// this logic will be replaced soon
 #[tokio::main]
 pub async fn request_to_mint_bitcredit(
     form: RequestToMintBitcreditBillForm,

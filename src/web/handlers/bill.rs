@@ -4,8 +4,9 @@ use super::super::data::{
     RequestToMintBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
 use crate::bill::contacts::get_current_payee_private_key;
+use crate::bill::get_path_for_bill;
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
-use crate::constants::{BILLS_FOLDER_PATH, IDENTITY_FILE_PATH};
+use crate::constants::IDENTITY_FILE_PATH;
 use crate::external;
 use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
 use crate::service::contact_service::IdentityPublicData;
@@ -30,20 +31,20 @@ use std::{fs, thread};
 #[get("/holder/<id>")]
 pub async fn holder(id: String) -> Json<bool> {
     let identity: IdentityWithAll = get_whole_identity();
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(&id).await;
     let am_i_holder = identity.peer_id.to_string().eq(&bill.payee.peer_id);
     Json(am_i_holder)
 }
 
 #[get("/return")]
 pub async fn return_bills_list() -> Json<Vec<BitcreditBillToReturn>> {
-    let bills: Vec<BitcreditBillToReturn> = get_bills_for_list();
+    let bills: Vec<BitcreditBillToReturn> = get_bills_for_list().await;
     Json(bills)
 }
 
 #[get("/return/basic/<id>")]
 pub async fn return_basic_bill(id: String) -> Json<BitcreditBill> {
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(&id).await;
     Json(bill)
 }
 
@@ -58,7 +59,7 @@ pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) {
     let mut client = state.dht_client();
     let bill_bytes = client.get_bill(bill_id.to_string().clone()).await;
     if !bill_bytes.is_empty() {
-        let path = BILLS_FOLDER_PATH.to_string() + "/" + &bill_id + ".json";
+        let path = get_path_for_bill(&bill_id);
         fs::write(path, bill_bytes.clone()).expect("Can't write file.");
     }
 }
@@ -66,7 +67,7 @@ pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) {
 #[get("/return/<id>")]
 pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     let identity: IdentityWithAll = get_whole_identity();
-    let bill: BitcreditBill = read_bill_from_file(&id);
+    let bill: BitcreditBill = read_bill_from_file(&id).await;
     let chain = Chain::read_chain_from_file(&bill.name);
     let drawer = chain.get_drawer();
     let mut link_for_buy = "".to_string();
@@ -75,7 +76,7 @@ pub async fn return_bill(id: String) -> Json<BitcreditBillToReturn> {
     let accepted = chain.exist_block_with_operation_code(OperationCode::Accept);
     let mut address_for_selling: String = String::new();
     let mut amount_for_selling = 0;
-    let waiting_for_payment = chain.waiting_for_payment();
+    let waiting_for_payment = chain.waiting_for_payment().await;
     let mut payment_deadline_has_passed = false;
     let mut waited_for_payment = waiting_for_payment.0;
     if waited_for_payment {
@@ -319,7 +320,7 @@ pub async fn issue_bill(
             if form_bill.drawer_is_drawee {
                 let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-                let correct = accept_bill(&bill.name, timestamp);
+                let correct = accept_bill(&bill.name, timestamp).await;
 
                 if correct {
                     let chain: Chain = Chain::read_chain_from_file(&bill.name);
@@ -364,7 +365,8 @@ pub async fn sell_bill(
                 public_data_buyer.clone(),
                 timestamp,
                 sell_bill_form.amount_numbers,
-            );
+            )
+            .await;
 
             if correct {
                 let chain: Chain = Chain::read_chain_from_file(&sell_bill_form.bill_name);
@@ -415,7 +417,8 @@ pub async fn endorse_bill(
                 &endorse_bill_form.bill_name,
                 public_data_endorsee.clone(),
                 timestamp,
-            );
+            )
+            .await;
 
             if correct {
                 let chain: Chain = Chain::read_chain_from_file(&endorse_bill_form.bill_name);
@@ -456,7 +459,7 @@ pub async fn request_to_pay_bill(
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = request_pay(&request_to_pay_bill_form.bill_name, timestamp);
+        let correct = request_pay(&request_to_pay_bill_form.bill_name, timestamp).await;
 
         if correct {
             let chain: Chain = Chain::read_chain_from_file(&request_to_pay_bill_form.bill_name);
@@ -486,7 +489,7 @@ pub async fn request_to_accept_bill(
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = request_acceptance(&request_to_accept_bill_form.bill_name, timestamp);
+        let correct = request_acceptance(&request_to_accept_bill_form.bill_name, timestamp).await;
 
         if correct {
             let chain: Chain = Chain::read_chain_from_file(&request_to_accept_bill_form.bill_name);
@@ -516,7 +519,7 @@ pub async fn accept_bill_form(
 
         let timestamp = external::time::TimeApi::get_atomic_time().await.timestamp;
 
-        let correct = accept_bill(&accept_bill_form.bill_name, timestamp);
+        let correct = accept_bill(&accept_bill_form.bill_name, timestamp).await;
 
         if correct {
             let chain: Chain = Chain::read_chain_from_file(&accept_bill_form.bill_name);
@@ -587,6 +590,8 @@ pub async fn request_to_mint_bill(
             .await;
     }
 
+    // Usage of thread::spawn is necessary here, because we spawn a new tokio runtime in the
+    // thread, but this logic will be replaced soon
     thread::spawn(move || request_to_mint_bitcredit(request_to_mint_bill_form.clone()))
         .join()
         .expect("Thread panicked");
@@ -596,11 +601,13 @@ pub async fn request_to_mint_bill(
 //This is function for mint software
 #[put("/accept_mint", data = "<accept_mint_bill_form>")]
 pub async fn accept_mint_bill(accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>) -> Status {
-    let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone());
+    let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone()).await;
     let bill_amount = bill.amount_numbers;
     let holder_node_id = bill.payee.peer_id.clone();
 
     //TODO: calculate percent
+    // Usage of thread::spawn is necessary here, because we spawn a new tokio runtime in the
+    // thread, but this logic will be replaced soon
     thread::spawn(move || {
         accept_mint_bitcredit(
             bill_amount,

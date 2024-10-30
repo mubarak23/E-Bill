@@ -58,7 +58,7 @@ impl EventLoop {
 
     pub async fn run(mut self) {
         loop {
-            futures::select! {
+            tokio::select! {
                 event = self.swarm.next() => self.handle_event(event.expect("Swarm stream to be infinite.")).await,
                 command = self.command_receiver.next() => if let Some(c) = command { self.handle_command(c).await },
             }
