@@ -7,7 +7,7 @@ use openssl::pkey::Private;
 use openssl::rsa::Rsa;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::FromForm;
-use std::{fs, mem};
+use std::fs;
 
 use crate::constants::{
     IDENTITY_ED_25529_KEYS_FILE_PATH, IDENTITY_FILE_PATH, IDENTITY_PEER_ID_FILE_PATH, USEDNET,
@@ -203,16 +203,16 @@ pub fn write_identity_to_file(identity: &Identity) {
 }
 
 fn write_ed25519_keypair_to_file(ed25519_keys: &Keypair) {
-    let data: &[u8] = unsafe { util::structure_as_u8_slice(ed25519_keys) };
-    let data_sized = byte_array_to_size_array_keypair(data);
-    fs::write(IDENTITY_ED_25529_KEYS_FILE_PATH, *data_sized)
+    let data = ed25519_keys
+        .to_protobuf_encoding()
+        .expect("can serialize Keypair");
+    fs::write(IDENTITY_ED_25529_KEYS_FILE_PATH, data)
         .expect("Unable to write keypair ed25519 in file");
 }
 
 fn write_peer_id_to_file(peer_id: &PeerId) {
-    let data: &[u8] = unsafe { util::structure_as_u8_slice(peer_id) };
-    let data_sized = byte_array_to_size_array_peer_id(data);
-    fs::write(IDENTITY_PEER_ID_FILE_PATH, *data_sized).expect("Unable to write peer id in file");
+    let data = peer_id.to_bytes();
+    fs::write(IDENTITY_PEER_ID_FILE_PATH, data).expect("Unable to write peer id in file");
 }
 
 pub fn read_identity_from_file() -> Identity {
@@ -223,17 +223,14 @@ pub fn read_identity_from_file() -> Identity {
 pub fn read_ed25519_keypair_from_file() -> Keypair {
     let data: Vec<u8> =
         fs::read(IDENTITY_ED_25529_KEYS_FILE_PATH).expect("Unable to read file keypair");
-    let key_pair_bytes_sized = byte_array_to_size_array_keypair(data.as_slice());
-    let key_pair: Keypair = unsafe { mem::transmute_copy(key_pair_bytes_sized) };
-    key_pair
+    Keypair::from_protobuf_encoding(&data).expect("can deserialize Keypair")
 }
 
 pub fn read_peer_id_from_file() -> PeerId {
     let data: Vec<u8> =
         fs::read(IDENTITY_PEER_ID_FILE_PATH).expect("Unable to read file with peer id");
-    let peer_id_bytes_sized = byte_array_to_size_array_peer_id(data.as_slice());
-    let peer_id: PeerId = unsafe { mem::transmute_copy(peer_id_bytes_sized) };
-    peer_id
+
+    PeerId::from_bytes(&data).expect("can deserialize peer id")
 }
 
 fn identity_to_byte_array(identity: &Identity) -> Vec<u8> {
@@ -242,12 +239,4 @@ fn identity_to_byte_array(identity: &Identity) -> Vec<u8> {
 
 fn identity_from_byte_array(identity: &[u8]) -> Identity {
     Identity::try_from_slice(identity).unwrap()
-}
-
-pub fn byte_array_to_size_array_keypair(array: &[u8]) -> &[u8; size_of::<Keypair>()] {
-    array.try_into().expect("slice with incorrect length")
-}
-
-pub fn byte_array_to_size_array_peer_id(array: &[u8]) -> &[u8; size_of::<PeerId>()] {
-    array.try_into().expect("slice with incorrect length")
 }
