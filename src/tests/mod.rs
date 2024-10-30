@@ -1,19 +1,15 @@
 #[cfg(test)]
 mod test {
-    use crate::bill::identity::{
-        byte_array_to_size_array_keypair, byte_array_to_size_array_peer_id, create_new_identity,
-    };
     use crate::external::bitcoin::AddressInfo;
     use crate::util::numbers_to_words::encode;
     use crate::util::rsa::generation_rsa_key;
-    use crate::util::structure_as_u8_slice;
     use bitcoin::secp256k1::Scalar;
     use libp2p::identity::Keypair;
     use libp2p::PeerId;
     use log::info;
     use openssl::rsa::{Padding, Rsa};
+    use std::fs;
     use std::path::Path;
-    use std::{fs, mem};
 
     // fn bill_to_byte_array(bill: &BitcreditBill) -> Vec<u8> {
     //     to_vec(bill).unwrap()
@@ -417,38 +413,27 @@ mod test {
     }
 
     #[test]
-    fn structure_to_bytes() {
+    fn peer_id_and_keypair_serialization_and_deserialization() {
         let ed25519_keys = Keypair::generate_ed25519();
         let peer_id = PeerId::from(ed25519_keys.public());
-        let _id = create_new_identity(
-            "qwq".to_string(),
-            "adsda".to_string(),
-            "ewqe".to_string(),
-            "qwewqe".to_string(),
-            "qwewqe".to_string(),
-            "qweeq".to_string(),
-            "qwewqe".to_string(),
-        );
 
-        let bytes_ed25519_keys = unsafe { structure_as_u8_slice(&ed25519_keys) };
-        let bytes_peer_id = unsafe { structure_as_u8_slice(&peer_id) };
-
-        let bytes_ed25519_keys_sized = byte_array_to_size_array_keypair(bytes_ed25519_keys);
-        let bytes_peer_id_sized = byte_array_to_size_array_peer_id(bytes_peer_id);
+        let bytes_ed25519_keys = ed25519_keys.to_protobuf_encoding().unwrap();
+        let bytes_peer_id = peer_id.to_bytes();
 
         if !Path::new("test").exists() {
             fs::create_dir("test").expect("Can't create folder.");
         }
-        fs::write("test/keys", *bytes_ed25519_keys_sized).expect("Unable to write keys in file");
-        fs::write("test/peer_id", *bytes_peer_id_sized).expect("Unable to write peer id in file");
+
+        fs::write("test/keys", bytes_ed25519_keys).expect("Unable to write keys in file");
+        fs::write("test/peer_id", bytes_peer_id).expect("Unable to write peer id in file");
 
         let data_key = fs::read("test/keys").expect("Unable to read file with keypair");
-        let key_pair_bytes_sized = byte_array_to_size_array_keypair(data_key.as_slice());
-        let _key_pair2: Keypair = unsafe { mem::transmute_copy(key_pair_bytes_sized) };
+        let key_pair_deserialized = Keypair::from_protobuf_encoding(&data_key).unwrap();
+        assert_eq!(ed25519_keys.public(), key_pair_deserialized.public());
 
         let data_peer_id = fs::read("test/peer_id").expect("Unable to read file with peer_id");
-        let peer_id_bytes_sized = byte_array_to_size_array_peer_id(data_peer_id.as_slice());
-        let _peer_id2: PeerId = unsafe { mem::transmute_copy(peer_id_bytes_sized) };
+        let peer_id_deserialized = PeerId::from_bytes(&data_peer_id).unwrap();
+        assert_eq!(peer_id, peer_id_deserialized);
     }
 
     // #[test]
