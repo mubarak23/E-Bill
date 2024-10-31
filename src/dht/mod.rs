@@ -55,9 +55,7 @@ pub async fn dht_main(conf: &Config) -> Result<Dht, Box<dyn Error + Send + Sync>
     })
 }
 
-async fn new(
-    conf: &Config,
-) -> Result<(Client, Receiver<Event>, event_loop::EventLoop), Box<dyn Error>> {
+async fn new(conf: &Config) -> Result<(Client, Receiver<Event>, EventLoop), Box<dyn Error>> {
     if !Path::new(IDENTITY_PEER_ID_FILE_PATH).exists()
         && !Path::new(IDENTITY_ED_25529_KEYS_FILE_PATH).exists()
     {
@@ -85,7 +83,7 @@ async fn new(
 
     let mut swarm = SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build();
 
-    swarm.listen_on(conf.p2p_listen_url().unwrap()).unwrap();
+    swarm.listen_on(conf.p2p_listen_url()?).unwrap();
 
     // Wait to listen on all interfaces.
     let sleep = tokio::time::sleep(std::time::Duration::from_secs(1));

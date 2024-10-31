@@ -21,7 +21,7 @@ pub trait ContactServiceApi: Send + Sync {
     /// Deletes the identity with the given name.
     async fn delete_identity_by_name(&self, name: &str) -> Result<()>;
 
-    /// Updates the name of the identity from the given old name to to the new name.
+    /// Updates the name of the identity from the given old name to the new name.
     /// This acts like a primary key update and the entity will only be accessible via
     /// the new name.
     async fn update_identity_name(&self, old_name: &str, new_name: &str) -> Result<()>;
@@ -75,11 +75,6 @@ impl ContactServiceApi for ContactService {
         }
     }
 
-    async fn update_identity(&self, name: &str, identity: IdentityPublicData) -> Result<()> {
-        self.store.update(name, identity).await?;
-        Ok(())
-    }
-
     async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
         self.store.delete(name).await?;
         Ok(())
@@ -87,6 +82,11 @@ impl ContactServiceApi for ContactService {
 
     async fn update_identity_name(&self, old_name: &str, new_name: &str) -> Result<()> {
         self.store.update_name(old_name, new_name).await?;
+        Ok(())
+    }
+
+    async fn update_identity(&self, name: &str, identity: IdentityPublicData) -> Result<()> {
+        self.store.update(name, identity).await?;
         Ok(())
     }
 

@@ -17,6 +17,7 @@ mod blockchain;
 mod config;
 mod constants;
 mod dht;
+mod error;
 mod external;
 mod persistence;
 mod service;

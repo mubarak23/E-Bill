@@ -3,6 +3,7 @@ use thiserror::Error;
 use crate::{persistence, service};
 
 /// Generic result type
+#[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Generic error type
