@@ -5,9 +5,12 @@ use crate::constants::{
 use anyhow::Result;
 use clap::Parser;
 use config::Config;
+use constants::SHUTDOWN_GRACE_PERIOD_MS;
+use log::{error, info};
 use service::create_service_context;
 use std::path::Path;
 use std::{env, fs};
+use tokio::spawn;
 
 mod bill;
 mod blockchain;
@@ -36,18 +39,45 @@ async fn main() -> Result<()> {
 
     external::mint::init_wallet().await;
 
-    let mut dht = dht::dht_main(&conf).await.expect("DHT failed to start");
+    let dht = dht::dht_main(&conf).await.expect("DHT failed to start");
+    let mut dht_client = dht.client;
+
+    let ctrl_c_sender = dht.shutdown_sender.clone();
+    spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("can't register ctrl-c handler");
+        info!("Received SIGINT. Shutting down...");
+
+        if let Err(e) = ctrl_c_sender.send(true) {
+            error!("Error triggering shutdown signal: {e}");
+        }
+    });
 
     let local_peer_id = bill::identity::read_peer_id_from_file();
-    dht.check_new_bills(local_peer_id.to_string().clone()).await;
-    dht.upgrade_table(local_peer_id.to_string().clone()).await;
-    dht.subscribe_to_all_bills_topics().await;
-    dht.put_bills_for_parties().await;
-    dht.start_provide().await;
-    dht.receive_updates_for_all_bills_topics().await;
-    dht.put_identity_public_data_in_dht().await;
-    let service_context = create_service_context(conf.clone(), dht.clone()).await?;
-    let _rocket = web::rocket_main(service_context).launch().await?;
+    dht_client.check_new_bills(local_peer_id.to_string()).await;
+    dht_client.upgrade_table(local_peer_id.to_string()).await;
+    dht_client.subscribe_to_all_bills_topics().await;
+    dht_client.put_bills_for_parties().await;
+    dht_client.start_provide().await;
+    dht_client.receive_updates_for_all_bills_topics().await;
+    dht_client.put_identity_public_data_in_dht().await;
+
+    let web_server_error_shutdown_sender = dht.shutdown_sender.clone();
+    let service_context =
+        create_service_context(conf.clone(), dht_client.clone(), dht.shutdown_sender).await?;
+
+    if let Err(e) = web::rocket_main(service_context).launch().await {
+        error!("Web server stopped with error: {e}, shutting down the rest of the application...");
+        if let Err(e) = web_server_error_shutdown_sender.send(true) {
+            error!("Error triggering shutdown signal: {e}");
+        }
+    }
+
+    info!("Waiting for application to exit...");
+    // If the web server exits fast, we wait for a grace period so libp2p can finish as well
+    tokio::time::sleep(std::time::Duration::from_millis(SHUTDOWN_GRACE_PERIOD_MS)).await;
+
     Ok(())
 }
 

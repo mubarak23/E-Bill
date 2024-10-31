@@ -21,28 +21,63 @@ use futures::prelude::*;
 use libp2p::kad::record::Record;
 use libp2p::request_response::ResponseChannel;
 use libp2p::PeerId;
-use log::error;
+use log::{error, info};
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
+use std::io::BufRead;
 use std::path::Path;
-use tokio_stream::wrappers::LinesStream;
+use tokio::sync::broadcast;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Client {
     pub(super) sender: mpsc::Sender<Command>,
 }
 
 impl Client {
+    pub fn new(sender: mpsc::Sender<Command>) -> Self {
+        Self { sender }
+    }
+
     pub async fn run(
         mut self,
-        mut stdin: stream::Fuse<LinesStream<tokio::io::BufReader<tokio::io::Stdin>>>,
         mut network_events: Receiver<Event>,
+        mut shutdown_dht_client_receiver: broadcast::Receiver<bool>,
     ) {
+        // We need to use blocking stdin, because tokio's async stdin isn't meant for interactive
+        // use-cases and will block forever on finishing the program
+        let (stdin_tx, mut stdin_rx) = tokio::sync::mpsc::channel(100);
+        std::thread::spawn(move || {
+            let stdin = std::io::stdin();
+            let mut reader = stdin.lock();
+
+            loop {
+                let mut input = String::new();
+                match reader.read_line(&mut input) {
+                    Ok(_) => {
+                        if let Err(e) = stdin_tx.blocking_send(input) {
+                            error!("Error handling stdin: {e}");
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error reading line from stdin: {e}");
+                    }
+                }
+            }
+        });
+
         loop {
             tokio::select! {
-                line = stdin.select_next_some() => self.handle_input_line(line.expect("Stdin not to close.")).await,
+                line = stdin_rx.recv() => {
+                    if let Some(next_line) = line {
+                        self.handle_input_line(next_line).await
+                    }
+                },
                 event = network_events.next() => self.handle_event(event.expect("Swarm stream to be infinite.")).await,
+                _ = shutdown_dht_client_receiver.recv() => {
+                    info!("Shutting down dht client...");
+                    break;
+                }
             }
         }
     }
