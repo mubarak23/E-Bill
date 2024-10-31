@@ -56,11 +56,6 @@ impl ContactStoreApi for FileBasedContactStore {
         Ok(())
     }
 
-    async fn update(&self, name: &str, data: IdentityPublicData) -> Result<()> {
-        self.insert(name, data).await?;
-        Ok(())
-    }
-
     async fn delete(&self, name: &str) -> Result<()> {
         let mut current = self.read()?;
         current.remove(name);
@@ -79,6 +74,11 @@ impl ContactStoreApi for FileBasedContactStore {
             }
             None => Err(Error::NoSuchEntity("contact".to_string(), name.to_string())),
         }
+    }
+
+    async fn update(&self, name: &str, data: IdentityPublicData) -> Result<()> {
+        self.insert(name, data).await?;
+        Ok(())
     }
 }
 
