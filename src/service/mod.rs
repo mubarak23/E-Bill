@@ -1,4 +1,5 @@
 pub mod contact_service;
+pub mod notification_service;
 
 use super::{dht::Client, Config};
 use crate::persistence;
@@ -23,6 +24,15 @@ pub enum Error {
     /// errors that currently return early http status code Status::NotAcceptable
     #[error("not acceptable")]
     PreconditionFailed,
+
+    /// errors stemming from json deserialization. Most of the time this is a
+    /// bad request on the api but can also be caused by deserializing other messages
+    #[error("Deserialization error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    /// errors stemming from sending or receiving notifications
+    #[error("Notification service error: {0}")]
+    NotificationService(#[from] notification_service::Error),
 }
 
 /// Map from service errors directly to rocket status codes. This allows us to
@@ -35,6 +45,8 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
             // will be cases where we want to handle them differently (eg. 409 Conflict)
             Error::Persistence(_) => Status::InternalServerError.respond_to(req),
             Error::PreconditionFailed => Status::NotAcceptable.respond_to(req),
+            Error::Json(_) => Status::BadRequest.respond_to(req),
+            Error::NotificationService(_) => Status::InternalServerError.respond_to(req),
         }
     }
 }
