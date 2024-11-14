@@ -7,13 +7,13 @@ use thiserror::Error;
 #[cfg(test)]
 pub mod test_utils;
 
-pub mod email;
+mod email;
 mod email_lettre;
 mod email_sendgrid;
-pub mod event;
-pub mod handler;
+mod event;
+mod handler;
 mod nostr;
-pub mod transport;
+mod transport;
 
 pub use email::NotificationEmailTransportApi;
 pub use event::{ActionType, BillActionEventPayload, Event, EventEnvelope, EventType};
@@ -113,8 +113,8 @@ mod tests {
     #[tokio::test]
     async fn test_send_bill_is_signed_event() {
         // given a payer and payee with a new bill
-        let payer = get_identity_public_data("payer", "payer@example.com");
-        let payee = get_identity_public_data("payee", "payee@example.com");
+        let payer = get_identity_public_data("payer", "payer@example.com", None, None);
+        let payee = get_identity_public_data("payee", "payee@example.com", None, None);
         let bill = get_test_bitcredit_bill("bill", &payer, &payee);
 
         let mut mock = MockNotificationJsonTransportApi::new();

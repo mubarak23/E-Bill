@@ -116,6 +116,7 @@ impl NotificationJsonTransportApi for NostrClient {
     }
 }
 
+#[derive(Clone)]
 pub struct NostrConsumer {
     client: NostrClient,
     event_handlers: Arc<Vec<Box<dyn NotificationHandlerApi>>>,
@@ -137,7 +138,7 @@ impl NostrConsumer {
     }
 
     #[allow(dead_code)]
-    pub async fn start(&self) -> Result<JoinHandle<()>> {
+    pub fn start(&self) -> Result<JoinHandle<()>> {
         // move dependencies into thread scope
         let client = self.client.clone();
         let event_handlers = self.event_handlers.clone();
@@ -212,4 +213,80 @@ async fn handle_event(
         trace!("{event_type:?} event handled successfully {times} times");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::NOSTR_KEY1;
+    use super::*;
+    use crate::service::notification_service::test_utils::NOSTR_RELAY1;
+
+    #[tokio::test]
+    async fn test_create_nostr_client() {
+        let config = NostrConfig {
+            nsec: NOSTR_KEY1.to_string(),
+            relays: vec![NOSTR_RELAY1.to_string()],
+            name: "BcrDamus1".to_string(),
+            timeout: Some(Duration::from_secs(10)),
+        };
+
+        let _ = NostrClient::new(&config)
+            .await
+            .expect("failed to create nostr client");
+    }
+
+    // this test is super expensive so do not run it to often
+    // as you will likely get banned from damus relay.
+    // I will remove this as soon as I can confirm that we can
+    // send and receive. Profile is already populated correctly.
+    #[tokio::test]
+    async fn test_create_nostr_consumer() {
+        // let config1 = NostrConfig {
+        //     nsec: NOSTR_KEY1.to_string(),
+        //     relays: vec![NOSTR_RELAY1.to_string()],
+        //     name: "BcrDamus1".to_string(),
+        //     timeout: Some(Duration::from_secs(10)),
+        // };
+        //
+        // let config2 = NostrConfig {
+        //     nsec: NOSTR_KEY2.to_string(),
+        //     relays: vec![NOSTR_RELAY1.to_string()],
+        //     name: "BcrDamus2".to_string(),
+        //     timeout: Some(Duration::from_secs(10)),
+        // };
+
+        // let contact2 = get_identity_public_data(
+        //     "payee",
+        //     "payee@example.com",
+        //     Some(NOSTR_NPUB2),
+        //     Some(NOSTR_RELAY1),
+        // );
+
+        // let contact_service = MockContactServiceApi::new();
+        // let handler = MockNotificationHandlerApi::new();
+        //
+        // let client1 = NostrClient::new(&config1)
+        //     .await
+        //     .expect("failed to create nostr client 1");
+        //
+        // let mut event = create_test_event(&EventType::BillSigned);
+        // event.peer_id = contact2.peer_id.to_owned();
+        //
+        // client1
+        //     .send(
+        //         &contact2,
+        //         event.try_into().expect("could not convert event"),
+        //     )
+        //     .await
+        //     .expect("failed to send event");
+
+        // let client2 = NostrClient::new(&config2)
+        //     .await
+        //     .expect("failed to create nostr client 2");
+        //
+        // let consumer =
+        //     NostrConsumer::new(client2, Arc::new(contact_service), vec![Box::new(handler)]);
+        // let handle = consumer.start().expect("failed to start nostr consumer");
+        // handle.abort();
+    }
 }

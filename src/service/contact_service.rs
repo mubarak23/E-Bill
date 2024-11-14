@@ -3,12 +3,15 @@ use rocket::FromForm;
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::automock;
 use serde::{Deserialize, Serialize};
 
 use crate::{bill::identity::Identity, dht::Client, persistence::ContactStoreApi};
 
 use super::Result;
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait ContactServiceApi: Send + Sync {
     /// Returns all contacts in short form
