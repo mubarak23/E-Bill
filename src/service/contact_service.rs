@@ -33,6 +33,9 @@ pub trait ContactServiceApi: Send + Sync {
     /// fetched from the dht. It will be stored with name and peer_id only if no dht entry
     /// exists.
     async fn add_peer_identity(&self, name: &str, peer_id: &str) -> Result<IdentityPublicData>;
+
+    /// Returns whether a given npub is in our contact list.
+    async fn is_known_npub(&self, npub: &str) -> Result<bool>;
 }
 
 /// The contact service is responsible for managing the contacts and syncing them with the
@@ -106,6 +109,10 @@ impl ContactServiceApi for ContactService {
             Ok(public)
         }
     }
+
+    async fn is_known_npub(&self, npub: &str) -> Result<bool> {
+        Ok(self.store.get_by_npub(npub).await?.is_some())
+    }
 }
 
 #[derive(Serialize)]
@@ -139,6 +146,7 @@ pub struct IdentityPublicData {
     pub email: String,
     pub rsa_public_key_pem: String,
     pub nostr_npub: Option<String>,
+    pub nostr_relay: Option<String>,
 }
 
 impl IdentityPublicData {
@@ -152,6 +160,7 @@ impl IdentityPublicData {
             email: identity.email,
             rsa_public_key_pem: identity.public_key_pem,
             nostr_npub: identity.nostr_npub,
+            nostr_relay: identity.nostr_relay,
         }
     }
 
@@ -165,6 +174,7 @@ impl IdentityPublicData {
             email: "".to_string(),
             rsa_public_key_pem: "".to_string(),
             nostr_npub: None,
+            nostr_relay: None,
         }
     }
 
@@ -178,6 +188,7 @@ impl IdentityPublicData {
             email: "".to_string(),
             rsa_public_key_pem: "".to_string(),
             nostr_npub: None,
+            nostr_relay: None,
         }
     }
 }

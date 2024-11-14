@@ -1,10 +1,12 @@
 use async_trait::async_trait;
-use log::{debug, error, info, warn};
+use log::{error, trace, warn};
 use nostr_sdk::prelude::*;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinHandle;
+
+use crate::service::contact_service::ContactServiceApi;
 
 use super::super::contact_service::IdentityPublicData;
 use super::handler::NotificationHandlerApi;
@@ -95,11 +97,20 @@ impl NotificationJsonTransportApi for NostrClient {
         if let Some(npub) = &recipient.nostr_npub {
             let public_key = PublicKey::from_str(npub)?;
             let message = serde_json::to_string(&event)?;
-            self.client
-                .send_private_msg(public_key, message, None)
-                .await?;
+            if let Some(relay) = &recipient.nostr_relay {
+                self.client
+                    .send_private_msg_to(vec![relay], public_key, message, None)
+                    .await?;
+            } else {
+                self.client
+                    .send_private_msg(public_key, message, None)
+                    .await?;
+            }
         } else {
-            error!("Nostr npub not found");
+            error!(
+                "Try to send Nostr message but Nostr npub not found in contact {}",
+                recipient.name
+            );
         }
         Ok(())
     }
@@ -108,30 +119,39 @@ impl NotificationJsonTransportApi for NostrClient {
 pub struct NostrConsumer {
     client: NostrClient,
     event_handlers: Arc<Vec<Box<dyn NotificationHandlerApi>>>,
+    contact_service: Arc<dyn ContactServiceApi>,
 }
 
 impl NostrConsumer {
     #[allow(dead_code)]
-    pub fn new(client: NostrClient, event_handlers: Vec<Box<dyn NotificationHandlerApi>>) -> Self {
+    pub fn new(
+        client: NostrClient,
+        contact_service: Arc<dyn ContactServiceApi>,
+        event_handlers: Vec<Box<dyn NotificationHandlerApi>>,
+    ) -> Self {
         Self {
             client,
             event_handlers: Arc::new(event_handlers),
+            contact_service,
         }
     }
 
     #[allow(dead_code)]
     pub async fn start(&self) -> Result<JoinHandle<()>> {
+        // move dependencies into thread scope
         let client = self.client.clone();
         let event_handlers = self.event_handlers.clone();
+        let contact_service = self.contact_service.clone();
+
+        // run subscription in a tokio task
         let handle = tokio::spawn(async move {
-            // only new private messages sent to our pubkey
+            // TODO: keep track of a timestamp that signifies when we last received a message
+            // to ensure that we can pick up where we left off at last shutdown. It might even be
+            // necessary to keep track of all already received events and filter processed ones>.
+
+            // only private messages sent to our pubkey
             client
-                .subscribe(
-                    Filter::new()
-                        .pubkey(client.public_key)
-                        .kind(Kind::GiftWrap)
-                        .limit(0),
-                )
+                .subscribe(Filter::new().pubkey(client.public_key).kind(Kind::GiftWrap))
                 .await
                 .expect("Failed to subscribe to Nostr events");
 
@@ -139,25 +159,13 @@ impl NostrConsumer {
                 .client
                 .handle_notifications(|note| async {
                     if let Some((envelope, sender)) = client.unwrap_envelope(note).await {
-                        // TODO: check if sender is in our contacts otherwise it could be spam or
-                        // an attack so we want to ignore it.
-                        debug!("Received event: {envelope:?} from {sender:?}");
-                        let event_type = &envelope.event_type;
-                        let mut times = 0;
-                        for handler in event_handlers.iter() {
-                            if handler.handles_event(event_type) {
-                                match handler.handle_event(envelope.to_owned()).await {
-                                    Ok(_) => times += 1,
-                                    Err(e) => {
-                                        error!("Nostr event handler failed: {e}")
-                                    }
-                                }
-                            }
-                        }
-                        if times < 1 {
-                            warn!("No handler subscribed for event: {envelope:?}");
-                        } else {
-                            info!("{event_type:?} event handled successfully");
+                        // We only want to handle events from known contacts
+                        if contact_service
+                            .is_known_npub(sender.to_hex().as_str())
+                            .await?
+                        {
+                            trace!("Received event: {envelope:?} from {sender:?}");
+                            handle_event(envelope, &event_handlers).await?;
                         }
                     };
                     Ok(false)
@@ -181,4 +189,27 @@ fn extract_event_envelope(rumor: UnsignedEvent) -> Option<EventEnvelope> {
     } else {
         None
     }
+}
+
+/// Handle extracted event with given handlers.
+async fn handle_event(
+    event: EventEnvelope,
+    handlers: &Arc<Vec<Box<dyn NotificationHandlerApi>>>,
+) -> Result<()> {
+    let event_type = &event.event_type;
+    let mut times = 0;
+    for handler in handlers.iter() {
+        if handler.handles_event(event_type) {
+            match handler.handle_event(event.to_owned()).await {
+                Ok(_) => times += 1,
+                Err(e) => error!("Nostr event handler failed: {e}"),
+            }
+        }
+    }
+    if times < 1 {
+        warn!("No handler subscribed for event: {event:?}");
+    } else {
+        trace!("{event_type:?} event handled successfully {times} times");
+    }
+    Ok(())
 }

@@ -128,6 +128,7 @@ impl Chain {
             email: "".to_string(),
             rsa_public_key_pem: "".to_string(),
             nostr_npub: None,
+            nostr_relay: None,
         };
 
         if self.blocks.len() > 1
