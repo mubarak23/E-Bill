@@ -138,29 +138,26 @@ impl NostrConsumer {
     }
 
     #[allow(dead_code)]
-    pub fn start(&self) -> Result<JoinHandle<()>> {
+    pub async fn start(&self) -> Result<JoinHandle<()>> {
         // move dependencies into thread scope
         let client = self.client.clone();
         let event_handlers = self.event_handlers.clone();
         let contact_service = self.contact_service.clone();
 
+        // subscribe only to private messages sent to our pubkey
+        client
+            .subscribe(Filter::new().pubkey(client.public_key).kind(Kind::GiftWrap))
+            .await
+            .expect("Failed to subscribe to Nostr events");
+
         // run subscription in a tokio task
         let handle = tokio::spawn(async move {
-            // TODO: keep track of a timestamp that signifies when we last received a message
-            // to ensure that we can pick up where we left off at last shutdown. It might even be
-            // necessary to keep track of all already received events and filter processed ones>.
-
-            // only private messages sent to our pubkey
-            client
-                .subscribe(Filter::new().pubkey(client.public_key).kind(Kind::GiftWrap))
-                .await
-                .expect("Failed to subscribe to Nostr events");
-
             client
                 .client
                 .handle_notifications(|note| async {
                     if let Some((envelope, sender, _event_id)) = client.unwrap_envelope(note).await
                     {
+                        // TODO: Check if we already processed this event via event_id
                         // We only want to handle events from known contacts
                         if let Ok(sender) = sender.to_bech32() {
                             trace!("Received event: {envelope:?} from {sender:?}");
@@ -301,7 +298,10 @@ mod tests {
         // we start the consumer
         let consumer =
             NostrConsumer::new(client2, Arc::new(contact_service), vec![Box::new(handler)]);
-        let handle = consumer.start().expect("failed to start nostr consumer");
+        let handle = consumer
+            .start()
+            .await
+            .expect("failed to start nostr consumer");
 
         // and send an event
         client1
