@@ -72,13 +72,13 @@ impl NostrClient {
     pub async fn unwrap_envelope(
         &self,
         note: RelayPoolNotification,
-    ) -> Option<(EventEnvelope, PublicKey)> {
-        let mut result: Option<(EventEnvelope, PublicKey)> = None;
+    ) -> Option<(EventEnvelope, PublicKey, EventId)> {
+        let mut result: Option<(EventEnvelope, PublicKey, EventId)> = None;
         if let RelayPoolNotification::Event { event, .. } = note {
             if event.kind == Kind::GiftWrap {
                 result = match self.client.unwrap_gift_wrap(&event).await {
                     Ok(UnwrappedGift { rumor, sender }) => {
-                        extract_event_envelope(rumor).map(|e| (e, sender))
+                        extract_event_envelope(rumor).map(|e| (e, sender, event.id))
                     }
                     Err(e) => {
                         error!("Unwrapping gift wrap failed: {e}");
@@ -159,7 +159,8 @@ impl NostrConsumer {
             client
                 .client
                 .handle_notifications(|note| async {
-                    if let Some((envelope, sender)) = client.unwrap_envelope(note).await {
+                    if let Some((envelope, sender, _event_id)) = client.unwrap_envelope(note).await
+                    {
                         // We only want to handle events from known contacts
                         if let Ok(sender) = sender.to_bech32() {
                             trace!("Received event: {envelope:?} from {sender:?}");
