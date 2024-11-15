@@ -1,4 +1,5 @@
 use crate::{bill::BitcreditBill, service::contact_service::IdentityPublicData};
+use nostr_relay_builder::prelude::*;
 
 use super::{
     email::EmailMessage, handler::NotificationHandlerApi, Event, EventEnvelope, EventType, Result,
@@ -10,8 +11,6 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use tokio::sync::Mutex;
 
-#[allow(dead_code)]
-pub const NOSTR_RELAY1: &str = "wss://relay.damus.io";
 #[allow(dead_code)]
 pub const NOSTR_KEY1: &str = "nsec1gr9hfpprzn0hs5xymm0h547f6nt9x2270cy9chyzq3leprnzr2csprwlds";
 #[allow(dead_code)]
@@ -107,4 +106,7 @@ pub fn get_test_bitcredit_bill(
     bill.payee = payee.clone();
     bill.drawee = payer.clone();
     bill
+}
+pub async fn get_mock_relay() -> MockRelay {
+    MockRelay::run().await.expect("could not create mock relay")
 }

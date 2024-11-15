@@ -338,6 +338,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-once-cell"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4288f83726785267c6f2ef073a3d83dc3f9b81464e9f99898240cced85fce35a"
+
+[[package]]
 name = "async-process"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -865,6 +871,7 @@ name = "bitcredit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-once-cell",
  "async-trait",
  "bitcoin 0.32.3",
  "borsh",
@@ -882,6 +889,7 @@ dependencies = [
  "moksha-core",
  "moksha-mint",
  "moksha-wallet",
+ "nostr-relay-builder",
  "nostr-sdk",
  "open",
  "openssl",
@@ -4134,6 +4142,22 @@ dependencies = [
  "async-trait",
  "lru 0.12.5",
  "nostr",
+ "thiserror 1.0.64",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "nostr-relay-builder"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f4ded9cabf99987ce62bd81ef199eb57be121c8b4907dca34b654bbbe271623"
+dependencies = [
+ "async-utility",
+ "async-wsocket",
+ "atomic-destructor",
+ "nostr",
+ "nostr-database",
  "thiserror 1.0.64",
  "tokio",
  "tracing",

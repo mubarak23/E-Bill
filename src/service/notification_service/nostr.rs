@@ -161,12 +161,12 @@ impl NostrConsumer {
                 .handle_notifications(|note| async {
                     if let Some((envelope, sender)) = client.unwrap_envelope(note).await {
                         // We only want to handle events from known contacts
-                        if contact_service
-                            .is_known_npub(sender.to_hex().as_str())
-                            .await?
-                        {
+                        if let Ok(sender) = sender.to_bech32() {
                             trace!("Received event: {envelope:?} from {sender:?}");
-                            handle_event(envelope, &event_handlers).await?;
+                            if contact_service.is_known_npub(sender.as_str()).await? {
+                                trace!("Received event: {envelope:?} from {sender:?}");
+                                handle_event(envelope, &event_handlers).await?;
+                            }
                         }
                     };
                     Ok(false)
@@ -217,76 +217,115 @@ async fn handle_event(
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::NOSTR_KEY1;
-    use super::*;
-    use crate::service::notification_service::test_utils::NOSTR_RELAY1;
+    use std::{sync::Arc, time::Duration};
+
+    use mockall::predicate;
+    use nostr_relay_builder::MockRelay;
+    use tokio::time;
+
+    use super::super::test_utils::{get_mock_relay, NOSTR_KEY1};
+    use super::{NostrClient, NostrConfig, NostrConsumer};
+    use crate::service::{
+        contact_service::MockContactServiceApi,
+        notification_service::{
+            handler::MockNotificationHandlerApi, test_utils::*, EventType,
+            NotificationJsonTransportApi,
+        },
+    };
 
     #[tokio::test]
-    async fn test_create_nostr_client() {
+    async fn run_sequentially() {
+        let relay = get_mock_relay().await;
+        test_create_nostr_client_and_send_event(&relay).await;
+        test_create_nostr_consumer_receives_and_processes_event(&relay).await;
+    }
+
+    async fn test_create_nostr_client_and_send_event(relay: &MockRelay) {
+        let url = relay.url();
+
+        let contact =
+            get_identity_public_data("payee", "payee@example.com", Some(NOSTR_NPUB2), Some(&url));
+
+        let mut event = create_test_event(&EventType::BillSigned);
+        event.peer_id = contact.peer_id.to_owned();
+
         let config = NostrConfig {
             nsec: NOSTR_KEY1.to_string(),
-            relays: vec![NOSTR_RELAY1.to_string()],
+            relays: vec![url.to_string()],
             name: "BcrDamus1".to_string(),
             timeout: Some(Duration::from_secs(10)),
         };
 
-        let _ = NostrClient::new(&config)
+        let client = NostrClient::new(&config)
             .await
             .expect("failed to create nostr client");
+
+        client
+            .send(&contact, event.try_into().expect("could not convert event"))
+            .await
+            .expect("could not send nostr event");
     }
 
-    // this test is super expensive so do not run it to often
-    // as you will likely get banned from damus relay.
-    // I will remove this as soon as I can confirm that we can
-    // send and receive. Profile is already populated correctly.
-    #[tokio::test]
-    async fn test_create_nostr_consumer() {
-        // let config1 = NostrConfig {
-        //     nsec: NOSTR_KEY1.to_string(),
-        //     relays: vec![NOSTR_RELAY1.to_string()],
-        //     name: "BcrDamus1".to_string(),
-        //     timeout: Some(Duration::from_secs(10)),
-        // };
-        //
-        // let config2 = NostrConfig {
-        //     nsec: NOSTR_KEY2.to_string(),
-        //     relays: vec![NOSTR_RELAY1.to_string()],
-        //     name: "BcrDamus2".to_string(),
-        //     timeout: Some(Duration::from_secs(10)),
-        // };
+    async fn test_create_nostr_consumer_receives_and_processes_event(relay: &MockRelay) {
+        let url = relay.url();
 
-        // let contact2 = get_identity_public_data(
-        //     "payee",
-        //     "payee@example.com",
-        //     Some(NOSTR_NPUB2),
-        //     Some(NOSTR_RELAY1),
-        // );
+        // given two clients
+        //
+        let config1 = NostrConfig {
+            nsec: NOSTR_KEY1.to_string(),
+            relays: vec![url.to_string()],
+            name: "BcrDamus1".to_string(),
+            timeout: Some(Duration::from_secs(10)),
+        };
+        let client1 = NostrClient::new(&config1)
+            .await
+            .expect("failed to create nostr client 1");
 
-        // let contact_service = MockContactServiceApi::new();
-        // let handler = MockNotificationHandlerApi::new();
-        //
-        // let client1 = NostrClient::new(&config1)
-        //     .await
-        //     .expect("failed to create nostr client 1");
-        //
-        // let mut event = create_test_event(&EventType::BillSigned);
-        // event.peer_id = contact2.peer_id.to_owned();
-        //
-        // client1
-        //     .send(
-        //         &contact2,
-        //         event.try_into().expect("could not convert event"),
-        //     )
-        //     .await
-        //     .expect("failed to send event");
+        let config2 = NostrConfig {
+            nsec: NOSTR_KEY2.to_string(),
+            relays: vec![url.to_string()],
+            name: "BcrDamus2".to_string(),
+            timeout: Some(Duration::from_secs(10)),
+        };
 
-        // let client2 = NostrClient::new(&config2)
-        //     .await
-        //     .expect("failed to create nostr client 2");
-        //
-        // let consumer =
-        //     NostrConsumer::new(client2, Arc::new(contact_service), vec![Box::new(handler)]);
-        // let handle = consumer.start().expect("failed to start nostr consumer");
-        // handle.abort();
+        let client2 = NostrClient::new(&config2)
+            .await
+            .expect("failed to create nostr client 2");
+
+        // and a contact we want to send an event to
+        let contact =
+            get_identity_public_data("payee", "payee@example.com", Some(NOSTR_NPUB2), Some(&url));
+        let mut event = create_test_event(&EventType::BillSigned);
+        event.peer_id = contact.peer_id.to_owned();
+
+        // we expect the receiver to check if the sender contact is known
+        let mut contact_service = MockContactServiceApi::new();
+        contact_service
+            .expect_is_known_npub()
+            .with(predicate::eq(NOSTR_NPUB1))
+            .returning(|_| Ok(true));
+
+        // and a handler that is subscribed to the event type
+        let mut handler = MockNotificationHandlerApi::new();
+        handler
+            .expect_handles_event()
+            .with(predicate::eq(&EventType::BillSigned))
+            .returning(|_| true);
+
+        handler.expect_handle_event().returning(|_| Ok(()));
+
+        // we start the consumer
+        let consumer =
+            NostrConsumer::new(client2, Arc::new(contact_service), vec![Box::new(handler)]);
+        let handle = consumer.start().expect("failed to start nostr consumer");
+
+        // and send an event
+        client1
+            .send(&contact, event.try_into().expect("could not convert event"))
+            .await
+            .expect("failed to send event");
+
+        time::sleep(Duration::from_secs(1)).await;
+        handle.abort();
     }
 }
