@@ -220,11 +220,11 @@ mod tests {
     use std::{sync::Arc, time::Duration};
 
     use mockall::predicate;
-    use nostr_relay_builder::MockRelay;
     use tokio::time;
 
     use super::super::test_utils::{get_mock_relay, NOSTR_KEY1};
     use super::{NostrClient, NostrConfig, NostrConsumer};
+    use crate::service::notification_service::Event;
     use crate::service::{
         contact_service::MockContactServiceApi,
         notification_service::{
@@ -233,44 +233,15 @@ mod tests {
         },
     };
 
+    /// When testing with the mock relay we need to be careful. It is always
+    /// listening on the same port and will not start multiple times. If we
+    /// share the instance tests will fail with events from other tests.
     #[tokio::test]
-    async fn run_sequentially() {
+    async fn test_send_and_receive_event() {
         let relay = get_mock_relay().await;
-        test_create_nostr_client_and_send_event(&relay).await;
-        test_create_nostr_consumer_receives_and_processes_event(&relay).await;
-    }
-
-    async fn test_create_nostr_client_and_send_event(relay: &MockRelay) {
-        let url = relay.url();
-
-        let contact =
-            get_identity_public_data("payee", "payee@example.com", Some(NOSTR_NPUB2), Some(&url));
-
-        let mut event = create_test_event(&EventType::BillSigned);
-        event.peer_id = contact.peer_id.to_owned();
-
-        let config = NostrConfig {
-            nsec: NOSTR_KEY1.to_string(),
-            relays: vec![url.to_string()],
-            name: "BcrDamus1".to_string(),
-            timeout: Some(Duration::from_secs(10)),
-        };
-
-        let client = NostrClient::new(&config)
-            .await
-            .expect("failed to create nostr client");
-
-        client
-            .send(&contact, event.try_into().expect("could not convert event"))
-            .await
-            .expect("could not send nostr event");
-    }
-
-    async fn test_create_nostr_consumer_receives_and_processes_event(relay: &MockRelay) {
         let url = relay.url();
 
         // given two clients
-        //
         let config1 = NostrConfig {
             nsec: NOSTR_KEY1.to_string(),
             relays: vec![url.to_string()],
@@ -287,7 +258,6 @@ mod tests {
             name: "BcrDamus2".to_string(),
             timeout: Some(Duration::from_secs(10)),
         };
-
         let client2 = NostrClient::new(&config2)
             .await
             .expect("failed to create nostr client 2");
@@ -298,21 +268,34 @@ mod tests {
         let mut event = create_test_event(&EventType::BillSigned);
         event.peer_id = contact.peer_id.to_owned();
 
-        // we expect the receiver to check if the sender contact is known
+        // expect the receiver to check if the sender contact is known
         let mut contact_service = MockContactServiceApi::new();
         contact_service
             .expect_is_known_npub()
             .with(predicate::eq(NOSTR_NPUB1))
             .returning(|_| Ok(true));
 
-        // and a handler that is subscribed to the event type
+        // expect a handler that is subscribed to the event type w sent
         let mut handler = MockNotificationHandlerApi::new();
         handler
             .expect_handles_event()
             .with(predicate::eq(&EventType::BillSigned))
             .returning(|_| true);
 
-        handler.expect_handle_event().returning(|_| Ok(()));
+        // expect a handler receiving the event we sent
+        let expected_event: Event<TestEventPayload> = event.clone();
+        handler
+            .expect_handle_event()
+            .withf(move |e| {
+                let expected = expected_event.clone();
+                let received: Event<TestEventPayload> =
+                    e.clone().try_into().expect("could not convert event");
+                let valid_type = received.event_type == expected.event_type;
+                let valid_receiver = received.peer_id == expected.peer_id;
+                let valid_payload = received.data.foo == expected.data.foo;
+                valid_type && valid_receiver && valid_payload
+            })
+            .returning(|_| Ok(()));
 
         // we start the consumer
         let consumer =
@@ -325,7 +308,8 @@ mod tests {
             .await
             .expect("failed to send event");
 
-        time::sleep(Duration::from_secs(1)).await;
+        // give it a little bit of time to process the event
+        time::sleep(Duration::from_millis(100)).await;
         handle.abort();
     }
 }
