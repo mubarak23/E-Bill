@@ -462,10 +462,7 @@ pub async fn request_to_pay_bill(
     }
     let mut client = state.dht_client();
 
-    let timestamp = external::time::TimeApi::get_atomic_time()
-        .await
-        .unwrap()
-        .timestamp;
+    let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
 
     let chain = state
         .bill_service
@@ -494,10 +491,7 @@ pub async fn request_to_accept_bill(
     }
     let mut client = state.dht_client();
 
-    let timestamp = external::time::TimeApi::get_atomic_time()
-        .await
-        .unwrap()
-        .timestamp;
+    let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
 
     let chain = state
         .bill_service
@@ -626,10 +620,7 @@ pub async fn mint_bill(
     }
     let mut client = state.dht_client();
 
-    let timestamp = external::time::TimeApi::get_atomic_time()
-        .await
-        .unwrap()
-        .timestamp;
+    let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
 
     let public_mint_node = state
         .contact_service
