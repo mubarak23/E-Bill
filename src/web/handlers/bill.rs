@@ -368,8 +368,7 @@ pub async fn sell_bill(
     let public_data_buyer = state
         .contact_service
         .get_identity_by_name(&sell_bill_form.buyer)
-        .await
-        .expect("Can not get buyer identity.");
+        .await?;
 
     if public_data_buyer.name.is_empty() {
         return Err(service::Error::PreconditionFailed);
@@ -388,7 +387,7 @@ pub async fn sell_bill(
 
     let block = chain.get_latest_block();
 
-    let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
+    let block_bytes = serde_json::to_vec(block)?;
     let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
     let message = event.to_byte_array();
 
@@ -419,8 +418,7 @@ pub async fn endorse_bill(
     let public_data_endorsee = state
         .contact_service
         .get_identity_by_name(&endorse_bill_form.endorsee)
-        .await
-        .expect("Can not get endorsee identity.");
+        .await?;
 
     if public_data_endorsee.name.is_empty() {
         return Err(service::Error::PreconditionFailed);
@@ -438,7 +436,7 @@ pub async fn endorse_bill(
 
     let block = chain.get_latest_block();
 
-    let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
+    let block_bytes = serde_json::to_vec(block)?;
     let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
     let message = event.to_byte_array();
 
@@ -474,7 +472,7 @@ pub async fn request_to_pay_bill(
 
     let block = chain.get_latest_block();
 
-    let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
+    let block_bytes = serde_json::to_vec(block)?;
     let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
     let message = event.to_byte_array();
 
@@ -503,7 +501,7 @@ pub async fn request_to_accept_bill(
 
     let block = chain.get_latest_block();
 
-    let block_bytes = serde_json::to_vec(block).expect("Error serializing block");
+    let block_bytes = serde_json::to_vec(block)?;
     let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
     let message = event.to_byte_array();
 
@@ -565,13 +563,15 @@ pub async fn accept_bill_form(
 pub async fn request_to_mint_bill(
     state: &State<ServiceContext>,
     request_to_mint_bill_form: Form<RequestToMintBitcreditBillForm>,
-) -> Status {
+) -> Result<Status> {
+    if !state.identity_service.identity_exists().await {
+        return Err(service::Error::PreconditionFailed);
+    }
     let mut client = state.dht_client();
     let public_mint_node = state
         .contact_service
         .get_identity_by_name(&request_to_mint_bill_form.mint_node)
-        .await
-        .expect("could not get identity by name");
+        .await?;
     if !public_mint_node.name.is_empty() {
         client
             .add_bill_to_dht_for_node(
@@ -586,7 +586,7 @@ pub async fn request_to_mint_bill(
     thread::spawn(move || request_to_mint_bitcredit(request_to_mint_bill_form.clone()))
         .join()
         .expect("Thread panicked");
-    Status::Ok
+    Ok(Status::Ok)
 }
 
 //This is function for mint software
@@ -595,6 +595,9 @@ pub async fn accept_mint_bill(
     state: &State<ServiceContext>,
     accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>,
 ) -> Result<Status> {
+    if !state.identity_service.identity_exists().await {
+        return Err(service::Error::PreconditionFailed);
+    }
     let bill = state
         .bill_service
         .get_bill(&accept_mint_bill_form.bill_name)
@@ -634,8 +637,7 @@ pub async fn mint_bill(
     let public_mint_node = state
         .contact_service
         .get_identity_by_name(&mint_bill_form.mint_node)
-        .await
-        .expect("could not get identity by name");
+        .await?;
 
     if public_mint_node.name.is_empty() {
         return Err(service::Error::PreconditionFailed);
