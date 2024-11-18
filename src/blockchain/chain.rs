@@ -117,6 +117,33 @@ impl Chain {
         false
     }
 
+    pub fn has_been_sold_minted_or_endorsed(&self) -> bool {
+        for block in &self.blocks {
+            if block.operation_code == OperationCode::Mint {
+                return true;
+            }
+            if block.operation_code == OperationCode::Sell {
+                return true;
+            }
+            if block.operation_code == OperationCode::Endorse {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn has_been_endorsed_or_sold(&self) -> bool {
+        for block in &self.blocks {
+            if block.operation_code == OperationCode::Sell {
+                return true;
+            }
+            if block.operation_code == OperationCode::Endorse {
+                return true;
+            }
+        }
+        false
+    }
+
     pub async fn get_last_version_bill(&self) -> BitcreditBill {
         let first_block = self.get_first_block();
 

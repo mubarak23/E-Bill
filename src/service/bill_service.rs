@@ -630,37 +630,24 @@ impl BillServiceApi for BillService {
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill().await;
 
-        let exist_block_with_code_endorse =
-            blockchain.exist_block_with_operation_code(OperationCode::Endorse);
-
-        let exist_block_with_code_mint =
-            blockchain.exist_block_with_operation_code(OperationCode::Mint);
-
-        let exist_block_with_code_sell =
-            blockchain.exist_block_with_operation_code(OperationCode::Sell);
-
-        if !((my_peer_id.eq(&bill.payee.peer_id)
-            && !exist_block_with_code_endorse
-            && !exist_block_with_code_sell
-            && !exist_block_with_code_mint)
-            || (my_peer_id.eq(&bill.endorsee.peer_id)))
+        if (my_peer_id.eq(&bill.payee.peer_id) && !blockchain.has_been_sold_minted_or_endorsed())
+            || (my_peer_id.eq(&bill.endorsee.peer_id))
         {
-            return Err(Error::CallerIsNotPayeeOrEndorsee);
+            let identity = self.identity_store.get_full().await?;
+            let data_for_new_block =
+                self.get_data_for_new_block(&identity, "Requested to pay by ", None, "")?;
+            self.add_block_for_operation(
+                bill_name,
+                &mut blockchain,
+                timestamp,
+                OperationCode::RequestToPay,
+                identity,
+                data_for_new_block,
+            )
+            .await?;
+            return Ok(blockchain);
         }
-
-        let identity = self.identity_store.get_full().await?;
-        let data_for_new_block =
-            self.get_data_for_new_block(&identity, "Requested to pay by ", None, "")?;
-        self.add_block_for_operation(
-            bill_name,
-            &mut blockchain,
-            timestamp,
-            OperationCode::RequestToPay,
-            identity,
-            data_for_new_block,
-        )
-        .await?;
-        Ok(blockchain)
+        Err(Error::CallerIsNotPayeeOrEndorsee)
     }
 
     async fn request_acceptance(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
@@ -668,36 +655,24 @@ impl BillServiceApi for BillService {
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill().await;
 
-        let exist_block_with_code_endorse =
-            blockchain.exist_block_with_operation_code(OperationCode::Endorse);
-
-        let exist_block_with_code_sell =
-            blockchain.exist_block_with_operation_code(OperationCode::Sell);
-
-        let exist_block_with_code_mint =
-            blockchain.exist_block_with_operation_code(OperationCode::Mint);
-
-        if !((my_peer_id.eq(&bill.payee.peer_id)
-            && !exist_block_with_code_endorse
-            && !exist_block_with_code_sell
-            && !exist_block_with_code_mint)
-            || (my_peer_id.eq(&bill.endorsee.peer_id)))
+        if (my_peer_id.eq(&bill.payee.peer_id) && !blockchain.has_been_sold_minted_or_endorsed())
+            || (my_peer_id.eq(&bill.endorsee.peer_id))
         {
-            return Err(Error::CallerIsNotPayeeOrEndorsee);
+            let identity = self.identity_store.get_full().await?;
+            let data_for_new_block =
+                self.get_data_for_new_block(&identity, "Requested to accept by ", None, "")?;
+            self.add_block_for_operation(
+                bill_name,
+                &mut blockchain,
+                timestamp,
+                OperationCode::RequestToAccept,
+                identity,
+                data_for_new_block,
+            )
+            .await?;
+            return Ok(blockchain);
         }
-        let identity = self.identity_store.get_full().await?;
-        let data_for_new_block =
-            self.get_data_for_new_block(&identity, "Requested to accept by ", None, "")?;
-        self.add_block_for_operation(
-            bill_name,
-            &mut blockchain,
-            timestamp,
-            OperationCode::RequestToAccept,
-            identity,
-            data_for_new_block,
-        )
-        .await?;
-        Ok(blockchain)
+        Err(Error::CallerIsNotPayeeOrEndorsee)
     }
 
     async fn mint_bitcredit_bill(
@@ -710,41 +685,28 @@ impl BillServiceApi for BillService {
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill().await;
 
-        let exist_block_with_code_endorse =
-            blockchain.exist_block_with_operation_code(OperationCode::Endorse);
-
-        let exist_block_with_code_mint =
-            blockchain.exist_block_with_operation_code(OperationCode::Mint);
-
-        let exist_block_with_code_sell =
-            blockchain.exist_block_with_operation_code(OperationCode::Sell);
-
-        if !((my_peer_id.eq(&bill.payee.peer_id)
-            && !exist_block_with_code_endorse
-            && !exist_block_with_code_sell
-            && !exist_block_with_code_mint)
-            || (my_peer_id.eq(&bill.endorsee.peer_id)))
+        if (my_peer_id.eq(&bill.payee.peer_id) && !blockchain.has_been_sold_minted_or_endorsed())
+            || (my_peer_id.eq(&bill.endorsee.peer_id))
         {
-            return Err(Error::CallerIsNotPayeeOrEndorsee);
+            let identity = self.identity_store.get_full().await?;
+            let data_for_new_block = self.get_data_for_new_block(
+                &identity,
+                "Endorsed to ",
+                Some((&mintnode, " endorsed by ")),
+                "",
+            )?;
+            self.add_block_for_operation(
+                bill_name,
+                &mut blockchain,
+                timestamp,
+                OperationCode::Mint,
+                identity,
+                data_for_new_block,
+            )
+            .await?;
+            return Ok(blockchain);
         }
-
-        let identity = self.identity_store.get_full().await?;
-        let data_for_new_block = self.get_data_for_new_block(
-            &identity,
-            "Endorsed to ",
-            Some((&mintnode, " endorsed by ")),
-            "",
-        )?;
-        self.add_block_for_operation(
-            bill_name,
-            &mut blockchain,
-            timestamp,
-            OperationCode::Mint,
-            identity,
-            data_for_new_block,
-        )
-        .await?;
-        Ok(blockchain)
+        Err(Error::CallerIsNotPayeeOrEndorsee)
     }
 
     async fn sell_bitcredit_bill(
@@ -758,37 +720,28 @@ impl BillServiceApi for BillService {
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill().await;
 
-        let exist_block_with_code_endorse =
-            blockchain.exist_block_with_operation_code(OperationCode::Endorse);
-
-        let exist_block_with_code_sell =
-            blockchain.exist_block_with_operation_code(OperationCode::Sell);
-
-        if (exist_block_with_code_sell
-            || exist_block_with_code_endorse
-            || !my_peer_id.eq(&bill.payee.peer_id))
-            && !(my_peer_id.eq(&bill.endorsee.peer_id))
+        if (my_peer_id.eq(&bill.payee.peer_id) && !blockchain.has_been_endorsed_or_sold())
+            || (my_peer_id.eq(&bill.endorsee.peer_id))
         {
-            return Err(Error::CallerIsNotPayeeOrEndorsee);
+            let identity = self.identity_store.get_full().await?;
+            let data_for_new_block = self.get_data_for_new_block(
+                &identity,
+                "Sold to ",
+                Some((&buyer, " sold by ")),
+                &format!(" amount: {amount_numbers}"),
+            )?;
+            self.add_block_for_operation(
+                bill_name,
+                &mut blockchain,
+                timestamp,
+                OperationCode::Sell,
+                identity,
+                data_for_new_block,
+            )
+            .await?;
+            return Ok(blockchain);
         }
-
-        let identity = self.identity_store.get_full().await?;
-        let data_for_new_block = self.get_data_for_new_block(
-            &identity,
-            "Sold to ",
-            Some((&buyer, " sold by ")),
-            &format!(" amount: {amount_numbers}"),
-        )?;
-        self.add_block_for_operation(
-            bill_name,
-            &mut blockchain,
-            timestamp,
-            OperationCode::Sell,
-            identity,
-            data_for_new_block,
-        )
-        .await?;
-        Ok(blockchain)
+        Err(Error::CallerIsNotPayeeOrEndorsee)
     }
 
     async fn endorse_bitcredit_bill(
@@ -801,41 +754,29 @@ impl BillServiceApi for BillService {
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill().await;
 
-        let exist_block_with_code_endorse =
-            blockchain.exist_block_with_operation_code(OperationCode::Endorse);
-
-        let exist_block_with_code_mint =
-            blockchain.exist_block_with_operation_code(OperationCode::Mint);
-
-        let exist_block_with_code_sell =
-            blockchain.exist_block_with_operation_code(OperationCode::Sell);
-
-        if !((my_peer_id.eq(&bill.payee.peer_id)
-            && !exist_block_with_code_endorse
-            && !exist_block_with_code_sell
-            && !exist_block_with_code_mint)
-            || (my_peer_id.eq(&bill.endorsee.peer_id)))
+        if (my_peer_id.eq(&bill.payee.peer_id) && !blockchain.has_been_sold_minted_or_endorsed())
+            || (my_peer_id.eq(&bill.endorsee.peer_id))
         {
-            return Err(Error::CallerIsNotPayeeOrEndorsee);
-        }
-        let identity = self.identity_store.get_full().await?;
-        let data_for_new_block = self.get_data_for_new_block(
-            &identity,
-            "Endorsed to ",
-            Some((&endorsee, " endorsed by ")),
-            "",
-        )?;
-        self.add_block_for_operation(
-            bill_name,
-            &mut blockchain,
-            timestamp,
-            OperationCode::Endorse,
-            identity,
-            data_for_new_block,
-        )
-        .await?;
+            let identity = self.identity_store.get_full().await?;
+            let data_for_new_block = self.get_data_for_new_block(
+                &identity,
+                "Endorsed to ",
+                Some((&endorsee, " endorsed by ")),
+                "",
+            )?;
+            self.add_block_for_operation(
+                bill_name,
+                &mut blockchain,
+                timestamp,
+                OperationCode::Endorse,
+                identity,
+                data_for_new_block,
+            )
+            .await?;
 
-        Ok(blockchain)
+            return Ok(blockchain);
+        }
+        Err(Error::CallerIsNotPayeeOrEndorsee)
     }
 }
 
