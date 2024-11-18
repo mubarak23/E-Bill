@@ -1,7 +1,7 @@
 use super::{file_storage_path, Result};
 use crate::{
-    bill::{BillKeys, BitcreditBill},
     blockchain::Chain,
+    service::bill_service::{BillKeys, BitcreditBill},
     util::file::is_not_hidden_or_directory_async,
 };
 use async_trait::async_trait;

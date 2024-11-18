@@ -8,11 +8,11 @@ use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
 use crate::service::{contact_service::IdentityPublicData, Result};
 use crate::util::file::{detect_content_type_for_bytes, UploadFileHandler};
 use crate::util::get_current_payee_private_key;
+use crate::{external, service};
 use crate::{
-    bill::{BitcreditBill, BitcreditBillToReturn},
+    service::bill_service::{BitcreditBill, BitcreditBillToReturn},
     service::ServiceContext,
 };
-use crate::{external, service};
 use rocket::form::Form;
 use rocket::http::{ContentType, Status};
 use rocket::serde::json::Json;

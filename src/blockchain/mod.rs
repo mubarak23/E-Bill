@@ -10,8 +10,9 @@ use thiserror::Error;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
+use crate::service::bill_service::BitcreditBill;
 use crate::service::contact_service::IdentityPublicData;
-use crate::{bill::BitcreditBill, util::rsa::encrypt_bytes};
+use crate::util::rsa::encrypt_bytes;
 pub use block::Block;
 pub use chain::Chain;
 

@@ -10,7 +10,8 @@ use crate::constants::USEDNET;
 use crate::external;
 use crate::service::contact_service::IdentityPublicData;
 use crate::{
-    bill::{bill_from_byte_array, read_keys_from_bill_file, BitcreditBill},
+    bill::{bill_from_byte_array, read_keys_from_bill_file},
+    service::bill_service::BitcreditBill,
     util::rsa::decrypt_bytes,
 };
 use borsh_derive::BorshDeserialize;
