@@ -1,8 +1,6 @@
-use crate::blockchain::{Chain, ChainToReturn, OperationCode};
+use crate::blockchain::ChainToReturn;
 use crate::constants::{BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH};
-use crate::external;
 use crate::service::contact_service::IdentityPublicData;
-use crate::util::file::is_not_hidden_or_directory;
 use borsh::BorshDeserialize;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use rocket::serde::{Deserialize, Serialize};
@@ -189,109 +187,6 @@ pub fn get_path_for_bill_keys(key_name: &str) -> PathBuf {
     let mut path = PathBuf::from(BILLS_KEYS_FOLDER_PATH).join(key_name);
     path.set_extension("json");
     path
-}
-
-pub async fn get_bills() -> Vec<BitcreditBill> {
-    let mut bills = Vec::new();
-    let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
-    for path in paths {
-        let dir = path.unwrap();
-        if is_not_hidden_or_directory(&dir) {
-            let bill = read_bill_from_file(
-                dir.path()
-                    .file_stem()
-                    .expect("File name error")
-                    .to_str()
-                    .expect("File name error"),
-            )
-            .await;
-            bills.push(bill);
-        }
-    }
-    bills
-}
-
-pub async fn get_bills_for_list() -> Vec<BitcreditBillToReturn> {
-    let mut bills = Vec::new();
-    let paths = fs::read_dir(BILLS_FOLDER_PATH).unwrap();
-    for path in paths {
-        let dir = path.unwrap();
-        if is_not_hidden_or_directory(&dir) {
-            let bill = read_bill_with_chain_from_file(
-                dir.path()
-                    .file_stem()
-                    .expect("File name error")
-                    .to_str()
-                    .expect("File name error"),
-            )
-            .await;
-            bills.push(bill);
-        }
-    }
-    bills
-}
-
-async fn read_bill_with_chain_from_file(id: &str) -> BitcreditBillToReturn {
-    let bill: BitcreditBill = read_bill_from_file(id).await;
-    let chain = Chain::read_chain_from_file(&bill.name);
-    let drawer = chain.get_drawer();
-    let chain_to_return = ChainToReturn::new(chain.clone());
-    let endorsed = chain.exist_block_with_operation_code(OperationCode::Endorse);
-    let accepted = chain.exist_block_with_operation_code(OperationCode::Accept);
-    let requested_to_pay = chain.exist_block_with_operation_code(OperationCode::RequestToPay);
-    let requested_to_accept = chain.exist_block_with_operation_code(OperationCode::RequestToAccept);
-    let address_to_pay = external::bitcoin::get_address_to_pay(bill.clone());
-    let mut paid = false;
-    if chain.exist_block_with_operation_code(OperationCode::RequestToPay) {
-        let check_if_already_paid =
-            external::bitcoin::check_if_paid(address_to_pay.clone(), bill.amount_numbers).await;
-        paid = check_if_already_paid.0;
-    }
-
-    BitcreditBillToReturn {
-        name: bill.name,
-        to_payee: bill.to_payee,
-        bill_jurisdiction: bill.bill_jurisdiction,
-        timestamp_at_drawing: bill.timestamp_at_drawing,
-        drawee: bill.drawee,
-        drawer,
-        payee: bill.payee,
-        endorsee: bill.endorsee,
-        place_of_drawing: bill.place_of_drawing,
-        currency_code: bill.currency_code,
-        amount_numbers: bill.amount_numbers,
-        amounts_letters: bill.amounts_letters,
-        maturity_date: bill.maturity_date,
-        date_of_issue: bill.date_of_issue,
-        compounding_interest_rate: bill.compounding_interest_rate,
-        type_of_interest_calculation: bill.type_of_interest_calculation,
-        place_of_payment: bill.place_of_payment,
-        public_key: bill.public_key,
-        private_key: bill.private_key,
-        language: bill.language,
-        accepted,
-        endorsed,
-        waited_for_payment: false,
-        address_for_selling: "".to_string(),
-        amount_for_selling: 0,
-        buyer: IdentityPublicData::new_empty(),
-        seller: IdentityPublicData::new_empty(),
-        requested_to_pay,
-        requested_to_accept,
-        paid,
-        link_to_pay: "".to_string(),
-        link_for_buy: "".to_string(),
-        pr_key_bill: "".to_string(),
-        number_of_confirmations: 0,
-        pending: false,
-        address_to_pay,
-        chain_of_blocks: chain_to_return,
-    }
-}
-
-pub async fn read_bill_from_file(bill_name: &str) -> BitcreditBill {
-    let chain = Chain::read_chain_from_file(bill_name);
-    chain.get_last_version_bill().await
 }
 
 pub fn bill_from_byte_array(bill: &[u8]) -> BitcreditBill {

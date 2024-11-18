@@ -3,14 +3,13 @@ use super::super::data::{
     EndorseBitcreditBillForm, MintBitcreditBillForm, RequestToAcceptBitcreditBillForm,
     RequestToMintBitcreditBillForm, RequestToPayBitcreditBillForm, SellBitcreditBillForm,
 };
-use crate::bill::get_path_for_bill;
 use crate::blockchain::{Chain, ChainToReturn, GossipsubEvent, GossipsubEventId, OperationCode};
 use crate::external::mint::{accept_mint_bitcredit, request_to_mint_bitcredit};
 use crate::service::{contact_service::IdentityPublicData, Result};
 use crate::util::file::{detect_content_type_for_bytes, UploadFileHandler};
 use crate::util::get_current_payee_private_key;
 use crate::{
-    bill::{get_bills_for_list, read_bill_from_file, BitcreditBill, BitcreditBillToReturn},
+    bill::{BitcreditBill, BitcreditBillToReturn},
     service::ServiceContext,
 };
 use crate::{external, service};
@@ -18,12 +17,12 @@ use rocket::form::Form;
 use rocket::http::{ContentType, Status};
 use rocket::serde::json::Json;
 use rocket::{get, post, put, State};
-use std::{fs, thread};
+use std::thread;
 
 #[get("/holder/<id>")]
 pub async fn holder(state: &State<ServiceContext>, id: String) -> Result<Json<bool>> {
     let identity = state.identity_service.get_full_identity().await?;
-    let bill: BitcreditBill = read_bill_from_file(&id).await;
+    let bill = state.bill_service.get_bill(&id).await?;
     let am_i_holder = identity.peer_id.to_string().eq(&bill.payee.peer_id);
     Ok(Json(am_i_holder))
 }
@@ -52,31 +51,35 @@ pub async fn attachment(
 }
 
 #[get("/return")]
-pub async fn return_bills_list() -> Json<Vec<BitcreditBillToReturn>> {
-    let bills: Vec<BitcreditBillToReturn> = get_bills_for_list().await;
-    Json(bills)
+pub async fn return_bills_list(
+    state: &State<ServiceContext>,
+) -> Result<Json<Vec<BitcreditBillToReturn>>> {
+    let bills = state.bill_service.get_bills().await?;
+    Ok(Json(bills))
 }
 
 #[get("/return/basic/<id>")]
-pub async fn return_basic_bill(id: String) -> Json<BitcreditBill> {
-    let bill: BitcreditBill = read_bill_from_file(&id).await;
-    Json(bill)
+pub async fn return_basic_bill(
+    state: &State<ServiceContext>,
+    id: String,
+) -> Result<Json<BitcreditBill>> {
+    let bill = state.bill_service.get_bill(&id).await?;
+    Ok(Json(bill))
 }
 
 #[get("/chain/return/<id>")]
-pub async fn return_chain_of_blocks(id: String) -> Json<Chain> {
-    let chain = Chain::read_chain_from_file(&id);
-    Json(chain)
+pub async fn return_chain_of_blocks(
+    state: &State<ServiceContext>,
+    id: String,
+) -> Result<Json<Chain>> {
+    let chain = state.bill_service.get_blockchain_for_bill(&id).await?;
+    Ok(Json(chain))
 }
 
 #[get("/find/<bill_id>")]
-pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) {
-    let mut client = state.dht_client();
-    let bill_bytes = client.get_bill(bill_id.to_string().clone()).await;
-    if !bill_bytes.is_empty() {
-        let path = get_path_for_bill(&bill_id);
-        fs::write(path, bill_bytes.clone()).expect("Can't write file.");
-    }
+pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) -> Result<Status> {
+    state.bill_service.find_bill_in_dht(&bill_id).await?;
+    Ok(Status::Ok)
 }
 
 #[get("/return/<id>")]
@@ -85,8 +88,8 @@ pub async fn return_bill(
     id: String,
 ) -> Result<Json<BitcreditBillToReturn>> {
     let identity = state.identity_service.get_full_identity().await?;
-    let bill: BitcreditBill = read_bill_from_file(&id).await;
-    let chain = Chain::read_chain_from_file(&bill.name);
+    let chain = state.bill_service.get_blockchain_for_bill(&id).await?;
+    let bill = chain.get_last_version_bill().await;
     let drawer = chain.get_drawer();
     let mut link_for_buy = "".to_string();
     let chain_to_return = ChainToReturn::new(chain.clone());
@@ -588,8 +591,14 @@ pub async fn request_to_mint_bill(
 
 //This is function for mint software
 #[put("/accept_mint", data = "<accept_mint_bill_form>")]
-pub async fn accept_mint_bill(accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>) -> Status {
-    let bill = read_bill_from_file(&accept_mint_bill_form.bill_name.clone()).await;
+pub async fn accept_mint_bill(
+    state: &State<ServiceContext>,
+    accept_mint_bill_form: Form<AcceptMintBitcreditBillForm>,
+) -> Result<Status> {
+    let bill = state
+        .bill_service
+        .get_bill(&accept_mint_bill_form.bill_name)
+        .await?;
     let bill_amount = bill.amount_numbers;
     let holder_node_id = bill.payee.peer_id.clone();
 
@@ -606,7 +615,7 @@ pub async fn accept_mint_bill(accept_mint_bill_form: Form<AcceptMintBitcreditBil
     .join()
     .expect("Thread panicked");
 
-    Status::Ok
+    Ok(Status::Ok)
 }
 
 //After accept mint on client side
