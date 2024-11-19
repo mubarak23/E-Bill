@@ -42,14 +42,9 @@ impl Chain {
         Self { blocks }
     }
 
-    /// This function checks if all blocks in the chain are valid by comparing each block with its predecessor.
-    /// The validity of each block is determined using the `is_block_valid` function. If any block is invalid,
-    /// the function returns `false`. If all blocks are valid, the function returns `true`.
-    ///
+    /// Reads a blockchain from a file and deserializes it into a `Chain` object.
     /// # Returns
-    /// * `true` if all blocks in the chain are valid.
-    /// * `false` if any block in the chain is invalid.
-    ///
+    /// Returns an instance of `Self` (typically a `Chain`) that is deserialized from the blockchain file.
     pub fn read_chain_from_file(bill_name: &str) -> Self {
         let input_path = get_path_for_bill(bill_name);
 
@@ -57,27 +52,17 @@ impl Chain {
         serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
     }
 
-    /// This function checks if all blocks in the chain are valid by comparing each block with its predecessor.
-    /// The validity of each block is determined using the `is_block_valid` function. If any block is invalid,
-    /// the function returns `false`. If all blocks are valid, the function returns `true`.
-    ///
-    /// # Returns
-    /// * `true` if all blocks in the chain are valid.
-    /// * `false` if any block in the chain is invalid.
-    ///
     pub fn write_chain_to_file(&self, bill_name: &str) {
         let output_path = get_path_for_bill(bill_name);
 
         std::fs::write(output_path, serde_json::to_string_pretty(&self).unwrap()).unwrap();
     }
 
-    /// This function checks if all blocks in the chain are valid by comparing each block with its predecessor.
-    /// The validity of each block is determined using the `is_block_valid` function. If any block is invalid,
-    /// the function returns `false`. If all blocks are valid, the function returns `true`.
+    /// Validates the integrity of the blockchain by checking the validity of each block in the chain.
     ///
     /// # Returns
-    /// * `true` if all blocks in the chain are valid.
-    /// * `false` if any block in the chain is invalid.
+    /// * `true` - If all blocks in the chain are valid.
+    /// * `false` - If any block in the chain is found to be invalid.
     ///
     pub fn is_chain_valid(&self) -> bool {
         for i in 0..self.blocks.len() {
@@ -420,9 +405,7 @@ impl Chain {
     }
 
     /// This asynchronous function checks if the payment deadline associated with the most recent sell block
-    /// has passed. It retrieves the timestamp from the last sell block and compares it to the current time
-    /// to determine if the deadline, defined by a 2-day period, has passed.
-    ///
+    /// has passed.
     /// # Returns
     ///
     /// - `true` if the payment deadline for the last sell block has passed.
