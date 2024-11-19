@@ -23,6 +23,18 @@ pub struct ChainToReturn {
 }
 
 impl ChainToReturn {
+    /// This function takes a `Chain` object and creates a new instance of the struct by iterating over the `blocks`
+    /// in the given `Chain`. Each `Block` in the `Chain` is transformed into a `BlockToReturn` using the `BlockToReturn::new`
+    /// constructor, and the first version bill of the chain is used to initialize the `BlockToReturn` objects.
+    ///
+    /// # Arguments
+    /// * `chain` - A `Chain` object containing a sequence of `Block` objects to be processed and converted into
+    ///   `BlockToReturn` objects.
+    ///
+    /// # Returns
+    /// Returns an instance of `Self`, which contains a `Vec<BlockToReturn>`. The vector is populated with `BlockToReturn`
+    /// objects created by iterating over the `blocks` in the provided `chain` and using the first version of the bill for each block.
+    ///
     pub fn new(chain: Chain) -> Self {
         let mut blocks: Vec<BlockToReturn> = Vec::new();
         let bill = chain.get_first_version_bill();
