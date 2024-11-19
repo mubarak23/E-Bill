@@ -883,6 +883,7 @@ dependencies = [
  "moksha-core",
  "moksha-mint",
  "moksha-wallet",
+ "nostr-relay-builder",
  "nostr-sdk",
  "open",
  "openssl",
@@ -4142,6 +4143,22 @@ dependencies = [
  "async-trait",
  "lru 0.12.5",
  "nostr",
+ "thiserror 1.0.64",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "nostr-relay-builder"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f4ded9cabf99987ce62bd81ef199eb57be121c8b4907dca34b654bbbe271623"
+dependencies = [
+ "async-utility",
+ "async-wsocket",
+ "atomic-destructor",
+ "nostr",
+ "nostr-database",
  "thiserror 1.0.64",
  "tokio",
  "tracing",

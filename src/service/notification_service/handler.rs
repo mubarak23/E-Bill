@@ -1,9 +1,12 @@
 use super::{EventEnvelope, EventType, Result};
 use async_trait::async_trait;
 use log::info;
+#[cfg(test)]
+use mockall::automock;
 
 /// Handle an event when we receive it from a channel.
 #[allow(dead_code)]
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait NotificationHandlerApi: Send + Sync {
     /// Whether this handler handles the given event type.

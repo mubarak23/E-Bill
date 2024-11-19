@@ -1,6 +1,9 @@
 use super::Result;
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::automock;
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait NotificationEmailTransportApi: Send + Sync {
     /// Generically send an email message to different email transports.

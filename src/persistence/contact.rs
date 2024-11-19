@@ -13,6 +13,7 @@ pub trait ContactStoreApi: Send + Sync {
     async fn delete(&self, name: &str) -> Result<()>;
     async fn update_name(&self, name: &str, new_name: &str) -> Result<()>;
     async fn update(&self, name: &str, data: IdentityPublicData) -> Result<()>;
+    async fn get_by_npub(&self, npub: &str) -> Result<Option<IdentityPublicData>>;
 }
 
 #[derive(Clone)]
@@ -79,6 +80,16 @@ impl ContactStoreApi for FileBasedContactStore {
     async fn update(&self, name: &str, data: IdentityPublicData) -> Result<()> {
         self.insert(name, data).await?;
         Ok(())
+    }
+
+    async fn get_by_npub(&self, npub: &str) -> Result<Option<IdentityPublicData>> {
+        let result = self
+            .get_map()
+            .await?
+            .values()
+            .find(|c| c.nostr_npub == Some(npub.to_string()))
+            .map(|c| c.to_owned());
+        Ok(result)
     }
 }
 
