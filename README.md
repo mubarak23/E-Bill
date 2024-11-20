@@ -94,10 +94,9 @@ docker-compose up -d
 docker-compose build
 ```
 
-## Contribute
-
-Check out the project [contributing guide](./CONTRIBUTING.md).
-
 If you use the above commands, the application state (identity, bills, contacts) will persist between sessions. However, if you use `docker-compose down`, or `docker-compose rm`, the existing container gets removed, along with it's state.
 Of course, rebuilding the image also removes the application state.
 
+## Contribute
+
+Check out the project [contributing guide](./CONTRIBUTING.md).
