@@ -40,6 +40,18 @@ pub struct MyBehaviour {
 }
 
 impl MyBehaviour {
+    /// Creates a new instance of the behavior that integrates multiple networking components.
+    ///
+    /// # Parameters
+    ///
+    /// - `local_peer_id`: The local peer's unique identifier used across the network.
+    /// - `local_public_key`: The local peer's keypair, providing both public and private keys for
+    ///   cryptographic operations.
+    /// - `client`: A relay client behavior used for managing connections via relay protocols.
+    ///
+    /// # Returns
+    ///
+    /// A new `Self` instance,
     pub fn new(
         local_peer_id: PeerId,
         local_public_key: Keypair,
@@ -74,6 +86,10 @@ impl MyBehaviour {
         }
     }
 
+    /// This function reads a JSON file containing bootstrap nodes, parses the data, and adds
+    /// the nodes to the Kademlia instance. Finally, it starts the bootstrap process to
+    /// establish a connection with the network.
+
     pub fn bootstrap_kademlia(&mut self) {
         let boot_nodes_string = fs::read_to_string(BOOTSTRAP_NODES_FILE_PATH)
             .expect("Can't read bootstrap nodes file.");
@@ -103,36 +119,100 @@ pub enum ComposedEvent {
 }
 
 impl From<request_response::Event<FileRequest, FileResponse>> for ComposedEvent {
+    /// Converts a `request_response::Event<FileRequest, FileResponse>` into a `ComposedEvent`.
+    ///
+    /// # Parameters
+    ///
+    /// - `event`: The `request_response::Event<FileRequest, FileResponse>` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// A `ComposedEvent` instance containing the provided `request_response` event.
+    ///
     fn from(event: request_response::Event<FileRequest, FileResponse>) -> Self {
         ComposedEvent::RequestResponse(event)
     }
 }
 
 impl From<KademliaEvent> for ComposedEvent {
+    /// Converts a `request_response::Event<FileRequest, FileResponse>` into a `ComposedEvent`.
+    /// # Parameters
+    ///
+    /// - `event`: The `request_response::Event<FileRequest, FileResponse>` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// A `ComposedEvent` instance containing the provided `request_response` event.
+    ///
+
     fn from(event: KademliaEvent) -> Self {
         ComposedEvent::Kademlia(event)
     }
 }
 
 impl From<identify::Event> for ComposedEvent {
+    /// This implementation wraps an `identify::Event` within the `ComposedEvent` type,
+    /// enabling unified handling of events from multiple protocols.
+    ///
+    /// # Parameters
+    ///
+    /// - `event`: The `identify::Event` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// A `ComposedEvent` instance containing the provided `identify` event.
+    ///
     fn from(event: identify::Event) -> Self {
         ComposedEvent::Identify(event)
     }
 }
 
 impl From<gossipsub::Event> for ComposedEvent {
+    /// Converts a `gossipsub::Event` into a `ComposedEvent`.
+    ///
+
+    ///
+    /// # Parameters
+    ///
+    /// - `event`: The `gossipsub::Event` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// A `ComposedEvent` instance containing the provided Gossipsub event.
+    ///
     fn from(event: gossipsub::Event) -> Self {
         ComposedEvent::Gossipsub(event)
     }
 }
 
 impl From<relay::client::Event> for ComposedEvent {
+    /// Converts a `relay::client::Event` into a `ComposedEvent`.
+    ///
+    /// # Parameters
+    ///
+    /// - `event`: The `relay::client::Event` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// A `ComposedEvent` instance containing the provided relay client event.
+    ///
     fn from(event: relay::client::Event) -> Self {
         ComposedEvent::Relay(event)
     }
 }
 
 impl From<dcutr::Event> for ComposedEvent {
+    /// Converts a `dcutr::Event` into a `ComposedEvent`.
+    ///
+    ///
+    /// # Parameters
+    ///
+    /// - `event`: The `dcutr::Event` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// A `ComposedEvent` instance containing the provided DCUTR event.
+    ///
     fn from(event: dcutr::Event) -> Self {
         ComposedEvent::Dcutr(event)
     }
@@ -206,18 +286,68 @@ pub struct BillAttachmentFileRequest {
     pub bill_name: String,
     pub file_name: String,
 }
+/// Constructs a formatted string representing a file request for a bill attachment.
+///
+/// # Parameters
+///
+/// - `node_id`: A string slice representing the unique identifier of the node requesting the file.
+/// - `bill_name`: A string slice representing the name of the bill associated with the file.
+/// - `file_name`: A string slice representing the name of the file being requested.
+///
+/// # Returns
+///
+/// A `String` formatted as:
+/// ```text
+/// {node_id}_{BILL_ATTACHMENT_PREFIX}_{bill_name}_{file_name}
 
 pub fn file_request_for_bill_attachment(node_id: &str, bill_name: &str, file_name: &str) -> String {
     format!("{node_id}_{BILL_ATTACHMENT_PREFIX}_{bill_name}_{file_name}")
 }
-
+/// Constructs a formatted string representing a file request for a bill.
+/// # Parameters
+///
+/// - `node_id`: A string slice representing the unique identifier of the node requesting the file.
+/// - `bill_name`: A string slice representing the name of the bill associated with the file.
+///
+/// # Returns
+///
+/// A `String` formatted as:
+/// ```text
+/// {node_id}_{BILL_PREFIX}_{bill_name}
+///
 pub fn file_request_for_bill(node_id: &str, bill_name: &str) -> String {
     format!("{node_id}_{BILL_PREFIX}_{bill_name}")
 }
-
+/// Constructs a formatted string representing a file request for bill keys.
+/// # Parameters
+///
+/// - `node_id`: A string slice representing the unique identifier of the node requesting the file.
+/// - `bill_name`: A string slice representing the name of the bill associated with the keys.
+///
+/// # Returns
+///
+/// A `String` formatted as:
+/// ```text
+/// {node_id}_{KEY_PREFIX}_{bill_name}
+/// ```
 pub fn file_request_for_bill_keys(node_id: &str, bill_name: &str) -> String {
     format!("{node_id}_{KEY_PREFIX}_{bill_name}")
 }
+
+/// This function takes a string representing an inbound file request, splits it into parts,
+/// and categorizes the request into different types: `Bill`, `BillKeys`, or `BillAttachment`.
+///
+/// # Parameters
+///
+/// - `request`: A string slice representing the inbound file request to be parsed.
+///
+/// # Returns
+///
+/// - `Ok(ParsedInboundFileRequest::Bill(BillFileRequest))`
+/// - `Ok(ParsedInboundFileRequest::BillKeys(BillKeysFileRequest))`
+/// - `Ok(ParsedInboundFileRequest::BillAttachment(BillAttachmentFileRequest))`
+/// - `Err(anyhow::Error)`
+///
 
 pub fn parse_inbound_file_request(request: &str) -> Result<ParsedInboundFileRequest> {
     let parts = request.splitn(4, "_").collect::<Vec<&str>>();
@@ -281,6 +411,20 @@ impl request_response::Codec for FileExchangeCodec {
     type Request = FileRequest;
     type Response = FileResponse;
 
+    /// Reads a length-prefixed file request from the provided I/O stream.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the parsed file request:
+    /// - `Ok(FileRequest)`
+    ///   into a `String`.
+    /// - `Err(tokio::io::Error)`
+    ///
+    /// # Errors
+    ///
+    /// - `tokio::io::ErrorKind::UnexpectedEof`
+    /// - `tokio::io::ErrorKind::InvalidData`
+    ///
     async fn read_request<T>(
         &mut self,
         _: &FileExchangeProtocol,
@@ -300,6 +444,20 @@ impl request_response::Codec for FileExchangeCodec {
         ))
     }
 
+    /// Reads a length-prefixed file response from the provided I/O stream.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the parsed file request:
+    /// - `Ok(FileRequest)`
+    ///   into a `String`.
+    /// - `Err(tokio::io::Error)`
+    ///
+    /// # Errors
+    ///
+    /// - `tokio::io::ErrorKind::UnexpectedEof`
+    /// - `tokio::io::ErrorKind::InvalidData`
+    ///
     async fn read_response<T>(
         &mut self,
         _: &FileExchangeProtocol,
@@ -317,6 +475,20 @@ impl request_response::Codec for FileExchangeCodec {
         Ok(FileResponse(vec))
     }
 
+    /// Writes a length-prefixed file request to the provided I/O stream asynchronously.
+    ///
+    /// # Parameters
+    ///
+    /// - `_: &FileExchangeProtocol`:
+    /// - `io`: A mutable reference to the I/O stream to which the data will be written. I
+    /// - `FileRequest(data)`: The file request data to write to the stream. This is the data to be transmitted.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating the success or failure of the write operation:
+    /// - `Ok(())`: Indicates the data was successfully written and the stream was closed.
+    /// - `Err(tokio::io::Error)`: An error if the writing or closing the stream fails.
+    ///
     async fn write_request<T>(
         &mut self,
         _: &FileExchangeProtocol,
@@ -332,6 +504,20 @@ impl request_response::Codec for FileExchangeCodec {
         Ok(())
     }
 
+    /// Writes a length-prefixed file response to the provided I/O stream asynchronously.
+    ///
+    /// # Parameters
+    ///
+    /// - `_: &FileExchangeProtocol`: The protocol associated with the file exchange.
+    /// - `io`: A mutable reference to the I/O stream to which the data will be written. .
+    /// - `FileResponse(data)`: The file response data to write to the stream. This is the actual data to be transmitted.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating the success or failure of the write operation:
+    /// - `Ok(())`: The data was successfully written and the stream was closed.
+    /// - `Err(tokio::io::Error)`: An error if the writing or closing the stream fails.
+    ///
     async fn write_response<T>(
         &mut self,
         _: &FileExchangeProtocol,
