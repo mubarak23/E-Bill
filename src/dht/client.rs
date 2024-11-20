@@ -35,6 +35,18 @@ pub struct Client {
 }
 
 impl Client {
+    /// This function initializes a new instance of the struct by accepting a sender for communication,
+    /// a store for bill data, and a store for identity data.
+    /// # Parameters
+    ///
+    /// - `sender`: A channel sender (`mpsc::Sender<Command>`) used for sending commands to the system.
+    /// - `bill_store`: An `Arc<dyn BillStoreApi>` representing a store for bill data, allowing for retrieval and manipulation of bill records.
+    /// - `identity_store`: An `Arc<dyn IdentityStoreApi>` representing a store for identity data, used for handling identity-related operations.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new instance of the struct with the provided components initialized.
+    ///
     pub fn new(
         sender: mpsc::Sender<Command>,
         bill_store: Arc<dyn BillStoreApi>,
@@ -46,6 +58,19 @@ impl Client {
             identity_store,
         }
     }
+
+    /// Main asynchronous function that handles network events, stdin input, and shutdown signals.
+    ///
+    /// # Parameters
+    ///
+    /// - `network_events`: A receiver channel (`Receiver<Event>`) that provides incoming network events for processing.
+    /// - `shutdown_dht_client_receiver`: A broadcast receiver (`broadcast::Receiver<bool>`) that listens for a shutdown signal
+    ///   to gracefully terminate the DHT client.
+    ///
+    /// # Returns
+    ///
+    /// This function doesn't return any value. It runs asynchronously and continues to process events until a shutdown signal
+    /// is received.
 
     pub async fn run(
         mut self,
@@ -89,6 +114,16 @@ impl Client {
             }
         }
     }
+
+    /// This function checks if there are any new bills for a specified node by querying a record for the node using a `BILLS_PREFIX`.
+    /// # Parameters
+    ///
+    /// - `node_id`: The unique identifier for the node whose bills are being checked. It is used to form the key for querying the record.
+    ///
+    /// # Returns
+    ///
+    /// This function does not return any value. It performs the operations on the bill store and handles the bills asynchronously.
+    ///
 
     pub async fn check_new_bills(&mut self, node_id: String) {
         let node_request = BILLS_PREFIX.to_string() + &node_id;
@@ -185,6 +220,18 @@ impl Client {
     //     }
     // }
 
+    /// Upgrades the bill record for a specified node by adding any new bills found in the file system.
+    ///
+    /// # Parameters
+    ///
+    /// - `node_id`: The unique identifier for the node whose bill record is being upgraded. It is used
+    ///   to query and update the bill record for the node in the DHT.
+    ///
+    /// # Returns
+    ///
+    /// This function does not return any value. It updates the bill record associated with the `node_id`
+    /// in the DHT and manages the bills stored locally.
+    ///
     pub async fn upgrade_table(&mut self, node_id: String) {
         let node_request = BILLS_PREFIX.to_string() + &node_id;
         let list_bills_for_node = self.get_record(node_request.clone()).await;
@@ -244,6 +291,7 @@ impl Client {
         }
     }
 
+    /// Starts the process of providing bills by adding bill names found in the local directory to the system.
     pub async fn start_provide(&mut self) {
         for file in fs::read_dir(BILLS_FOLDER_PATH).unwrap() {
             let dir = file.unwrap();
@@ -260,6 +308,8 @@ impl Client {
         }
     }
 
+    /// Puts the identity's public data into the DHT (Distributed Hash Table), ensuring that the stored data
+    /// is up-to-date with the current identity information.
     pub async fn put_identity_public_data_in_dht(&mut self) -> Result<()> {
         if self.identity_store.exists().await {
             let identity = self.identity_store.get_full().await?;
@@ -284,6 +334,18 @@ impl Client {
         Ok(())
     }
 
+    /// Retrieves the public identity data for a specified peer from the DHT (Distributed Hash Table).
+    ///
+
+    ///
+    /// # Parameters
+    ///
+    /// - `peer_id`: The ID of the peer whose public identity data is to be fetched from the DHT.
+    ///
+    /// # Returns
+    ///
+    /// This function returns an `IdentityPublicData` object. If the DHT contains the requested identity data,
+    /// it is deserialized and returned.
     pub async fn get_identity_public_data_from_dht(
         &mut self,
         peer_id: String,
@@ -301,6 +363,12 @@ impl Client {
         identity_public_data
     }
 
+    /// Adds a bill to the DHT for a specific node.
+    /// # Parameters
+    ///
+    /// - `bill_name`: The name of the bill to be added to the node's list of bills.
+    /// - `node_id`: The ID of the node to which the bill will be added.
+    ///
     pub async fn add_bill_to_dht_for_node(&mut self, bill_name: &str, node_id: &str) {
         let node_request = BILLS_PREFIX.to_string() + node_id;
         let mut record_for_saving_in_dht;
@@ -327,14 +395,26 @@ impl Client {
         }
     }
 
+    /// Adds a message to a specific topic.
     pub async fn add_message_to_topic(&mut self, msg: Vec<u8>, topic: String) {
         self.send_message(msg, topic).await;
     }
 
+    /// Initiates the process of providing a resource based on the given name.
     pub async fn put(&mut self, name: &str) {
         self.start_providing(name.to_owned()).await;
     }
 
+    /// Retrieves a bill's file content by querying available providers.
+    /// # Parameters
+    ///
+    /// - `name`: A `String` representing the name of the bill to be retrieved.
+    ///
+    /// # Returns
+    ///
+    /// - `Vec<u8>`: A vector containing the file content of the bill. If no providers are found or
+    ///   no provider returns the file, an empty vector is returned.
+    ///
     pub async fn get_bill(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {
@@ -441,6 +521,17 @@ impl Client {
         }
     }
 
+    /// Retrieves the key file content associated with a given name from available providers.
+    ///
+    /// # Parameters
+    ///
+    /// - `name`: A `String` representing the name associated with the key to be retrieved.
+    ///
+    /// # Returns
+    ///
+    /// - `Vec<u8>`: A vector containing the key file content. If no providers are found or no
+    ///   provider returns the file, an empty vector is returned.
+    ///
     pub async fn get_key(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {
@@ -472,6 +563,7 @@ impl Client {
         }
     }
 
+    /// Adds bills to the Distributed Hash Table (DHT) for all relevant nodes.
     pub async fn put_bills_for_parties(&mut self) {
         let bills = self.bill_store.get_bills().await.unwrap();
 
@@ -484,6 +576,8 @@ impl Client {
         }
     }
 
+    /// Subscribes to all topics associated with the bills in the `bill_store`.
+    ///
     pub async fn subscribe_to_all_bills_topics(&mut self) {
         let bills = self.bill_store.get_bills().await.unwrap();
 
@@ -492,6 +586,7 @@ impl Client {
         }
     }
 
+    /// Sends update messages for all topics associated with the bills in the `bill_store`.
     pub async fn receive_updates_for_all_bills_topics(&mut self) {
         let bills = self.bill_store.get_bills().await.unwrap();
 
@@ -503,6 +598,7 @@ impl Client {
         }
     }
 
+    /// Subscribes to a specific topic by sending a subscription command.
     pub async fn subscribe_to_topic(&mut self, topic: String) {
         self.sender
             .send(Command::SubscribeToTopic { topic })
@@ -510,6 +606,7 @@ impl Client {
             .expect("Command receiver not to be dropped.");
     }
 
+    /// Sends a message to a specified topic by sending a message command.
     async fn send_message(&mut self, msg: Vec<u8>, topic: String) {
         self.sender
             .send(Command::SendMessage { msg, topic })
@@ -517,6 +614,7 @@ impl Client {
             .expect("Command receiver not to be dropped.");
     }
 
+    /// Sends a request to store a record with a specified key and value.
     async fn put_record(&mut self, key: String, value: String) {
         self.sender
             .send(Command::PutRecord { key, value })
@@ -524,6 +622,7 @@ impl Client {
             .expect("Command receiver not to be dropped.");
     }
 
+    /// Sends a request to retrieve a record associated with a specified key.
     async fn get_record(&mut self, key: String) -> Record {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -533,6 +632,7 @@ impl Client {
         receiver.await.expect("Sender not to be dropped.")
     }
 
+    /// Sends a request to start providing a file with the given name.
     async fn start_providing(&mut self, file_name: String) {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -542,6 +642,7 @@ impl Client {
         receiver.await.expect("Sender not to be dropped.");
     }
 
+    /// Sends a request to retrieve the list of providers for a given file.
     async fn get_providers(&mut self, file_name: String) -> HashSet<PeerId> {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -551,6 +652,7 @@ impl Client {
         receiver.await.expect("Sender not to be dropped.")
     }
 
+    /// Sends a request to a specific peer to retrieve a file.
     async fn request_file(&mut self, peer: PeerId, file_name: String) -> Result<Vec<u8>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -564,13 +666,17 @@ impl Client {
         receiver.await.expect("Sender not be dropped.")
     }
 
+    /// Responds to a file request by sending the requested file content to the specified response channel.
     async fn respond_file(&mut self, file: Vec<u8>, channel: ResponseChannel<FileResponse>) {
         self.sender
             .send(Command::RespondFile { file, channel })
             .await
             .expect("Command receiver not to be dropped.");
     }
-
+    /// Handles an inbound event by processing the request and responding with the appropriate file or data.
+    ///
+    /// # Parameters
+    /// - `event`: The event to handle, which includes the inbound request and the response channel.
     async fn handle_event(&mut self, event: Event) {
         let Event::InboundRequest { request, channel } = event;
         match parse_inbound_file_request(&request) {
@@ -652,7 +758,11 @@ impl Client {
         }
     }
 
-    //Need for testing from console.
+    /// Handles an input line by parsing and executing the corresponding command.
+    /// # Parameters
+    /// - `line`: The input line containing the command and its arguments, as a `String`.
+    ///
+    /// Need for testing from console.
     async fn handle_input_line(&mut self, line: String) {
         let mut args = line.split(' ');
         match args.next() {
