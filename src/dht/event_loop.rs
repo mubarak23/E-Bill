@@ -39,6 +39,7 @@ pub struct EventLoop {
 }
 
 impl EventLoop {
+    /// Function that initializes a new EventLoop struct.
     pub fn new(
         swarm: Swarm<MyBehaviour>,
         command_receiver: Receiver<Command>,
@@ -55,7 +56,11 @@ impl EventLoop {
             pending_request_file: Default::default(),
         }
     }
-
+    /// Runs the main event loop, processing incoming events, commands, and shutdown signals.
+    ///
+    /// # Parameters
+    /// - `shutdown_event_loop_receiver`: A `broadcast::Receiver<bool>` that listens for a shutdown signal to stop the event loop.
+    ///
     pub async fn run(mut self, mut shutdown_event_loop_receiver: broadcast::Receiver<bool>) {
         loop {
             tokio::select! {
@@ -69,6 +74,12 @@ impl EventLoop {
         }
     }
 
+    /// Handles various types of events received from the Swarm and processes them accordingly.
+    ///
+    /// # Parameters
+    /// - `event`: The event received from the swarm, which can be of various types such as `KademliaEvent`, `RequestResponseEvent`,
+    ///   `IdentifyEvent`, etc. The type is generic and constrained by `T: std::fmt::Debug` for debug logging.
+    ///
     async fn handle_event<T>(&mut self, event: SwarmEvent<ComposedEvent, T>)
     where
         T: std::fmt::Debug,
@@ -336,6 +347,10 @@ impl EventLoop {
         }
     }
 
+    /// Handles various commands related to swarm behavior such as providing records,
+    /// sending messages, subscribing to topics, and handling file requests.
+    /// # Arguments
+    /// * `command` - A `Command` enum that specifies the action to be taken.
     async fn handle_command(&mut self, command: Command) {
         match command {
             Command::StartProviding { file_name, sender } => {

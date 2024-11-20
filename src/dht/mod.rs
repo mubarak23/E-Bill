@@ -34,6 +34,20 @@ pub struct Dht {
     pub shutdown_sender: broadcast::Sender<bool>,
 }
 
+/// Initializes and starts the Distributed Hash Table (DHT) network, creating the necessary
+/// network client, event loop, and managing shutdown signals.
+/// # Arguments
+/// * `conf` - A reference to the configuration (`Config`) object that contains settings for
+///   the DHT network.
+/// * `bill_store` - A shared, thread-safe reference to an object that implements the
+///   `BillStoreApi` trait, used to store billing information.
+/// * `identity_store` - A shared, thread-safe reference to an object that implements the
+///   `IdentityStoreApi` trait, used to manage identities in the network.
+///
+/// # Returns
+/// Returns a `Result` containing the `Dht` struct on success, or an error if network initialization
+/// fails. The `Dht` struct contains a `network_client` and a `shutdown_sender` used to interact
+/// with the DHT network.
 pub async fn dht_main(
     conf: &Config,
     bill_store: Arc<dyn BillStoreApi>,
@@ -58,6 +72,19 @@ pub async fn dht_main(
     })
 }
 
+/// Initializes a new instance of the network client, establishes peer identity, and sets up
+/// the transport layer for communication. The function ensures the local peer has a generated
+/// keypair and peer ID, and it configures the necessary transport and swarm behavior for the
+/// distributed network.
+/// # Arguments
+/// * `conf`
+/// * `bill_store`
+/// * `identity_store`
+/// # Returns
+/// Returns a `Result` containing a tuple with the following on success:
+/// - `Client`: The network client for communication.
+/// - `Receiver<Event>`: A channel receiver for receiving network events.
+/// - `EventLoop`: The event loop that processes the network events.
 async fn new(
     conf: &Config,
     bill_store: Arc<dyn BillStoreApi>,
