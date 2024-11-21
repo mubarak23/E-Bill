@@ -505,19 +505,14 @@ impl request_response::Codec for FileExchangeCodec {
     }
 
     /// Writes a length-prefixed file response to the provided I/O stream asynchronously.
-    ///
     /// # Parameters
-    ///
     /// - `_: &FileExchangeProtocol`: The protocol associated with the file exchange.
     /// - `io`: A mutable reference to the I/O stream to which the data will be written. .
     /// - `FileResponse(data)`: The file response data to write to the stream. This is the actual data to be transmitted.
-    ///
     /// # Returns
-    ///
     /// A `Result` indicating the success or failure of the write operation:
     /// - `Ok(())`: The data was successfully written and the stream was closed.
     /// - `Err(tokio::io::Error)`: An error if the writing or closing the stream fails.
-    ///
     async fn write_response<T>(
         &mut self,
         _: &FileExchangeProtocol,

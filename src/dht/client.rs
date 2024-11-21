@@ -59,19 +59,11 @@ impl Client {
         }
     }
 
-    /// Main asynchronous function that handles network events, stdin input, and shutdown signals.
-    ///
+    /// Function that handles network events, stdin input, and shutdown signals.
     /// # Parameters
-    ///
     /// - `network_events`: A receiver channel (`Receiver<Event>`) that provides incoming network events for processing.
     /// - `shutdown_dht_client_receiver`: A broadcast receiver (`broadcast::Receiver<bool>`) that listens for a shutdown signal
     ///   to gracefully terminate the DHT client.
-    ///
-    /// # Returns
-    ///
-    /// This function doesn't return any value. It runs asynchronously and continues to process events until a shutdown signal
-    /// is received.
-
     pub async fn run(
         mut self,
         mut network_events: Receiver<Event>,
@@ -119,11 +111,6 @@ impl Client {
     /// # Parameters
     ///
     /// - `node_id`: The unique identifier for the node whose bills are being checked. It is used to form the key for querying the record.
-    ///
-    /// # Returns
-    ///
-    /// This function does not return any value. It performs the operations on the bill store and handles the bills asynchronously.
-    ///
 
     pub async fn check_new_bills(&mut self, node_id: String) {
         let node_request = BILLS_PREFIX.to_string() + &node_id;
@@ -335,15 +322,9 @@ impl Client {
     }
 
     /// Retrieves the public identity data for a specified peer from the DHT (Distributed Hash Table).
-    ///
-
-    ///
     /// # Parameters
-    ///
     /// - `peer_id`: The ID of the peer whose public identity data is to be fetched from the DHT.
-    ///
     /// # Returns
-    ///
     /// This function returns an `IdentityPublicData` object. If the DHT contains the requested identity data,
     /// it is deserialized and returned.
     pub async fn get_identity_public_data_from_dht(
@@ -599,6 +580,9 @@ impl Client {
     }
 
     /// Subscribes to a specific topic by sending a subscription command.
+    /// # Parameters
+    /// - `topic`: subscription tpoic the function will listen to
+
     pub async fn subscribe_to_topic(&mut self, topic: String) {
         self.sender
             .send(Command::SubscribeToTopic { topic })
@@ -607,6 +591,9 @@ impl Client {
     }
 
     /// Sends a message to a specified topic by sending a message command.
+    /// # Parameters
+    /// - `msg` (`Vec<u8>`): The message content as a vector of bytes.
+    /// - `topic` (`String`): The target topic to which the message will be sent.
     async fn send_message(&mut self, msg: Vec<u8>, topic: String) {
         self.sender
             .send(Command::SendMessage { msg, topic })
@@ -615,6 +602,9 @@ impl Client {
     }
 
     /// Sends a request to store a record with a specified key and value.
+    /// # Parameters
+    /// - `key` (`String`): The key associated with the value to be stored.
+    /// - `value` (`String`): The value to be stored.
     async fn put_record(&mut self, key: String, value: String) {
         self.sender
             .send(Command::PutRecord { key, value })
@@ -623,6 +613,9 @@ impl Client {
     }
 
     /// Sends a request to retrieve a record associated with a specified key.
+    /// # Parameters
+    /// - `key` (`String`): The key for which the associated record will be retrieved.
+
     async fn get_record(&mut self, key: String) -> Record {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -633,6 +626,8 @@ impl Client {
     }
 
     /// Sends a request to start providing a file with the given name.
+    /// # Parameters
+    /// - `file_name` (`String`): The name of the file to be provided.
     async fn start_providing(&mut self, file_name: String) {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -643,6 +638,8 @@ impl Client {
     }
 
     /// Sends a request to retrieve the list of providers for a given file.
+    /// # Parameters
+    /// - `file_name` (`String`): The name of the file to be provided.
     async fn get_providers(&mut self, file_name: String) -> HashSet<PeerId> {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -653,6 +650,9 @@ impl Client {
     }
 
     /// Sends a request to a specific peer to retrieve a file.
+    /// # Parameters
+    /// - `peer` (`PeerId`): The identifier of the peer from which to request the file.
+    /// - `file_name` (`String`): The name of the file to request.
     async fn request_file(&mut self, peer: PeerId, file_name: String) -> Result<Vec<u8>> {
         let (sender, receiver) = oneshot::channel();
         self.sender
@@ -667,12 +667,17 @@ impl Client {
     }
 
     /// Responds to a file request by sending the requested file content to the specified response channel.
+    /// # Parameters
+    /// - `peer` (`PeerId`): The identifier of the peer from which to request the file.
+    /// - `file_name` (`String`): The name of the file to request.
+
     async fn respond_file(&mut self, file: Vec<u8>, channel: ResponseChannel<FileResponse>) {
         self.sender
             .send(Command::RespondFile { file, channel })
             .await
             .expect("Command receiver not to be dropped.");
     }
+
     /// Handles an inbound event by processing the request and responding with the appropriate file or data.
     ///
     /// # Parameters
