@@ -38,15 +38,11 @@ impl Client {
     /// This function initializes a new instance of the struct by accepting a sender for communication,
     /// a store for bill data, and a store for identity data.
     /// # Parameters
-    ///
     /// - `sender`: A channel sender (`mpsc::Sender<Command>`) used for sending commands to the system.
     /// - `bill_store`: An `Arc<dyn BillStoreApi>` representing a store for bill data, allowing for retrieval and manipulation of bill records.
     /// - `identity_store`: An `Arc<dyn IdentityStoreApi>` representing a store for identity data, used for handling identity-related operations.
-    ///
     /// # Returns
-    ///
     /// Returns a new instance of the struct with the provided components initialized.
-    ///
     pub fn new(
         sender: mpsc::Sender<Command>,
         bill_store: Arc<dyn BillStoreApi>,
@@ -109,7 +105,6 @@ impl Client {
 
     /// This function checks if there are any new bills for a specified node by querying a record for the node using a `BILLS_PREFIX`.
     /// # Parameters
-    ///
     /// - `node_id`: The unique identifier for the node whose bills are being checked. It is used to form the key for querying the record.
 
     pub async fn check_new_bills(&mut self, node_id: String) {
@@ -349,7 +344,6 @@ impl Client {
     ///
     /// - `bill_name`: The name of the bill to be added to the node's list of bills.
     /// - `node_id`: The ID of the node to which the bill will be added.
-    ///
     pub async fn add_bill_to_dht_for_node(&mut self, bill_name: &str, node_id: &str) {
         let node_request = BILLS_PREFIX.to_string() + node_id;
         let mut record_for_saving_in_dht;
@@ -377,25 +371,27 @@ impl Client {
     }
 
     /// Adds a message to a specific topic.
+    /// # Parameters
+    /// - `msg`: The message to be sent, represented as a vector of bytes.
+    /// - `topic`: The name of the topic to which the message will be sent.
+
     pub async fn add_message_to_topic(&mut self, msg: Vec<u8>, topic: String) {
         self.send_message(msg, topic).await;
     }
 
     /// Initiates the process of providing a resource based on the given name.
+    /// # Parameters
+    /// - `name`: A `String` representing the name of the bill to be updated.
     pub async fn put(&mut self, name: &str) {
         self.start_providing(name.to_owned()).await;
     }
 
     /// Retrieves a bill's file content by querying available providers.
     /// # Parameters
-    ///
     /// - `name`: A `String` representing the name of the bill to be retrieved.
-    ///
     /// # Returns
-    ///
     /// - `Vec<u8>`: A vector containing the file content of the bill. If no providers are found or
     ///   no provider returns the file, an empty vector is returned.
-    ///
     pub async fn get_bill(&mut self, name: String) -> Vec<u8> {
         let providers = self.get_providers(name.clone()).await;
         if providers.is_empty() {

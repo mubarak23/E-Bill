@@ -169,17 +169,10 @@ impl From<identify::Event> for ComposedEvent {
 
 impl From<gossipsub::Event> for ComposedEvent {
     /// Converts a `gossipsub::Event` into a `ComposedEvent`.
-    ///
-
-    ///
     /// # Parameters
-    ///
     /// - `event`: The `gossipsub::Event` to be converted.
-    ///
     /// # Returns
-    ///
     /// A `ComposedEvent` instance containing the provided Gossipsub event.
-    ///
     fn from(event: gossipsub::Event) -> Self {
         ComposedEvent::Gossipsub(event)
     }
@@ -187,15 +180,10 @@ impl From<gossipsub::Event> for ComposedEvent {
 
 impl From<relay::client::Event> for ComposedEvent {
     /// Converts a `relay::client::Event` into a `ComposedEvent`.
-    ///
     /// # Parameters
-    ///
     /// - `event`: The `relay::client::Event` to be converted.
-    ///
     /// # Returns
-    ///
     /// A `ComposedEvent` instance containing the provided relay client event.
-    ///
     fn from(event: relay::client::Event) -> Self {
         ComposedEvent::Relay(event)
     }
@@ -203,16 +191,10 @@ impl From<relay::client::Event> for ComposedEvent {
 
 impl From<dcutr::Event> for ComposedEvent {
     /// Converts a `dcutr::Event` into a `ComposedEvent`.
-    ///
-    ///
     /// # Parameters
-    ///
     /// - `event`: The `dcutr::Event` to be converted.
-    ///
     /// # Returns
-    ///
     /// A `ComposedEvent` instance containing the provided DCUTR event.
-    ///
     fn from(event: dcutr::Event) -> Self {
         ComposedEvent::Dcutr(event)
     }
@@ -293,61 +275,42 @@ pub struct BillAttachmentFileRequest {
 /// - `node_id`: A string slice representing the unique identifier of the node requesting the file.
 /// - `bill_name`: A string slice representing the name of the bill associated with the file.
 /// - `file_name`: A string slice representing the name of the file being requested.
-///
 /// # Returns
-///
-/// A `String` formatted as:
-/// ```text
-/// {node_id}_{BILL_ATTACHMENT_PREFIX}_{bill_name}_{file_name}
+/// A `String` formatted as: ```text {node_id}_{BILL_ATTACHMENT_PREFIX}_{bill_name}_{file_name}
 
 pub fn file_request_for_bill_attachment(node_id: &str, bill_name: &str, file_name: &str) -> String {
     format!("{node_id}_{BILL_ATTACHMENT_PREFIX}_{bill_name}_{file_name}")
 }
 /// Constructs a formatted string representing a file request for a bill.
 /// # Parameters
-///
 /// - `node_id`: A string slice representing the unique identifier of the node requesting the file.
 /// - `bill_name`: A string slice representing the name of the bill associated with the file.
-///
 /// # Returns
-///
-/// A `String` formatted as:
-/// ```text
-/// {node_id}_{BILL_PREFIX}_{bill_name}
-///
+/// A `String` formatted as: ```text {node_id}_{BILL_PREFIX}_{bill_name}
+
 pub fn file_request_for_bill(node_id: &str, bill_name: &str) -> String {
     format!("{node_id}_{BILL_PREFIX}_{bill_name}")
 }
 /// Constructs a formatted string representing a file request for bill keys.
 /// # Parameters
-///
 /// - `node_id`: A string slice representing the unique identifier of the node requesting the file.
 /// - `bill_name`: A string slice representing the name of the bill associated with the keys.
-///
 /// # Returns
-///
-/// A `String` formatted as:
-/// ```text
-/// {node_id}_{KEY_PREFIX}_{bill_name}
-/// ```
+/// A `String` formatted as: ```text {node_id}_{KEY_PREFIX}_{bill_name} ```
 pub fn file_request_for_bill_keys(node_id: &str, bill_name: &str) -> String {
     format!("{node_id}_{KEY_PREFIX}_{bill_name}")
 }
 
 /// This function takes a string representing an inbound file request, splits it into parts,
 /// and categorizes the request into different types: `Bill`, `BillKeys`, or `BillAttachment`.
-///
 /// # Parameters
-///
 /// - `request`: A string slice representing the inbound file request to be parsed.
-///
 /// # Returns
-///
 /// - `Ok(ParsedInboundFileRequest::Bill(BillFileRequest))`
 /// - `Ok(ParsedInboundFileRequest::BillKeys(BillKeysFileRequest))`
 /// - `Ok(ParsedInboundFileRequest::BillAttachment(BillAttachmentFileRequest))`
 /// - `Err(anyhow::Error)`
-///
+
 
 pub fn parse_inbound_file_request(request: &str) -> Result<ParsedInboundFileRequest> {
     let parts = request.splitn(4, "_").collect::<Vec<&str>>();
@@ -412,19 +375,11 @@ impl request_response::Codec for FileExchangeCodec {
     type Response = FileResponse;
 
     /// Reads a length-prefixed file request from the provided I/O stream.
-    ///
     /// # Returns
-    ///
     /// A `Result` containing the parsed file request:
     /// - `Ok(FileRequest)`
     ///   into a `String`.
     /// - `Err(tokio::io::Error)`
-    ///
-    /// # Errors
-    ///
-    /// - `tokio::io::ErrorKind::UnexpectedEof`
-    /// - `tokio::io::ErrorKind::InvalidData`
-    ///
     async fn read_request<T>(
         &mut self,
         _: &FileExchangeProtocol,
@@ -445,19 +400,11 @@ impl request_response::Codec for FileExchangeCodec {
     }
 
     /// Reads a length-prefixed file response from the provided I/O stream.
-    ///
     /// # Returns
-    ///
     /// A `Result` containing the parsed file request:
     /// - `Ok(FileRequest)`
     ///   into a `String`.
     /// - `Err(tokio::io::Error)`
-    ///
-    /// # Errors
-    ///
-    /// - `tokio::io::ErrorKind::UnexpectedEof`
-    /// - `tokio::io::ErrorKind::InvalidData`
-    ///
     async fn read_response<T>(
         &mut self,
         _: &FileExchangeProtocol,
@@ -476,19 +423,14 @@ impl request_response::Codec for FileExchangeCodec {
     }
 
     /// Writes a length-prefixed file request to the provided I/O stream asynchronously.
-    ///
     /// # Parameters
-    ///
     /// - `_: &FileExchangeProtocol`:
     /// - `io`: A mutable reference to the I/O stream to which the data will be written. I
     /// - `FileRequest(data)`: The file request data to write to the stream. This is the data to be transmitted.
-    ///
     /// # Returns
-    ///
     /// A `Result` indicating the success or failure of the write operation:
     /// - `Ok(())`: Indicates the data was successfully written and the stream was closed.
     /// - `Err(tokio::io::Error)`: An error if the writing or closing the stream fails.
-    ///
     async fn write_request<T>(
         &mut self,
         _: &FileExchangeProtocol,

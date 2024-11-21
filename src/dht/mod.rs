@@ -43,7 +43,6 @@ pub struct Dht {
 ///   `BillStoreApi` trait, used to store billing information.
 /// * `identity_store` - A shared, thread-safe reference to an object that implements the
 ///   `IdentityStoreApi` trait, used to manage identities in the network.
-///
 /// # Returns
 /// Returns a `Result` containing the `Dht` struct on success, or an error if network initialization
 /// fails. The `Dht` struct contains a `network_client` and a `shutdown_sender` used to interact
