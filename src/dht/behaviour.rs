@@ -311,7 +311,6 @@ pub fn file_request_for_bill_keys(node_id: &str, bill_name: &str) -> String {
 /// - `Ok(ParsedInboundFileRequest::BillAttachment(BillAttachmentFileRequest))`
 /// - `Err(anyhow::Error)`
 
-
 pub fn parse_inbound_file_request(request: &str) -> Result<ParsedInboundFileRequest> {
     let parts = request.splitn(4, "_").collect::<Vec<&str>>();
     if parts.len() < 3 {
