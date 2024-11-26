@@ -5,12 +5,11 @@ use crate::blockchain::{
     self, start_blockchain_for_new_bill, Block, Chain, ChainToReturn, GossipsubEvent,
     GossipsubEventId, OperationCode,
 };
-use crate::constants::{
-    COMPOUNDING_INTEREST_RATE_ZERO, MAX_FILE_NAME_CHARACTERS, MAX_FILE_SIZE_BYTES, USEDNET,
-    VALID_FILE_MIME_TYPES,
-};
+use crate::constants::{COMPOUNDING_INTEREST_RATE_ZERO, USEDNET};
+use crate::persistence::file_upload::FileUploadStoreApi;
 use crate::persistence::identity::IdentityStoreApi;
 use crate::util::get_current_payee_private_key;
+use crate::web::data::File;
 use crate::{dht::Client, persistence::bill::BillStoreApi};
 use crate::{external, persistence, util};
 use async_trait::async_trait;
@@ -20,7 +19,6 @@ use log::{error, info};
 use openssl::pkey::Private;
 use openssl::rsa::Rsa;
 use rocket::serde::{Deserialize, Serialize};
-use rocket::FromForm;
 use rocket::{http::Status, response::Responder};
 use std::sync::Arc;
 use thiserror::Error;
@@ -136,16 +134,7 @@ pub trait BillServiceApi: Send + Sync {
         file_bytes: &[u8],
         bill_name: &str,
         bill_public_key: &str,
-    ) -> Result<BillFile>;
-
-    /// validates the given uploaded file
-    async fn validate_attached_file(&self, file: &dyn util::file::UploadFileHandler) -> Result<()>;
-
-    /// uploads files for use in a bill
-    async fn upload_files(
-        &self,
-        files: Vec<&dyn util::file::UploadFileHandler>,
-    ) -> Result<UploadBillFilesResponse>;
+    ) -> Result<File>;
 
     /// issues a new bill
     async fn issue_new_bill(
@@ -220,6 +209,7 @@ pub struct BillService {
     client: Client,
     store: Arc<dyn BillStoreApi>,
     identity_store: Arc<dyn IdentityStoreApi>,
+    file_upload_store: Arc<dyn FileUploadStoreApi>,
 }
 
 impl BillService {
@@ -227,11 +217,13 @@ impl BillService {
         client: Client,
         store: Arc<dyn BillStoreApi>,
         identity_store: Arc<dyn IdentityStoreApi>,
+        file_upload_store: Arc<dyn FileUploadStoreApi>,
     ) -> Self {
         Self {
             client,
             store,
             identity_store,
+            file_upload_store,
         }
     }
 
@@ -551,87 +543,17 @@ impl BillServiceApi for BillService {
         file_bytes: &[u8],
         bill_name: &str,
         bill_public_key: &str,
-    ) -> Result<BillFile> {
+    ) -> Result<File> {
         let file_hash = util::sha256_hash(file_bytes);
         let encrypted = util::rsa::encrypt_bytes_with_public_key(file_bytes, bill_public_key);
         self.store
             .save_attached_file(&encrypted, bill_name, file_name)
             .await?;
         info!("Saved file {file_name} with hash {file_hash} for bill {bill_name}");
-        Ok(BillFile {
+        Ok(File {
             name: file_name.to_owned(),
             hash: file_hash,
         })
-    }
-
-    async fn validate_attached_file(&self, file: &dyn util::file::UploadFileHandler) -> Result<()> {
-        if file.len() > MAX_FILE_SIZE_BYTES as u64 {
-            return Err(Error::Validation(format!(
-                "Maximum file size is {} bytes",
-                MAX_FILE_SIZE_BYTES
-            )));
-        }
-
-        let name = match file.name() {
-            Some(n) => n,
-            None => {
-                return Err(Error::Validation(String::from("File name needs to be set")));
-            }
-        };
-
-        if name.is_empty() || name.len() > MAX_FILE_NAME_CHARACTERS {
-            return Err(Error::Validation(format!(
-                "File name needs to have between 1 and {} characters",
-                MAX_FILE_NAME_CHARACTERS
-            )));
-        }
-
-        let detected_type = match file.detect_content_type().await.map_err(|e| {
-            error!("Could not detect content type for file {name}: {e}");
-            Error::Validation(String::from("Could not detect content type for file"))
-        })? {
-            Some(t) => t,
-            None => {
-                return Err(Error::Validation(String::from(
-                    "Unknown file type detected",
-                )))
-            }
-        };
-
-        if !VALID_FILE_MIME_TYPES.contains(&detected_type.as_str()) {
-            return Err(Error::Validation(String::from(
-                "Invalid file type detected",
-            )));
-        }
-        Ok(())
-    }
-
-    async fn upload_files(
-        &self,
-        files: Vec<&dyn util::file::UploadFileHandler>,
-    ) -> Result<UploadBillFilesResponse> {
-        // create a new random id
-        let file_upload_id = util::get_uuid_v4().to_string();
-        // create a folder to store the files
-        self.store
-            .create_temp_upload_folder(&file_upload_id)
-            .await?;
-        // sanitize and randomize file name and write file into the temporary folder
-        for file in files {
-            let file_name = util::file::generate_unique_filename(
-                &util::file::sanitize_filename(
-                    &file
-                        .name()
-                        .ok_or(Error::Validation(String::from("Invalid file name")))?,
-                ),
-                file.extension(),
-            );
-            let read_file = file.get_contents().await.map_err(persistence::Error::Io)?;
-            self.store
-                .write_temp_upload_file(&file_upload_id, &file_name, &read_file)
-                .await?;
-        }
-        Ok(UploadBillFilesResponse { file_upload_id })
     }
 
     async fn issue_new_bill(
@@ -649,13 +571,7 @@ impl BillServiceApi for BillService {
         file_upload_id: Option<String>,
         timestamp: i64,
     ) -> Result<BitcreditBill> {
-        let s = bitcoin::secp256k1::Secp256k1::new();
-        let private_key = bitcoin::PrivateKey::new(
-            s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
-                .0,
-            USEDNET,
-        );
-        let public_key = private_key.public_key(&s);
+        let (private_key, public_key) = util::create_bitcoin_keypair(USEDNET);
 
         let bill_name = util::sha256_hash(&public_key.to_bytes());
 
@@ -685,9 +601,12 @@ impl BillServiceApi for BillService {
 
         let to_payee = public_data_drawer == public_data_payee;
 
-        let mut bill_files: Vec<BillFile> = vec![];
+        let mut bill_files: Vec<File> = vec![];
         if let Some(ref upload_id) = file_upload_id {
-            let files = self.store.read_temp_upload_files(upload_id).await?;
+            let files = self
+                .file_upload_store
+                .read_temp_upload_files(upload_id)
+                .await?;
             for (file_name, file_bytes) in files {
                 bill_files.push(
                     self.encrypt_and_save_uploaded_file(
@@ -737,7 +656,11 @@ impl BillServiceApi for BillService {
 
         // clean up temporary file uploads, if there are any, logging any errors
         if let Some(ref upload_id) = file_upload_id {
-            if let Err(e) = self.store.remove_temp_upload_folder(upload_id).await {
+            if let Err(e) = self
+                .file_upload_store
+                .remove_temp_upload_folder(upload_id)
+                .await
+            {
                 error!("Error while cleaning up temporary file uploads for {upload_id}: {e}");
             }
         }
@@ -1047,13 +970,7 @@ impl BitcreditEbillQuote {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct UploadBillFilesResponse {
-    pub file_upload_id: String,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, FromForm, Debug, Serialize, Deserialize, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct BitcreditBill {
     pub name: String,
@@ -1081,14 +998,7 @@ pub struct BitcreditBill {
     pub public_key: String,
     pub private_key: String,
     pub language: String,
-    pub files: Vec<BillFile>,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, FromForm, Debug, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct BillFile {
-    pub name: String,
-    pub hash: String,
+    pub files: Vec<File>,
 }
 
 #[cfg(test)]
@@ -1138,9 +1048,10 @@ mod test {
     use futures::channel::mpsc;
     use libp2p::{identity::Keypair, PeerId};
     use mockall::predicate::{always, eq};
-    use persistence::{bill::MockBillStoreApi, identity::MockIdentityStoreApi};
+    use persistence::{
+        bill::MockBillStoreApi, file_upload::MockFileUploadStoreApi, identity::MockIdentityStoreApi,
+    };
     use std::sync::Arc;
-    use util::file::MockUploadFileHandler;
 
     fn get_baseline_identity() -> IdentityWithAll {
         let mut identity = Identity::new_empty();
@@ -1200,6 +1111,24 @@ mod test {
             ),
             Arc::new(mock_storage),
             Arc::new(MockIdentityStoreApi::new()),
+            Arc::new(MockFileUploadStoreApi::new()),
+        )
+    }
+
+    fn get_service_with_file_upload_store(
+        mock_storage: MockBillStoreApi,
+        mock_file_upload_storage: MockFileUploadStoreApi,
+    ) -> BillService {
+        let (sender, _) = mpsc::channel(0);
+        BillService::new(
+            Client::new(
+                sender,
+                Arc::new(MockBillStoreApi::new()),
+                Arc::new(MockIdentityStoreApi::new()),
+            ),
+            Arc::new(mock_storage),
+            Arc::new(MockIdentityStoreApi::new()),
+            Arc::new(mock_file_upload_storage),
         )
     }
 
@@ -1216,125 +1145,21 @@ mod test {
             ),
             Arc::new(mock_storage),
             Arc::new(mock_identity_storage),
+            Arc::new(MockFileUploadStoreApi::new()),
         )
-    }
-
-    #[tokio::test]
-    async fn upload_files_baseline() {
-        let file_bytes = String::from("hello world").as_bytes().to_vec();
-        let mut storage = MockBillStoreApi::new();
-        storage
-            .expect_write_temp_upload_file()
-            .returning(|_, _, _| Ok(()));
-        storage
-            .expect_create_temp_upload_folder()
-            .returning(|_| Ok(()));
-        let mut file = MockUploadFileHandler::new();
-        file.expect_name()
-            .returning(|| Some(String::from("invoice")));
-        file.expect_extension()
-            .returning(|| Some(String::from("pdf")));
-        file.expect_get_contents()
-            .returning(move || Ok(file_bytes.clone()));
-        let service = get_service(storage);
-
-        let res = service.upload_files(vec![&file]).await;
-        assert!(res.is_ok());
-        assert_eq!(
-            res.unwrap().file_upload_id,
-            "00000000-0000-0000-0000-000000000000".to_owned()
-        );
-    }
-
-    #[tokio::test]
-    async fn upload_files_baseline_fails_on_folder_creation() {
-        let file_bytes = String::from("hello world").as_bytes().to_vec();
-        let mut storage = MockBillStoreApi::new();
-        storage.expect_create_temp_upload_folder().returning(|_| {
-            Err(persistence::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "test error",
-            )))
-        });
-        let mut file = MockUploadFileHandler::new();
-        file.expect_name()
-            .returning(|| Some(String::from("invoice")));
-        file.expect_extension()
-            .returning(|| Some(String::from("pdf")));
-        file.expect_get_contents()
-            .returning(move || Ok(file_bytes.clone()));
-        let service = get_service(storage);
-
-        let res = service.upload_files(vec![&file]).await;
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn upload_files_baseline_fails_on_file_creation() {
-        let mut storage = MockBillStoreApi::new();
-        storage
-            .expect_create_temp_upload_folder()
-            .returning(|_| Ok(()));
-        let mut file = MockUploadFileHandler::new();
-        file.expect_name()
-            .returning(|| Some(String::from("invoice")));
-        file.expect_extension()
-            .returning(|| Some(String::from("pdf")));
-        file.expect_get_contents()
-            .returning(|| Err(std::io::Error::new(std::io::ErrorKind::Other, "test error")));
-        let service = get_service(storage);
-
-        let res = service.upload_files(vec![&file]).await;
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn upload_files_baseline_fails_on_file_name_errors() {
-        let mut storage = MockBillStoreApi::new();
-        storage
-            .expect_create_temp_upload_folder()
-            .returning(|_| Ok(()));
-        let mut file = MockUploadFileHandler::new();
-        file.expect_name().returning(|| None);
-        let service = get_service(storage);
-
-        let res = service.upload_files(vec![&file]).await;
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn upload_files_baseline_fails_on_file_read_errors() {
-        let file_bytes = String::from("hello world").as_bytes().to_vec();
-        let mut storage = MockBillStoreApi::new();
-        storage
-            .expect_write_temp_upload_file()
-            .returning(|_, _, _| {
-                Err(persistence::Error::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "test error",
-                )))
-            });
-        storage
-            .expect_create_temp_upload_folder()
-            .returning(|_| Ok(()));
-        let mut file = MockUploadFileHandler::new();
-        file.expect_name()
-            .returning(|| Some(String::from("invoice")));
-        file.expect_extension()
-            .returning(|| Some(String::from("pdf")));
-        file.expect_get_contents()
-            .returning(move || Ok(file_bytes.clone()));
-        let service = get_service(storage);
-
-        let res = service.upload_files(vec![&file]).await;
-        assert!(res.is_err());
     }
 
     #[tokio::test]
     async fn issue_bill_baseline() {
         let expected_file_name = "invoice_00000000-0000-0000-0000-000000000000.pdf";
         let file_bytes = String::from("hello world").as_bytes().to_vec();
-
+        let mut file_upload_storage = MockFileUploadStoreApi::new();
+        file_upload_storage
+            .expect_read_temp_upload_files()
+            .returning(move |_| Ok(vec![(expected_file_name.to_string(), file_bytes.clone())]));
+        file_upload_storage
+            .expect_remove_temp_upload_folder()
+            .returning(|_| Ok(()));
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_bill_keys_to_file()
@@ -1342,14 +1167,8 @@ mod test {
         storage
             .expect_save_attached_file()
             .returning(move |_, _, _| Ok(()));
-        storage
-            .expect_read_temp_upload_files()
-            .returning(move |_| Ok(vec![(expected_file_name.to_string(), file_bytes.clone())]));
-        storage
-            .expect_remove_temp_upload_folder()
-            .returning(|_| Ok(()));
 
-        let service = get_service(storage);
+        let service = get_service_with_file_upload_store(storage, file_upload_storage);
 
         let mut identity = Identity::new_empty();
         identity.public_key_pem = TEST_PUB_KEY.to_owned();
@@ -1489,115 +1308,6 @@ mod test {
         let service = get_service(storage);
 
         assert!(service.get_bill_keys("test").await.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_size() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len()
-            .returning(move || MAX_FILE_SIZE_BYTES as u64 * 2);
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_name() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name().returning(move || None);
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_name_empty() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name().returning(move || Some(String::from("")));
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_name_length() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name()
-            .returning(move || Some("abc".repeat(100)));
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_type_error() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name()
-            .returning(move || Some(String::from("goodname")));
-        file.expect_detect_content_type()
-            .returning(move || Err(std::io::Error::new(std::io::ErrorKind::Other, "test error")));
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_type_invalid() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name()
-            .returning(move || Some(String::from("goodname")));
-        file.expect_detect_content_type()
-            .returning(move || Ok(None));
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_file_type_not_in_list() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name()
-            .returning(move || Some(String::from("goodname")));
-        file.expect_detect_content_type()
-            .returning(move || Ok(Some(String::from("invalidfile"))));
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn validate_attached_file_checks_valid() {
-        let mut file = MockUploadFileHandler::new();
-        file.expect_len().returning(move || 100);
-        file.expect_name()
-            .returning(move || Some(String::from("goodname")));
-        file.expect_detect_content_type()
-            .returning(move || Ok(Some(String::from("application/pdf"))));
-
-        let service = get_service(MockBillStoreApi::new());
-        let res = service.validate_attached_file(&file).await;
-
-        assert!(res.is_ok());
     }
 
     #[test]
