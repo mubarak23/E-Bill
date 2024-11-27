@@ -23,12 +23,83 @@ mod event_loop;
 
 use crate::persistence::bill::BillStoreApi;
 use crate::persistence::identity::IdentityStoreApi;
-use crate::util;
-use anyhow::Result;
+use crate::{persistence, util};
 pub use client::Client;
 use libp2p::identity::Keypair;
 use log::{error, info};
 use std::sync::Arc;
+use thiserror::Error;
+
+/// Generic result type
+pub type Result<T> = std::result::Result<T, Error>;
+
+/// Generic error type
+#[derive(Debug, Error)]
+pub enum Error {
+    /// all errors originating from file, or network io
+    #[error("io error {0}")]
+    Io(#[from] std::io::Error),
+
+    /// all errors originating from Noise Transport errors
+    #[error("Noise error {0}")]
+    Noise(#[from] libp2p::noise::Error),
+
+    /// all errors originating from Transport errors
+    #[error("Transport error {0}")]
+    Transport(#[from] libp2p::TransportError<std::io::Error>),
+
+    /// all errors originating from Identity parsing
+    #[error("Identity parse error {0}")]
+    IdentityParse(#[from] libp2p::identity::ParseError),
+
+    /// all errors originating from Dial errors
+    #[error("Dial error {0}")]
+    Dial(#[from] libp2p::swarm::DialError),
+
+    /// all errors originating from serializing, or deserializing json
+    #[error("unable to serialize/deserialize to/from JSON {0}")]
+    Json(#[from] serde_json::Error),
+
+    /// all errors originating from the persistence layer
+    #[error("Persistence error: {0}")]
+    Persistence(#[from] persistence::Error),
+
+    /// all errors originating from running into utf8-related errors
+    #[error("utf-8 error when parsing string {0}")]
+    Utf8(#[from] std::str::Utf8Error),
+
+    /// all errors originating from using a broken channel
+    #[error("channel error {0}")]
+    SendChannel(#[from] futures::channel::mpsc::SendError),
+
+    /// all errors originating from using a closed onsehot channel
+    #[error("oneshot channel cancel error {0}")]
+    ChannelCanceled(#[from] futures::channel::oneshot::Canceled),
+
+    /// error if there are no providers
+    #[error("No providers found: {0}")]
+    NoProviders(String),
+
+    /// error if a file wasn't returned from any provider
+    #[error("No file returned from providers: {0}")]
+    NoFileFromProviders(String),
+
+    /// error if an attached file wasn't found in a bill
+    #[error("No file found in bill: {0}")]
+    FileNotFoundInBill(String),
+
+    /// error if file hashes of two files did not match
+    #[error("File hashes did not match: {0}")]
+    FileHashesDidNotMatch(String),
+
+    /// error if requesting a file fails
+    #[error("request file error: {0}")]
+    RequestFile(String),
+
+    /// error if the listen url is invalid
+    #[error("invalid listen p2p url error")]
+    ListenP2pUrlInvalid,
+}
 
 pub struct Dht {
     pub client: Client,
@@ -41,9 +112,7 @@ pub async fn dht_main(
     identity_store: Arc<dyn IdentityStoreApi>,
 ) -> Result<Dht> {
     let (network_client, network_events, network_event_loop) =
-        new(conf, bill_store, identity_store)
-            .await
-            .expect("Can not to create network module in dht.");
+        new(conf, bill_store, identity_store).await?;
 
     let (shutdown_sender, shutdown_receiver) = broadcast::channel::<bool>(100);
 
@@ -88,10 +157,10 @@ async fn new(
     let dns_cfg = DnsConfig::system(tcp::tokio::Transport::new(
         tcp::Config::default().port_reuse(true),
     ))
-    .await;
-    let transport = OrTransport::new(relay_transport, dns_cfg.unwrap())
+    .await?;
+    let transport = OrTransport::new(relay_transport, dns_cfg)
         .upgrade(Version::V1Lazy)
-        .authenticate(noise::Config::new(&local_public_key).unwrap())
+        .authenticate(noise::Config::new(&local_public_key)?)
         .multiplex(yamux::Config::default())
         .timeout(std::time::Duration::from_secs(20))
         .boxed();
@@ -100,7 +169,10 @@ async fn new(
 
     let mut swarm = SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build();
 
-    swarm.listen_on(conf.p2p_listen_url()?).unwrap();
+    swarm.listen_on(
+        conf.p2p_listen_url()
+            .map_err(|_| Error::ListenP2pUrlInvalid)?,
+    )?;
 
     // Wait to listen on all interfaces.
     let sleep = tokio::time::sleep(std::time::Duration::from_secs(1));
@@ -109,13 +181,15 @@ async fn new(
     loop {
         tokio::select! {
             event = swarm.next() => {
-                match event.unwrap() {
-                    SwarmEvent::NewListenAddr { address, .. } => {
-                        info!("Listening on {:?}", address);
+                if let Some(evt) = event {
+                    match evt {
+                        SwarmEvent::NewListenAddr { address, .. } => {
+                            info!("Listening on {:?}", address);
+                        }
+                        SwarmEvent::Behaviour { .. } => {
+                        }
+                        event => unreachable!("Unexpected event: {event:?}"),
                     }
-                    SwarmEvent::Behaviour { .. } => {
-                    }
-                    event => panic!("{event:?}"),
                 }
             }
             _ = &mut sleep => {
@@ -125,83 +199,84 @@ async fn new(
         }
     }
 
-    let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
-        .to_string()
-        .parse()
-        .expect("Can not to parse relay peer id.");
+    let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID.to_string().parse()?;
     let relay_address = Multiaddr::empty()
         .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
         .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
         .with(Protocol::P2p(Multihash::from(relay_peer_id)));
     info!("Relay address: {:?}", relay_address);
 
-    swarm.dial(relay_address.clone()).unwrap();
+    swarm.dial(relay_address.clone())?;
     let mut learned_observed_addr = false;
     let mut told_relay_observed_addr = false;
 
     loop {
-        match swarm.next().await.unwrap() {
-            SwarmEvent::NewListenAddr { .. } => {}
-            SwarmEvent::Dialing { .. } => {}
-            SwarmEvent::ConnectionEstablished { .. } => {}
-            SwarmEvent::Behaviour(ComposedEvent::Identify(identify::Event::Sent { .. })) => {
-                info!("Told relay its public address.");
-                told_relay_observed_addr = true;
+        if let Some(event) = swarm.next().await {
+            match event {
+                SwarmEvent::NewListenAddr { .. } => {}
+                SwarmEvent::Dialing { .. } => {}
+                SwarmEvent::ConnectionEstablished { .. } => {}
+                SwarmEvent::Behaviour(ComposedEvent::Identify(identify::Event::Sent {
+                    ..
+                })) => {
+                    info!("Told relay its public address.");
+                    told_relay_observed_addr = true;
+                }
+                SwarmEvent::Behaviour(ComposedEvent::Identify(identify::Event::Received {
+                    info: identify::Info { observed_addr, .. },
+                    ..
+                })) => {
+                    info!("Relay told us our public address: {:?}", observed_addr);
+                    learned_observed_addr = true;
+                }
+                SwarmEvent::Behaviour { .. } => {}
+                event => unreachable!("Unexpected event: {event:?}"),
             }
-            SwarmEvent::Behaviour(ComposedEvent::Identify(identify::Event::Received {
-                info: identify::Info { observed_addr, .. },
-                ..
-            })) => {
-                info!("Relay told us our public address: {:?}", observed_addr);
-                learned_observed_addr = true;
-            }
-            SwarmEvent::Behaviour { .. } => {}
-            event => panic!("{event:?}"),
-        }
 
-        if learned_observed_addr && told_relay_observed_addr {
-            break;
+            if learned_observed_addr && told_relay_observed_addr {
+                break;
+            }
         }
     }
 
     swarm.behaviour_mut().bootstrap_kademlia();
 
-    swarm
-        .listen_on(relay_address.clone().with(Protocol::P2pCircuit))
-        .unwrap();
+    swarm.listen_on(relay_address.clone().with(Protocol::P2pCircuit))?;
 
     loop {
-        match swarm.next().await.unwrap() {
-            SwarmEvent::NewListenAddr { address, .. } => {
-                info!("Listening on {:?}", address);
-                break;
+        if let Some(event) = swarm.next().await {
+            match event {
+                SwarmEvent::NewListenAddr { address, .. } => {
+                    info!("Listening on {:?}", address);
+                    break;
+                }
+                SwarmEvent::Behaviour(ComposedEvent::Relay(
+                    relay::client::Event::ReservationReqAccepted { .. },
+                )) => {
+                    info!("Relay accepted our reservation request.");
+                }
+                SwarmEvent::Behaviour(ComposedEvent::Relay(event)) => {
+                    info!("Relay event: {:?}", event)
+                }
+                SwarmEvent::Behaviour(ComposedEvent::Dcutr(event)) => {
+                    info!("Dcutr event: {:?}", event)
+                }
+                SwarmEvent::Behaviour(ComposedEvent::Identify(event)) => {
+                    info!("Identify event: {:?}", event)
+                }
+                SwarmEvent::ConnectionEstablished {
+                    peer_id, endpoint, ..
+                } => {
+                    info!("Established connection to {:?} via {:?}", peer_id, endpoint);
+                }
+                SwarmEvent::OutgoingConnectionError { peer_id, error } => {
+                    error!("Outgoing connection error to {:?}: {:?}", peer_id, error);
+                }
+                SwarmEvent::Behaviour(event) => {
+                    info!("Behaviour event: {event:?}")
+                }
+                _ => {}
             }
-            SwarmEvent::Behaviour(ComposedEvent::Relay(
-                relay::client::Event::ReservationReqAccepted { .. },
-            )) => {
-                info!("Relay accepted our reservation request.");
-            }
-            SwarmEvent::Behaviour(ComposedEvent::Relay(event)) => {
-                info!("Relay event: {:?}", event)
-            }
-            SwarmEvent::Behaviour(ComposedEvent::Dcutr(event)) => {
-                info!("Dcutr event: {:?}", event)
-            }
-            SwarmEvent::Behaviour(ComposedEvent::Identify(event)) => {
-                info!("Identify event: {:?}", event)
-            }
-            SwarmEvent::ConnectionEstablished {
-                peer_id, endpoint, ..
-            } => {
-                info!("Established connection to {:?} via {:?}", peer_id, endpoint);
-            }
-            SwarmEvent::OutgoingConnectionError { peer_id, error } => {
-                error!("Outgoing connection error to {:?}: {:?}", peer_id, error);
-            }
-            SwarmEvent::Behaviour(event) => {
-                info!("Behaviour event: {event:?}")
-            }
-            _ => {}
         }
     }
 
