@@ -1,9 +1,9 @@
-use crate::{service::bill_service::BitcreditBill};
+use crate::service::bill_service::BitcreditBill;
+use crate::Config;
 use bitcoin::Network;
+use clap::Parser;
 use serde::Deserialize;
 use std::str::FromStr;
-use crate::Config;
-use clap::Parser;
 
 /// Fields documented at https://github.com/Blockstream/esplora/blob/master/API.md#addresses
 #[derive(Deserialize, Debug)]

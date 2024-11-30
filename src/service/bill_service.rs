@@ -5,23 +5,18 @@ use crate::blockchain::{
     self, start_blockchain_for_new_bill, Block, Chain, ChainToReturn, GossipsubEvent,
     GossipsubEventId, OperationCode,
 };
-<<<<<<< HEAD
-use crate::constants::{COMPOUNDING_INTEREST_RATE_ZERO, USEDNET};
-use crate::persistence::file_upload::FileUploadStoreApi;
-=======
 use crate::constants::{
     COMPOUNDING_INTEREST_RATE_ZERO, MAX_FILE_NAME_CHARACTERS, MAX_FILE_SIZE_BYTES,
     VALID_FILE_MIME_TYPES,
 };
->>>>>>> a67ce48 (chore:remove usernet and use config variable for bitcoin network)
 use crate::persistence::identity::IdentityStoreApi;
 use crate::util::get_current_payee_private_key;
-use crate::web::data::File;
-use crate::{dht, external, persistence, util};
+use crate::Config;
 use crate::{dht::Client, persistence::bill::BillStoreApi};
 use async_trait::async_trait;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
+use clap::Parser;
 use log::{error, info};
 use openssl::pkey::Private;
 use openssl::rsa::Rsa;
@@ -29,8 +24,6 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::{http::Status, response::Responder};
 use std::sync::Arc;
 use thiserror::Error;
-use crate::Config;
-use clap::Parser;
 
 /// Generic result type
 pub type Result<T> = std::result::Result<T, Error>;

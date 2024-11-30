@@ -6,18 +6,18 @@ use crate::bill::get_path_for_bill;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
-use crate::Config;
-use clap::Parser;
 use crate::external;
 use crate::service::bill_service::BillKeys;
 use crate::service::bill_service::BitcreditBill;
 use crate::service::contact_service::IdentityPublicData;
+use crate::Config;
 use crate::{
     bill::{bill_from_byte_array, read_keys_from_bill_file},
     util::rsa::decrypt_bytes,
 };
 use borsh_derive::BorshDeserialize;
 use borsh_derive::BorshSerialize;
+use clap::Parser;
 use log::error;
 use log::warn;
 use openssl::pkey::Private;
