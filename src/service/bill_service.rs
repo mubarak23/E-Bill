@@ -11,12 +11,12 @@ use crate::constants::{
 };
 use crate::persistence::identity::IdentityStoreApi;
 use crate::util::get_current_payee_private_key;
-use crate::Config;
+use crate::USERNETWORK;
 use crate::{dht::Client, persistence::bill::BillStoreApi};
 use async_trait::async_trait;
+use bitcoin::Network;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
-use clap::Parser;
 use log::{error, info};
 use openssl::pkey::Private;
 use openssl::rsa::Rsa;
@@ -220,6 +220,7 @@ pub struct BillService {
     store: Arc<dyn BillStoreApi>,
     identity_store: Arc<dyn IdentityStoreApi>,
     file_upload_store: Arc<dyn FileUploadStoreApi>,
+    network_kind: Network,
 }
 
 impl BillService {
@@ -229,11 +230,17 @@ impl BillService {
         identity_store: Arc<dyn IdentityStoreApi>,
         file_upload_store: Arc<dyn FileUploadStoreApi>,
     ) -> Self {
+        let network_kind = match &USERNETWORK {
+            Bitcoin => Network::Bitcoin,
+            Testnet => Network::Testnet,
+            _ => Network::Testnet,
+        };
         Self {
             client,
             store,
             identity_store,
             file_upload_store,
+            network_kind,
         }
     }
 
@@ -579,12 +586,11 @@ impl BillServiceApi for BillService {
         timestamp: i64,
     ) -> Result<BitcreditBill> {
         let s = bitcoin::secp256k1::Secp256k1::new();
-        let conf = Config::try_parse();
-        let network = conf.expect("Unable to fetch config").bitcoin_network();
+
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            network,
+            self.network_kind,
         );
         let public_key = private_key.public_key(&s);
 
@@ -1083,12 +1089,11 @@ mod test {
     fn get_baseline_bill(bill_name: &str) -> BitcreditBill {
         let mut bill = BitcreditBill::new_empty();
         let s = bitcoin::secp256k1::Secp256k1::new();
-        let conf = Config::try_parse();
-        let network = conf.expect("Unable to fetch config").bitcoin_network();
+
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            network,
+            self.network_kind,
         );
         let public_key = private_key.public_key(&s);
         bill.payee = IdentityPublicData::new_empty();

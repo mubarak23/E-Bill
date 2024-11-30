@@ -10,14 +10,14 @@ use crate::external;
 use crate::service::bill_service::BillKeys;
 use crate::service::bill_service::BitcreditBill;
 use crate::service::contact_service::IdentityPublicData;
-use crate::Config;
+use crate::USERNETWORK;
 use crate::{
     bill::{bill_from_byte_array, read_keys_from_bill_file},
     util::rsa::decrypt_bytes,
 };
+use bitcoin::Network;
 use borsh_derive::BorshDeserialize;
 use borsh_derive::BorshSerialize;
-use clap::Parser;
 use log::error;
 use log::warn;
 use openssl::pkey::Private;
@@ -594,9 +594,14 @@ impl Chain {
             .combine(&public_key_bill_seller.inner)
             .unwrap();
         let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
-        let conf = Config::try_parse();
-        let network = conf.expect("Unable to fetch config").bitcoin_network();
-        bitcoin::Address::p2pkh(pub_key_bill, network).to_string()
+
+        let network_kind = match &USERNETWORK {
+            Bitcoin => Network::Bitcoin,
+            Testnet => Network::Testnet,
+            _ => Network::Testnet,
+        };
+
+        bitcoin::Address::p2pkh(pub_key_bill, network_kind).to_string()
     }
 
     /// This function extracts the first block's data, decrypts it using the private key

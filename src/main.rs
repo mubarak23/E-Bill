@@ -2,6 +2,7 @@ use crate::constants::{
     BILLS_FOLDER_PATH, BILLS_KEYS_FOLDER_PATH, BOOTSTRAP_FOLDER_PATH, QUOTES_MAP_FOLDER_PATH,
 };
 use anyhow::Result;
+use bitcoin::Network;
 use clap::Parser;
 use config::Config;
 use constants::SHUTDOWN_GRACE_PERIOD_MS;
@@ -11,7 +12,8 @@ use service::create_service_context;
 use std::path::Path;
 use std::{env, fs};
 use tokio::spawn;
-
+// #[macro_use]
+// extern crate lazy_static;
 mod bill;
 mod blockchain;
 mod config;
@@ -27,11 +29,22 @@ mod util;
 mod web;
 
 // MAIN
+#[macro_use]
+extern crate lazy_static;
+lazy_static! {
+    pub static ref USERNETWORK: Network = Config::try_parse()
+        .expect("Unable to fetch config")
+        .bitcoin_network();
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     env::set_var("RUST_BACKTRACE", "full");
 
     env_logger::init();
+
+    // You can now use USERNETWORK globally
+    println!("Chosen Network: {:?}", *USERNETWORK);
 
     // Parse command line arguments and env vars with clap
     let conf = Config::parse();

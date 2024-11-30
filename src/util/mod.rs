@@ -3,12 +3,10 @@ pub mod file;
 pub mod numbers_to_words;
 pub mod rsa;
 pub mod terminal;
-use crate::{
-    constants::USEDNET, service::bill_service::BitcreditBill, service::identity_service::Identity,
-};
 use bitcoin::{secp256k1::Scalar, Network, PrivateKey, PublicKey};
-use crate::Config;
-use clap::Parser;
+use crate::{service::bill_service::BitcreditBill, service::identity_service::Identity};
+use bitcoin::secp256k1::Scalar;
+use bitcoin::Network;
 use openssl::sha::sha256;
 use std::str::FromStr;
 use uuid::Uuid;

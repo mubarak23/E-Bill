@@ -1,14 +1,14 @@
 use super::Result;
-use crate::Config;
 use crate::{dht::Client, persistence::identity::IdentityStoreApi, util};
 use async_trait::async_trait;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
-use clap::Parser;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
 use openssl::{pkey::Private, rsa::Rsa};
 use rocket::serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use crate::USERNETWORK;
+use bitcoin::Network;
 
 #[async_trait]
 pub trait IdentityServiceApi: Send + Sync {
@@ -96,12 +96,17 @@ impl IdentityServiceApi for IdentityService {
             .map_err(|e| super::Error::Cryptography(e.to_string()))?;
 
         let s = bitcoin::secp256k1::Secp256k1::new();
-        let conf = Config::try_parse();
-        let network = conf.expect("Unable to fetch config").bitcoin_network();
+
+         let network_kind = match &USERNETWORK {
+            Bitcoin => Network::Bitcoin,
+            Testnet => Network::Testnet,
+            _ => Network::Testnet,
+        };
+
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            network,
+            network_kind,
         );
         let public_key = private_key.public_key(&s).to_string();
         let private_key = private_key.to_string();
