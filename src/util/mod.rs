@@ -7,9 +7,15 @@ use crate::{
     constants::USEDNET, service::bill_service::BitcreditBill, service::identity_service::Identity,
 };
 use bitcoin::{secp256k1::Scalar, Network, PrivateKey, PublicKey};
+use crate::Config;
+use crate::{service::bill_service::BitcreditBill, service::identity_service::Identity};
+use bitcoin::secp256k1::Scalar;
+use clap::Parser;
 use openssl::sha::sha256;
 use std::str::FromStr;
 use uuid::Uuid;
+use crate::USERNETWORK;
+use bitcoin::Network;
 
 #[cfg(not(test))]
 pub fn get_uuid_v4() -> Uuid {
@@ -48,6 +54,10 @@ pub fn get_current_payee_private_key(identity: Identity, bill: BitcreditBill) ->
         .inner
         .add_tweak(&Scalar::from(private_key_bill_holder.inner))
         .unwrap();
-
-    bitcoin::PrivateKey::new(privat_key_bill, USEDNET).to_string()
+   let network_kind = match &USERNETWORK {
+        Bitcoin => Network::Bitcoin,
+        Testnet => Network::Testnet,
+        _ => Network::Testnet,
+    };
+    bitcoin::PrivateKey::new(privat_key_bill, network_kind).to_string()
 }
