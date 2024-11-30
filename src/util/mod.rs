@@ -8,14 +8,11 @@ use crate::{
 };
 use bitcoin::{secp256k1::Scalar, Network, PrivateKey, PublicKey};
 use crate::Config;
-use crate::{service::bill_service::BitcreditBill, service::identity_service::Identity};
-use bitcoin::secp256k1::Scalar;
 use clap::Parser;
 use openssl::sha::sha256;
 use std::str::FromStr;
 use uuid::Uuid;
 use crate::USERNETWORK;
-use bitcoin::Network;
 
 #[cfg(not(test))]
 pub fn get_uuid_v4() -> Uuid {
