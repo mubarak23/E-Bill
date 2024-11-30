@@ -18,7 +18,6 @@ pub struct Stats {
 }
 
 impl AddressInfo {
-    
     // we can something like this here
     // pub fn get_network(network: &str) -> Network {
     //         let network_kind = match &USERNETWORK {

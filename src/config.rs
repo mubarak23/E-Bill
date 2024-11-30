@@ -48,5 +48,4 @@ impl Config {
             _ => Network::Testnet,
         }
     }
-
 }

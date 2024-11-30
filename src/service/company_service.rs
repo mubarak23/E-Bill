@@ -1,20 +1,18 @@
+use super::Result;
+use crate::persistence::company::CompanyStoreApi;
+use crate::USERNETWORK;
 use crate::{
-    constants::USEDNET,
     error,
     persistence::{file_upload::FileUploadStoreApi, identity::IdentityStoreApi, ContactStoreApi},
     util,
     web::data::File,
 };
-use borsh_derive::{self, BorshDeserialize, BorshSerialize};
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-
-use crate::persistence::company::CompanyStoreApi;
-
-use super::Result;
+use bitcoin::Network;
+use borsh_derive::{self, BorshDeserialize, BorshSerialize};
 use log::info;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[async_trait]
 pub trait CompanyServiceApi: Send + Sync {
@@ -155,7 +153,12 @@ impl CompanyServiceApi for CompanyService {
         proof_of_registration_file_upload_id: Option<String>,
         logo_file_upload_id: Option<String>,
     ) -> Result<CompanyToReturn> {
-        let (private_key, public_key) = util::create_bitcoin_keypair(USEDNET);
+        let network_kind = match &USERNETWORK {
+            Bitcoin => Network::Bitcoin,
+            Testnet => Network::Testnet,
+            _ => Network::Testnet,
+        };
+        let (private_key, public_key) = util::create_bitcoin_keypair(network_kind);
         let id = util::sha256_hash(&public_key.to_bytes());
 
         let company_keys = CompanyKeys {

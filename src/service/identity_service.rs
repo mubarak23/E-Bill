@@ -1,14 +1,14 @@
 use super::Result;
+use crate::USERNETWORK;
 use crate::{dht::Client, persistence::identity::IdentityStoreApi, util};
 use async_trait::async_trait;
+use bitcoin::Network;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
 use openssl::{pkey::Private, rsa::Rsa};
 use rocket::serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::USERNETWORK;
-use bitcoin::Network;
 
 #[async_trait]
 pub trait IdentityServiceApi: Send + Sync {
@@ -97,7 +97,7 @@ impl IdentityServiceApi for IdentityService {
 
         let s = bitcoin::secp256k1::Secp256k1::new();
 
-         let network_kind = match &USERNETWORK {
+        let network_kind = match &USERNETWORK {
             Bitcoin => Network::Bitcoin,
             Testnet => Network::Testnet,
             _ => Network::Testnet,

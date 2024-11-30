@@ -3,14 +3,12 @@ pub mod file;
 pub mod numbers_to_words;
 pub mod rsa;
 pub mod terminal;
-use bitcoin::{secp256k1::Scalar, Network, PrivateKey, PublicKey};
+use crate::USERNETWORK;
 use crate::{service::bill_service::BitcreditBill, service::identity_service::Identity};
-use bitcoin::secp256k1::Scalar;
-use bitcoin::Network;
+use bitcoin::{secp256k1::Scalar, Network, PrivateKey, PublicKey};
 use openssl::sha::sha256;
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::USERNETWORK;
 
 #[cfg(not(test))]
 pub fn get_uuid_v4() -> Uuid {
@@ -49,7 +47,7 @@ pub fn get_current_payee_private_key(identity: Identity, bill: BitcreditBill) ->
         .inner
         .add_tweak(&Scalar::from(private_key_bill_holder.inner))
         .unwrap();
-   let network_kind = match &USERNETWORK {
+    let network_kind = match &USERNETWORK {
         Bitcoin => Network::Bitcoin,
         Testnet => Network::Testnet,
         _ => Network::Testnet,
