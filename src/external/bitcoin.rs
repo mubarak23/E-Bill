@@ -1,7 +1,9 @@
-use crate::{constants::USEDNET, service::bill_service::BitcreditBill};
+use crate::{service::bill_service::BitcreditBill};
 use bitcoin::Network;
 use serde::Deserialize;
 use std::str::FromStr;
+use crate::Config;
+use clap::Parser;
 
 /// Fields documented at https://github.com/Blockstream/esplora/blob/master/API.md#addresses
 #[derive(Deserialize, Debug)]
@@ -18,7 +20,9 @@ pub struct Stats {
 
 impl AddressInfo {
     pub async fn get_address_info(address: String) -> Self {
-        let request_url = match USEDNET {
+        let conf = Config::try_parse();
+        let network = conf.expect("Unable to fetch config").bitcoin_network();
+        let request_url = match network {
             Network::Bitcoin => {
                 format!(
                     "https://blockstream.info/api/address/{address}",
@@ -57,7 +61,9 @@ pub struct Status {
 }
 
 pub async fn get_transactions(address: String) -> Transactions {
-    let request_url = match USEDNET {
+    let conf = Config::try_parse();
+    let network = conf.expect("Unable to fetch config").bitcoin_network();
+    let request_url = match network {
         Network::Bitcoin => {
             format!(
                 "https://blockstream.info/api/address/{address}/txs",
@@ -88,7 +94,9 @@ impl Txid {
 }
 
 pub async fn get_last_block_height() -> u64 {
-    let request_url = match USEDNET {
+    let conf = Config::try_parse();
+    let network = conf.expect("Unable to fetch config").bitcoin_network();
+    let request_url = match network {
         Network::Bitcoin => "https://blockstream.info/api/blocks/tip/height",
         _ => "https://blockstream.info/testnet/api/blocks/tip/height",
     };
@@ -133,8 +141,9 @@ pub fn get_address_to_pay(bill: BitcreditBill) -> String {
         .combine(&public_key_bill_holder.inner)
         .unwrap();
     let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
-
-    bitcoin::Address::p2pkh(pub_key_bill, USEDNET).to_string()
+    let conf = Config::try_parse();
+    let network = conf.expect("Unable to fetch config").bitcoin_network();
+    bitcoin::Address::p2pkh(pub_key_bill, network).to_string()
 }
 
 pub async fn generate_link_to_pay(address: String, amount: u64, message: String) -> String {

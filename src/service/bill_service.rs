@@ -5,8 +5,15 @@ use crate::blockchain::{
     self, start_blockchain_for_new_bill, Block, Chain, ChainToReturn, GossipsubEvent,
     GossipsubEventId, OperationCode,
 };
+<<<<<<< HEAD
 use crate::constants::{COMPOUNDING_INTEREST_RATE_ZERO, USEDNET};
 use crate::persistence::file_upload::FileUploadStoreApi;
+=======
+use crate::constants::{
+    COMPOUNDING_INTEREST_RATE_ZERO, MAX_FILE_NAME_CHARACTERS, MAX_FILE_SIZE_BYTES,
+    VALID_FILE_MIME_TYPES,
+};
+>>>>>>> a67ce48 (chore:remove usernet and use config variable for bitcoin network)
 use crate::persistence::identity::IdentityStoreApi;
 use crate::util::get_current_payee_private_key;
 use crate::web::data::File;
@@ -22,6 +29,8 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::{http::Status, response::Responder};
 use std::sync::Arc;
 use thiserror::Error;
+use crate::Config;
+use clap::Parser;
 
 /// Generic result type
 pub type Result<T> = std::result::Result<T, Error>;
@@ -576,7 +585,15 @@ impl BillServiceApi for BillService {
         file_upload_id: Option<String>,
         timestamp: i64,
     ) -> Result<BitcreditBill> {
-        let (private_key, public_key) = util::create_bitcoin_keypair(USEDNET);
+        let s = bitcoin::secp256k1::Secp256k1::new();
+        let conf = Config::try_parse();
+        let network = conf.expect("Unable to fetch config").bitcoin_network();
+        let private_key = bitcoin::PrivateKey::new(
+            s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
+                .0,
+            network,
+        );
+        let public_key = private_key.public_key(&s);
 
         let bill_name = util::sha256_hash(&public_key.to_bytes());
 
@@ -1073,10 +1090,12 @@ mod test {
     fn get_baseline_bill(bill_name: &str) -> BitcreditBill {
         let mut bill = BitcreditBill::new_empty();
         let s = bitcoin::secp256k1::Secp256k1::new();
+        let conf = Config::try_parse();
+        let network = conf.expect("Unable to fetch config").bitcoin_network();
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            USEDNET,
+            network,
         );
         let public_key = private_key.public_key(&s);
         bill.payee = IdentityPublicData::new_empty();

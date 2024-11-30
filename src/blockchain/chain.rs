@@ -6,7 +6,8 @@ use crate::bill::get_path_for_bill;
 use crate::blockchain::OperationCode::{
     Accept, Endorse, Issue, Mint, RequestToAccept, RequestToPay, Sell,
 };
-use crate::constants::USEDNET;
+use crate::Config;
+use clap::Parser;
 use crate::external;
 use crate::service::bill_service::BillKeys;
 use crate::service::bill_service::BitcreditBill;
@@ -593,8 +594,9 @@ impl Chain {
             .combine(&public_key_bill_seller.inner)
             .unwrap();
         let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
-
-        bitcoin::Address::p2pkh(pub_key_bill, USEDNET).to_string()
+        let conf = Config::try_parse();
+        let network = conf.expect("Unable to fetch config").bitcoin_network();
+        bitcoin::Address::p2pkh(pub_key_bill, network).to_string()
     }
 
     /// This function extracts the first block's data, decrypts it using the private key
