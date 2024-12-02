@@ -47,10 +47,5 @@ pub fn get_current_payee_private_key(identity: Identity, bill: BitcreditBill) ->
         .inner
         .add_tweak(&Scalar::from(private_key_bill_holder.inner))
         .unwrap();
-    let network_kind = match &USERNETWORK {
-        Bitcoin => Network::Bitcoin,
-        Testnet => Network::Testnet,
-        _ => Network::Testnet,
-    };
-    bitcoin::PrivateKey::new(privat_key_bill, network_kind).to_string()
+    bitcoin::PrivateKey::new(privat_key_bill, *USERNETWORK).to_string()
 }

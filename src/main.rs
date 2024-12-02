@@ -12,8 +12,6 @@ use service::create_service_context;
 use std::path::Path;
 use std::{env, fs};
 use tokio::spawn;
-// #[macro_use]
-// extern crate lazy_static;
 mod bill;
 mod blockchain;
 mod config;

@@ -14,7 +14,6 @@ use crate::USERNETWORK;
 use crate::{dht, external, persistence, util};
 use crate::{dht::Client, persistence::bill::BillStoreApi};
 use async_trait::async_trait;
-use bitcoin::Network;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
 use log::{error, info};
@@ -220,7 +219,6 @@ pub struct BillService {
     store: Arc<dyn BillStoreApi>,
     identity_store: Arc<dyn IdentityStoreApi>,
     file_upload_store: Arc<dyn FileUploadStoreApi>,
-    network_kind: Network,
 }
 
 impl BillService {
@@ -230,17 +228,11 @@ impl BillService {
         identity_store: Arc<dyn IdentityStoreApi>,
         file_upload_store: Arc<dyn FileUploadStoreApi>,
     ) -> Self {
-        let network_kind = match &USERNETWORK {
-            Bitcoin => Network::Bitcoin,
-            Testnet => Network::Testnet,
-            _ => Network::Testnet,
-        };
         Self {
             client,
             store,
             identity_store,
             file_upload_store,
-            network_kind,
         }
     }
 
@@ -585,7 +577,7 @@ impl BillServiceApi for BillService {
         file_upload_id: Option<String>,
         timestamp: i64,
     ) -> Result<BitcreditBill> {
-        let (private_key, public_key) = util::create_bitcoin_keypair(self.network_kind);
+        let (private_key, public_key) = util::create_bitcoin_keypair(*USERNETWORK);
 
         let bill_name = util::sha256_hash(&public_key.to_bytes());
 
@@ -1085,7 +1077,7 @@ mod test {
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            self.network_kind,
+            *USERNETWORK,
         );
         let public_key = private_key.public_key(&s);
         bill.payee = IdentityPublicData::new_empty();

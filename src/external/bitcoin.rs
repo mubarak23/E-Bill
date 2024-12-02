@@ -18,22 +18,8 @@ pub struct Stats {
 }
 
 impl AddressInfo {
-    // we can something like this here
-    // pub fn get_network(network: &str) -> Network {
-    //         let network_kind = match &USERNETWORK {
-    //         Bitcoin => Network::Bitcoin,
-    //         Testnet => Network::Testnet,
-    //         _ => Network::Testnet,
-    //     };
-    //     return network_kind;
-    // }
     pub async fn get_address_info(address: String) -> Self {
-        let network_kind = match &USERNETWORK {
-            Bitcoin => Network::Bitcoin,
-            Testnet => Network::Testnet,
-            _ => Network::Testnet,
-        };
-        let request_url = match network_kind {
+        let request_url = match *USERNETWORK {
             Network::Bitcoin => {
                 format!(
                     "https://blockstream.info/api/address/{address}",
@@ -72,13 +58,7 @@ pub struct Status {
 }
 
 pub async fn get_transactions(address: String) -> Transactions {
-    let network_kind = match &USERNETWORK {
-        Bitcoin => Network::Bitcoin,
-        Testnet => Network::Testnet,
-        _ => Network::Testnet,
-    };
-
-    let request_url = match network_kind {
+    let request_url = match *USERNETWORK {
         Network::Bitcoin => {
             format!(
                 "https://blockstream.info/api/address/{address}/txs",
@@ -109,12 +89,7 @@ impl Txid {
 }
 
 pub async fn get_last_block_height() -> u64 {
-    let network_kind = match &USERNETWORK {
-        Bitcoin => Network::Bitcoin,
-        Testnet => Network::Testnet,
-        _ => Network::Testnet,
-    };
-    let request_url = match network_kind {
+    let request_url = match *USERNETWORK {
         Network::Bitcoin => "https://blockstream.info/api/blocks/tip/height",
         _ => "https://blockstream.info/testnet/api/blocks/tip/height",
     };
@@ -160,13 +135,7 @@ pub fn get_address_to_pay(bill: BitcreditBill) -> String {
         .unwrap();
     let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
 
-    let network_kind = match &USERNETWORK {
-        Bitcoin => Network::Bitcoin,
-        Testnet => Network::Testnet,
-        _ => Network::Testnet,
-    };
-
-    bitcoin::Address::p2pkh(pub_key_bill, network_kind).to_string()
+    bitcoin::Address::p2pkh(pub_key_bill, *USERNETWORK).to_string()
 }
 
 pub async fn generate_link_to_pay(address: String, amount: u64, message: String) -> String {

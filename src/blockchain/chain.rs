@@ -15,7 +15,6 @@ use crate::{
     bill::{bill_from_byte_array, read_keys_from_bill_file},
     util::rsa::decrypt_bytes,
 };
-use bitcoin::Network;
 use borsh_derive::BorshDeserialize;
 use borsh_derive::BorshSerialize;
 use log::error;
@@ -595,13 +594,7 @@ impl Chain {
             .unwrap();
         let pub_key_bill = bitcoin::PublicKey::new(public_key_bill);
 
-        let network_kind = match &USERNETWORK {
-            Bitcoin => Network::Bitcoin,
-            Testnet => Network::Testnet,
-            _ => Network::Testnet,
-        };
-
-        bitcoin::Address::p2pkh(pub_key_bill, network_kind).to_string()
+        bitcoin::Address::p2pkh(pub_key_bill, *USERNETWORK).to_string()
     }
 
     /// This function extracts the first block's data, decrypts it using the private key
