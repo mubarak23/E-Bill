@@ -1,4 +1,3 @@
-use bitcoin::Network;
 use std::net::Ipv4Addr;
 
 // General
@@ -22,8 +21,6 @@ pub const BOOTSTRAP_FOLDER_PATH: &str = "bootstrap";
 pub const QUOTE_MAP_FILE_PATH: &str = "quotes/quotes";
 pub const BOOTSTRAP_NODES_FILE_PATH: &str = "bootstrap/bootstrap_nodes.json";
 
-// Bitcoin
-pub const USEDNET: Network = Network::Testnet; // use Network::Bitcoin for Mainnet
 pub const COMPOUNDING_INTEREST_RATE_ZERO: u64 = 0;
 // pub const BILL_VALIDITY_PERIOD: u64 = 90;
 

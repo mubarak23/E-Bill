@@ -1,5 +1,6 @@
 use super::Result;
-use crate::{constants::USEDNET, dht::Client, persistence::identity::IdentityStoreApi, util};
+use crate::USERNETWORK;
+use crate::{dht::Client, persistence::identity::IdentityStoreApi, util};
 use async_trait::async_trait;
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use libp2p::identity::Keypair;
@@ -94,10 +95,11 @@ impl IdentityServiceApi for IdentityService {
             .map_err(|e| super::Error::Cryptography(e.to_string()))?;
 
         let s = bitcoin::secp256k1::Secp256k1::new();
+
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            USEDNET,
+            *USERNETWORK,
         );
         let public_key = private_key.public_key(&s).to_string();
         let private_key = private_key.to_string();

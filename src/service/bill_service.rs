@@ -5,11 +5,12 @@ use crate::blockchain::{
     self, start_blockchain_for_new_bill, Block, Chain, ChainToReturn, GossipsubEvent,
     GossipsubEventId, OperationCode,
 };
-use crate::constants::{COMPOUNDING_INTEREST_RATE_ZERO, USEDNET};
+use crate::constants::COMPOUNDING_INTEREST_RATE_ZERO;
 use crate::persistence::file_upload::FileUploadStoreApi;
 use crate::persistence::identity::IdentityStoreApi;
 use crate::util::get_current_payee_private_key;
 use crate::web::data::File;
+use crate::USERNETWORK;
 use crate::{dht, external, persistence, util};
 use crate::{dht::Client, persistence::bill::BillStoreApi};
 use async_trait::async_trait;
@@ -576,7 +577,7 @@ impl BillServiceApi for BillService {
         file_upload_id: Option<String>,
         timestamp: i64,
     ) -> Result<BitcreditBill> {
-        let (private_key, public_key) = util::create_bitcoin_keypair(USEDNET);
+        let (private_key, public_key) = util::create_bitcoin_keypair(*USERNETWORK);
 
         let bill_name = util::sha256_hash(&public_key.to_bytes());
 
@@ -1076,7 +1077,7 @@ mod test {
         let private_key = bitcoin::PrivateKey::new(
             s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
                 .0,
-            USEDNET,
+            *USERNETWORK,
         );
         let public_key = private_key.public_key(&s);
         bill.payee = IdentityPublicData::new_empty();
