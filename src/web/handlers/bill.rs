@@ -23,7 +23,7 @@ use std::thread;
 pub async fn holder(state: &State<ServiceContext>, id: String) -> Result<Json<bool>> {
     let identity = state.identity_service.get_full_identity().await?;
     let bill = state.bill_service.get_bill(&id).await?;
-    let am_i_holder = identity.peer_id.to_string().eq(&bill.payee.peer_id);
+    let am_i_holder = identity.node_id.to_string().eq(&bill.payee.node_id);
     Ok(Json(am_i_holder))
 }
 
@@ -97,7 +97,7 @@ pub async fn search_bill(state: &State<ServiceContext>) -> Result<Status> {
         return Err(service::Error::PreconditionFailed);
     }
     let mut client = state.dht_client();
-    let local_peer_id = state.identity_service.get_peer_id().await?;
+    let local_peer_id = state.identity_service.get_node_id().await?;
     client.check_new_bills(local_peer_id.to_string()).await?;
 
     Ok(Status::Ok)
@@ -168,14 +168,14 @@ pub async fn issue_bill(
                     })?;
 
                 let public_data_payee =
-                    IdentityPublicData::new(drawer.identity.clone(), drawer.peer_id.to_string());
+                    IdentityPublicData::new(drawer.identity.clone(), drawer.node_id.to_string());
 
                 (public_data_drawee, public_data_payee)
             }
             // Drawer is drawee
             (false, true) => {
                 let public_data_drawee =
-                    IdentityPublicData::new(drawer.identity.clone(), drawer.peer_id.to_string());
+                    IdentityPublicData::new(drawer.identity.clone(), drawer.node_id.to_string());
 
                 let public_data_payee = state
                     .contact_service
@@ -247,9 +247,9 @@ pub async fn issue_bill(
         .bill_service
         .propagate_bill(
             &bill.name,
-            &bill.drawer.peer_id,
-            &bill.drawee.peer_id,
-            &bill.payee.peer_id,
+            &bill.drawer.node_id,
+            &bill.drawee.node_id,
+            &bill.payee.node_id,
         )
         .await?;
 
@@ -303,7 +303,7 @@ pub async fn sell_bill(
         .bill_service
         .propagate_bill_for_node(
             &sell_bill_payload.bill_name,
-            &public_data_buyer.peer_id.to_string(),
+            &public_data_buyer.node_id.to_string(),
         )
         .await?;
     Ok(Status::Ok)
@@ -346,7 +346,7 @@ pub async fn endorse_bill(
         .bill_service
         .propagate_bill_for_node(
             &endorse_bill_payload.bill_name,
-            &public_data_endorsee.peer_id.to_string(),
+            &public_data_endorsee.node_id.to_string(),
         )
         .await?;
     Ok(Status::Ok)
@@ -483,7 +483,7 @@ pub async fn request_to_mint_bill(
             .bill_service
             .propagate_bill_for_node(
                 &request_to_mint_bill_payload.bill_name,
-                &public_mint_node.peer_id.to_string(),
+                &public_mint_node.node_id.to_string(),
             )
             .await?;
     }
@@ -510,7 +510,7 @@ pub async fn accept_mint_bill(
         .get_bill(&accept_mint_bill_payload.bill_name)
         .await?;
     let bill_amount = bill.amount_numbers;
-    let holder_node_id = bill.payee.peer_id.clone();
+    let holder_node_id = bill.payee.node_id.clone();
 
     //TODO: calculate percent
     // Usage of thread::spawn is necessary here, because we spawn a new tokio runtime in the
@@ -565,7 +565,7 @@ pub async fn mint_bill(
         .bill_service
         .propagate_bill_for_node(
             &mint_bill_payload.bill_name,
-            &public_mint_node.peer_id.to_string(),
+            &public_mint_node.node_id.to_string(),
         )
         .await?;
 

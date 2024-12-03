@@ -23,7 +23,7 @@ pub trait IdentityStoreApi: Send + Sync {
     /// Saves the peer id
     async fn save_peer_id(&self, peer_id: &PeerId) -> Result<()>;
     /// Gets the local peer id
-    async fn get_peer_id(&self) -> Result<PeerId>;
+    async fn get_node_id(&self) -> Result<PeerId>;
     /// Saves the given key pair
     async fn save_key_pair(&self, key_pair: &Keypair) -> Result<()>;
     /// Gets the local key pair
@@ -76,11 +76,11 @@ impl IdentityStoreApi for FileBasedIdentityStore {
     }
 
     async fn get_full(&self) -> Result<IdentityWithAll> {
-        let results = tokio::join!(self.get(), self.get_peer_id(), self.get_key_pair());
+        let results = tokio::join!(self.get(), self.get_node_id(), self.get_key_pair());
         match results {
-            (Ok(identity), Ok(peer_id), Ok(key_pair)) => Ok(IdentityWithAll {
+            (Ok(identity), Ok(node_id), Ok(key_pair)) => Ok(IdentityWithAll {
                 identity,
-                peer_id,
+                node_id,
                 key_pair,
             }),
             _ => {
@@ -109,7 +109,7 @@ impl IdentityStoreApi for FileBasedIdentityStore {
         Ok(())
     }
 
-    async fn get_peer_id(&self) -> Result<PeerId> {
+    async fn get_node_id(&self) -> Result<PeerId> {
         let data = fs::read(&self.peer_id_file).await?;
         let peer_id = PeerId::from_bytes(&data)?;
         Ok(peer_id)

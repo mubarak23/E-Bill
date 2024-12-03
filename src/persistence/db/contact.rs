@@ -48,7 +48,7 @@ impl ContactStoreApi for SurrealContactStore {
         entity.name = name.to_owned();
         let _: Option<ContactDb> = self
             .db
-            .create((Self::TABLE, entity.peer_id.to_owned()))
+            .create((Self::TABLE, entity.node_id.to_owned()))
             .content(entity)
             .await?;
         Ok(())
@@ -78,7 +78,7 @@ impl ContactStoreApi for SurrealContactStore {
         entity.name = name.to_owned();
         let _: Option<ContactDb> = self
             .db
-            .update((Self::TABLE, entity.peer_id.to_owned()))
+            .update((Self::TABLE, entity.node_id.to_owned()))
             .content(entity)
             .await?;
         Ok(())
@@ -98,7 +98,7 @@ impl ContactStoreApi for SurrealContactStore {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContactDb {
-    pub peer_id: String,
+    pub node_id: String,
     pub name: String,
     pub company: Option<String>,
     pub bitcoin_public_key: Option<String>,
@@ -112,7 +112,7 @@ pub struct ContactDb {
 impl From<ContactDb> for IdentityPublicData {
     fn from(contact: ContactDb) -> Self {
         Self {
-            peer_id: contact.peer_id,
+            node_id: contact.node_id,
             name: contact.name,
             company: contact.company.unwrap_or("".to_owned()),
             bitcoin_public_key: contact.bitcoin_public_key.unwrap_or("".to_owned()),
@@ -128,7 +128,7 @@ impl From<ContactDb> for IdentityPublicData {
 impl From<IdentityPublicData> for ContactDb {
     fn from(value: IdentityPublicData) -> Self {
         Self {
-            peer_id: value.peer_id,
+            node_id: value.node_id,
             name: value.name,
             company: as_opt(value.company),
             bitcoin_public_key: as_opt(value.bitcoin_public_key),

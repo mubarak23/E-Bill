@@ -76,7 +76,7 @@ impl NotificationServiceApi for DefaultNotificationService {
 
         let payer_event = Event::new(
             &event_type,
-            bill.drawee.peer_id.clone(),
+            bill.drawee.node_id.clone(),
             BillActionEventPayload {
                 bill_name: bill.name.clone(),
                 action_type: ActionType::ApproveBill,
@@ -84,7 +84,7 @@ impl NotificationServiceApi for DefaultNotificationService {
         );
         let payee_event = Event::new(
             &event_type,
-            bill.payee.peer_id.clone(),
+            bill.payee.node_id.clone(),
             BillActionEventPayload {
                 bill_name: bill.name.clone(),
                 action_type: ActionType::CheckBill,

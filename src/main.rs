@@ -71,11 +71,11 @@ async fn main() -> Result<()> {
         }
     });
 
-    let local_peer_id = db.identity_store.get_peer_id().await?;
+    let local_node_id = db.identity_store.get_node_id().await?;
     dht_client
-        .check_new_bills(local_peer_id.to_string())
+        .check_new_bills(local_node_id.to_string())
         .await?;
-    dht_client.update_table(local_peer_id.to_string()).await?;
+    dht_client.update_table(local_node_id.to_string()).await?;
     dht_client.subscribe_to_all_bills_topics().await?;
     dht_client.put_bills_for_parties().await?;
     dht_client.start_providing_bills().await?;

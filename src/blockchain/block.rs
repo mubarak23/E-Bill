@@ -105,17 +105,17 @@ impl Block {
         let mut nodes = Vec::new();
         match self.operation_code {
             Issue => {
-                let drawer_name = bill.drawer.peer_id.clone();
+                let drawer_name = bill.drawer.node_id.clone();
                 if !drawer_name.is_empty() && !nodes.contains(&drawer_name) {
                     nodes.push(drawer_name);
                 }
 
-                let payee_name = bill.payee.peer_id.clone();
+                let payee_name = bill.payee.node_id.clone();
                 if !payee_name.is_empty() && !nodes.contains(&payee_name) {
                     nodes.push(payee_name);
                 }
 
-                let drawee_name = bill.drawee.peer_id.clone();
+                let drawee_name = bill.drawee.node_id.clone();
                 if !drawee_name.is_empty() && !nodes.contains(&drawee_name) {
                     nodes.push(drawee_name);
                 }
@@ -153,7 +153,7 @@ impl Block {
                 let endorsee_bill_u8 = hex::decode(part_with_endorsee).unwrap();
                 let endorsee_bill: IdentityPublicData =
                     serde_json::from_slice(&endorsee_bill_u8).unwrap();
-                let endorsee_bill_name = endorsee_bill.peer_id.clone();
+                let endorsee_bill_name = endorsee_bill.node_id.clone();
                 if !endorsee_bill_name.is_empty() && !nodes.contains(&endorsee_bill_name) {
                     nodes.push(endorsee_bill_name);
                 }
@@ -161,7 +161,7 @@ impl Block {
                 let endorser_bill_u8 = hex::decode(part_with_endorsed_by).unwrap();
                 let endorser_bill: IdentityPublicData =
                     serde_json::from_slice(&endorser_bill_u8).unwrap();
-                let endorser_bill_name = endorser_bill.peer_id.clone();
+                let endorser_bill_name = endorser_bill.node_id.clone();
                 if !endorser_bill_name.is_empty() && !nodes.contains(&endorser_bill_name) {
                     nodes.push(endorser_bill_name);
                 }
@@ -198,7 +198,7 @@ impl Block {
 
                 let mint_bill_u8 = hex::decode(part_with_mint).unwrap();
                 let mint_bill: IdentityPublicData = serde_json::from_slice(&mint_bill_u8).unwrap();
-                let mint_bill_name = mint_bill.peer_id.clone();
+                let mint_bill_name = mint_bill.node_id.clone();
                 if !mint_bill_name.is_empty() && !nodes.contains(&mint_bill_name) {
                     nodes.push(mint_bill_name);
                 }
@@ -206,7 +206,7 @@ impl Block {
                 let minter_bill_u8 = hex::decode(part_with_minter).unwrap();
                 let minter_bill: IdentityPublicData =
                     serde_json::from_slice(&minter_bill_u8).unwrap();
-                let minter_bill_name = minter_bill.peer_id.clone();
+                let minter_bill_name = minter_bill.node_id.clone();
                 if !minter_bill_name.is_empty() && !nodes.contains(&minter_bill_name) {
                     nodes.push(minter_bill_name);
                 }
@@ -228,7 +228,7 @@ impl Block {
                 let requester_to_accept_bill_u8 = hex::decode(part_with_identity).unwrap();
                 let requester_to_accept_bill: IdentityPublicData =
                     serde_json::from_slice(&requester_to_accept_bill_u8).unwrap();
-                let requester_to_accept_bill_name = requester_to_accept_bill.peer_id.clone();
+                let requester_to_accept_bill_name = requester_to_accept_bill.node_id.clone();
                 if !requester_to_accept_bill_name.is_empty()
                     && !nodes.contains(&requester_to_accept_bill_name)
                 {
@@ -252,7 +252,7 @@ impl Block {
                 let accepter_bill_u8 = hex::decode(part_with_identity).unwrap();
                 let accepter_bill: IdentityPublicData =
                     serde_json::from_slice(&accepter_bill_u8).unwrap();
-                let accepter_bill_name = accepter_bill.peer_id.clone();
+                let accepter_bill_name = accepter_bill.node_id.clone();
                 if !accepter_bill_name.is_empty() && !nodes.contains(&accepter_bill_name) {
                     nodes.push(accepter_bill_name);
                 }
@@ -274,7 +274,7 @@ impl Block {
                 let requester_to_pay_bill_u8 = hex::decode(part_with_identity).unwrap();
                 let requester_to_pay_bill: IdentityPublicData =
                     serde_json::from_slice(&requester_to_pay_bill_u8).unwrap();
-                let requester_to_pay_bill_name = requester_to_pay_bill.peer_id.clone();
+                let requester_to_pay_bill_name = requester_to_pay_bill.node_id.clone();
                 if !requester_to_pay_bill_name.is_empty()
                     && !nodes.contains(&requester_to_pay_bill_name)
                 {
@@ -322,7 +322,7 @@ impl Block {
                 let buyer_bill_u8 = hex::decode(part_with_buyer).unwrap();
                 let buyer_bill: IdentityPublicData =
                     serde_json::from_slice(&buyer_bill_u8).unwrap();
-                let buyer_peer_id = buyer_bill.peer_id.clone();
+                let buyer_peer_id = buyer_bill.node_id.clone();
                 if !buyer_peer_id.is_empty() && !nodes.contains(&buyer_peer_id) {
                     nodes.push(buyer_peer_id);
                 }
@@ -330,7 +330,7 @@ impl Block {
                 let seller_bill_u8 = hex::decode(part_with_seller).unwrap();
                 let seller_bill: IdentityPublicData =
                     serde_json::from_slice(&seller_bill_u8).unwrap();
-                let seller_bill_peer_id = seller_bill.peer_id.clone();
+                let seller_bill_peer_id = seller_bill.node_id.clone();
                 if !seller_bill_peer_id.is_empty() && !nodes.contains(&seller_bill_peer_id) {
                     nodes.push(seller_bill_peer_id);
                 }

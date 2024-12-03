@@ -161,7 +161,7 @@ impl CompanyServiceApi for CompanyService {
         };
 
         let identity = self.identity_store.get().await?;
-        let peer_id = self.identity_store.get_peer_id().await?;
+        let peer_id = self.identity_store.get_node_id().await?;
 
         let proof_of_registration_file = self
             .process_upload_file(
@@ -220,7 +220,7 @@ impl CompanyServiceApi for CompanyService {
                 "No company with id: {id} found",
             )));
         }
-        let peer_id = self.identity_store.get_peer_id().await?;
+        let peer_id = self.identity_store.get_node_id().await?;
         let mut company = self.store.get(id).await?;
 
         if !company.signatories.contains(&peer_id.to_string()) {
@@ -268,7 +268,7 @@ impl CompanyServiceApi for CompanyService {
         let contacts = self.contact_store.get_map().await?;
         let is_in_contacts = contacts
             .iter()
-            .any(|(_name, identity)| identity.peer_id == signatory_node_id);
+            .any(|(_name, identity)| identity.node_id == signatory_node_id);
         if !is_in_contacts {
             return Err(super::Error::Validation(format!(
                 "Node Id {signatory_node_id} is not in the contacts.",
@@ -306,7 +306,7 @@ impl CompanyServiceApi for CompanyService {
             )));
         }
 
-        let peer_id = self.identity_store.get_peer_id().await?;
+        let peer_id = self.identity_store.get_node_id().await?;
 
         company.signatories.retain(|i| i != &signatory_node_id);
         self.store.update(id, &company).await?;

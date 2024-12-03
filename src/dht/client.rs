@@ -157,10 +157,10 @@ impl Client {
             let identity = self.identity_store.get_full().await?;
             let identity_data = IdentityPublicData::new(
                 identity.identity.clone(),
-                identity.peer_id.to_string().clone(),
+                identity.node_id.to_string().clone(),
             );
 
-            let key = format!("{}{}", INFO_PREFIX, &identity_data.peer_id);
+            let key = format!("{}{}", INFO_PREFIX, &identity_data.node_id);
             let current_info = self.get_record(key.clone()).await?.value;
             let mut current_info_string = String::new();
             if !current_info.is_empty() {
@@ -176,9 +176,9 @@ impl Client {
 
     pub async fn get_identity_public_data_from_dht(
         &mut self,
-        peer_id: String,
+        node_id: String,
     ) -> Result<IdentityPublicData> {
-        let key = format!("{}{}", INFO_PREFIX, &peer_id);
+        let key = format!("{}{}", INFO_PREFIX, &node_id);
         let current_info = self.get_record(key.clone()).await?.value;
         let mut identity_public_data: IdentityPublicData = IdentityPublicData::new_empty();
         if !current_info.is_empty() {
@@ -224,19 +224,19 @@ impl Client {
     }
 
     pub async fn get_bill(&mut self, name: &str) -> Result<Vec<u8>> {
-        let local_peer_id = self.identity_store.get_peer_id().await?;
+        let local_node_id = self.identity_store.get_node_id().await?;
         let mut providers = self.get_providers(name.to_owned()).await?;
-        providers.remove(&local_peer_id);
+        providers.remove(&local_node_id);
         if providers.is_empty() {
             return Err(super::Error::NoProviders(format!(
                 "Get Bill: No providers found for {name}",
             )));
         }
-        let requests = providers.into_iter().map(|peer| {
+        let requests = providers.into_iter().map(|node| {
             let mut network_client = self.clone();
 
-            let file_request = file_request_for_bill(&local_peer_id.to_string(), name);
-            async move { network_client.request_file(peer, file_request).await }.boxed()
+            let file_request = file_request_for_bill(&local_node_id.to_string(), name);
+            async move { network_client.request_file(node, file_request).await }.boxed()
         });
 
         match futures::future::select_ok(requests).await {
@@ -263,7 +263,7 @@ impl Client {
             Some(file) => &file.hash,
         };
 
-        let local_peer_id = self.identity_store.get_peer_id().await?;
+        let local_peer_id = self.identity_store.get_node_id().await?;
         let mut providers = self.get_providers(bill_name.to_owned()).await?;
         providers.remove(&local_peer_id);
         if providers.is_empty() {
@@ -317,19 +317,19 @@ impl Client {
     }
 
     pub async fn get_key(&mut self, name: &str) -> Result<Vec<u8>> {
-        let local_peer_id = self.identity_store.get_peer_id().await?;
+        let local_node_id = self.identity_store.get_node_id().await?;
         let mut providers = self.get_providers(name.to_owned()).await?;
-        providers.remove(&local_peer_id);
+        providers.remove(&local_node_id);
         if providers.is_empty() {
             return Err(super::Error::NoProviders(format!(
                 "Get Bill Keys: No providers found for {name}",
             )));
         }
-        let requests = providers.into_iter().map(|peer| {
+        let requests = providers.into_iter().map(|node| {
             let mut network_client = self.clone();
 
-            let file_request = file_request_for_bill_keys(&local_peer_id.to_string(), name);
-            async move { network_client.request_file(peer, file_request).await }.boxed()
+            let file_request = file_request_for_bill_keys(&local_node_id.to_string(), name);
+            async move { network_client.request_file(node, file_request).await }.boxed()
         });
 
         match futures::future::select_ok(requests).await {

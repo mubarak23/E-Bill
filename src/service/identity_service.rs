@@ -18,7 +18,7 @@ pub trait IdentityServiceApi: Send + Sync {
     /// Gets the local identity
     async fn get_identity(&self) -> Result<Identity>;
     /// Gets the local peer_id
-    async fn get_peer_id(&self) -> Result<PeerId>;
+    async fn get_node_id(&self) -> Result<PeerId>;
     /// Checks if the identity has been created
     async fn identity_exists(&self) -> bool;
     /// Creates the identity and returns it with it's key pair and peer id
@@ -69,9 +69,9 @@ impl IdentityServiceApi for IdentityService {
         Ok(identity)
     }
 
-    async fn get_peer_id(&self) -> Result<PeerId> {
-        let peer_id = self.store.get_peer_id().await?;
-        Ok(peer_id)
+    async fn get_node_id(&self) -> Result<PeerId> {
+        let node_id = self.store.get_node_id().await?;
+        Ok(node_id)
     }
 
     async fn identity_exists(&self) -> bool {
@@ -132,7 +132,7 @@ impl IdentityServiceApi for IdentityService {
 #[derive(Clone, Debug)]
 pub struct IdentityWithAll {
     pub identity: Identity,
-    pub peer_id: PeerId,
+    pub node_id: PeerId,
     #[allow(dead_code)]
     pub key_pair: Keypair,
 }
@@ -278,7 +278,7 @@ mod test {
         storage.expect_get_peer_id().returning(move || Ok(peer_id));
 
         let service = get_service(storage);
-        let res = service.get_peer_id().await;
+        let res = service.get_node_id().await;
 
         assert!(res.is_ok());
         assert_eq!(res.unwrap(), peer_id);
@@ -295,7 +295,7 @@ mod test {
         });
 
         let service = get_service(storage);
-        let res = service.get_peer_id().await;
+        let res = service.get_node_id().await;
 
         assert!(res.is_err());
     }

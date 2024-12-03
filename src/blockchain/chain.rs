@@ -204,7 +204,7 @@ impl Chain {
         let bill_first_version: BitcreditBill = bill_from_byte_array(&decrypted_bytes);
 
         let mut last_endorsee = IdentityPublicData {
-            peer_id: "".to_string(),
+            node_id: "".to_string(),
             name: "".to_string(),
             company: "".to_string(),
             bitcoin_public_key: "".to_string(),
@@ -306,7 +306,7 @@ impl Chain {
 
         let mut payee = bill_first_version.payee.clone();
 
-        if !last_endorsee.peer_id.is_empty() {
+        if !last_endorsee.node_id.is_empty() {
             payee = last_endorsee.clone();
         }
 
@@ -740,9 +740,9 @@ impl Chain {
             match block.operation_code {
                 Issue => {
                     let bill = self.get_first_version_bill();
-                    if bill.drawer.peer_id.eq(request_node_id)
-                        || bill.drawee.peer_id.eq(request_node_id)
-                        || bill.payee.peer_id.eq(request_node_id)
+                    if bill.drawer.node_id.eq(request_node_id)
+                        || bill.drawee.node_id.eq(request_node_id)
+                        || bill.payee.node_id.eq(request_node_id)
                     {
                         return true;
                     }
@@ -787,8 +787,8 @@ impl Chain {
                     let endorser_bill: IdentityPublicData =
                         serde_json::from_slice(&endorser_bill_u8).unwrap();
 
-                    if endorsee_bill.peer_id.eq(request_node_id)
-                        || endorser_bill.peer_id.eq(request_node_id)
+                    if endorsee_bill.node_id.eq(request_node_id)
+                        || endorser_bill.node_id.eq(request_node_id)
                     {
                         return true;
                     }
@@ -833,8 +833,8 @@ impl Chain {
                     let mint_bill: IdentityPublicData =
                         serde_json::from_slice(&mint_bill_u8).unwrap();
 
-                    if minter_bill.peer_id.eq(request_node_id)
-                        || mint_bill.peer_id.eq(request_node_id)
+                    if minter_bill.node_id.eq(request_node_id)
+                        || mint_bill.node_id.eq(request_node_id)
                     {
                         return true;
                     }
@@ -859,7 +859,7 @@ impl Chain {
                     let requester_to_accept_bill: IdentityPublicData =
                         serde_json::from_slice(&requester_to_accept_bill_u8).unwrap();
 
-                    if requester_to_accept_bill.peer_id.eq(request_node_id) {
+                    if requester_to_accept_bill.node_id.eq(request_node_id) {
                         return true;
                     }
                 }
@@ -883,7 +883,7 @@ impl Chain {
                     let accepter_bill: IdentityPublicData =
                         serde_json::from_slice(&accepter_bill_u8).unwrap();
 
-                    if accepter_bill.peer_id.eq(request_node_id) {
+                    if accepter_bill.node_id.eq(request_node_id) {
                         return true;
                     }
                 }
@@ -907,7 +907,7 @@ impl Chain {
                     let requester_to_pay_bill: IdentityPublicData =
                         serde_json::from_slice(&requester_to_pay_bill_u8).unwrap();
 
-                    if requester_to_pay_bill.peer_id.eq(request_node_id) {
+                    if requester_to_pay_bill.node_id.eq(request_node_id) {
                         return true;
                     }
                 }
@@ -959,8 +959,8 @@ impl Chain {
                     let seller_bill: IdentityPublicData =
                         serde_json::from_slice(&seller_bill_u8).unwrap();
 
-                    if buyer_bill.peer_id.eq(request_node_id)
-                        || seller_bill.peer_id.eq(request_node_id)
+                    if buyer_bill.node_id.eq(request_node_id)
+                        || seller_bill.node_id.eq(request_node_id)
                     {
                         return true;
                     }

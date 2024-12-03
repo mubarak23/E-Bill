@@ -149,10 +149,10 @@ async fn new(
     }
 
     let local_public_key = identity_store.get_key_pair().await?;
-    let local_peer_id = identity_store.get_peer_id().await?;
-    info!("Local peer id: {local_peer_id:?}");
+    let local_node_id = identity_store.get_node_id().await?;
+    info!("Local peer id: {local_node_id:?}");
 
-    let (relay_transport, client) = relay::client::new(local_peer_id);
+    let (relay_transport, client) = relay::client::new(local_node_id);
 
     let dns_cfg = DnsConfig::system(tcp::tokio::Transport::new(
         tcp::Config::default().port_reuse(true),
@@ -165,9 +165,9 @@ async fn new(
         .timeout(std::time::Duration::from_secs(20))
         .boxed();
 
-    let behaviour = MyBehaviour::new(local_peer_id, local_public_key.clone(), client);
+    let behaviour = MyBehaviour::new(local_node_id, local_public_key.clone(), client);
 
-    let mut swarm = SwarmBuilder::with_tokio_executor(transport, behaviour, local_peer_id).build();
+    let mut swarm = SwarmBuilder::with_tokio_executor(transport, behaviour, local_node_id).build();
 
     swarm.listen_on(
         conf.p2p_listen_url()
