@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::constants::{
-    RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
+    RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_NODE_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use behaviour::{ComposedEvent, Event, MyBehaviour};
 use event_loop::EventLoop;
@@ -199,7 +199,7 @@ async fn new(
         }
     }
 
-    let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID.to_string().parse()?;
+    let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID.to_string().parse()?;
     let relay_address = Multiaddr::empty()
         .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
         .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))

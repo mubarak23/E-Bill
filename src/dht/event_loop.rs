@@ -1,7 +1,7 @@
 use super::behaviour::{Command, ComposedEvent, Event, MyBehaviour};
 use crate::blockchain::{Block, Chain, GossipsubEvent, GossipsubEventId};
 use crate::constants::{
-    RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
+    RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_NODE_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use crate::dht::behaviour::{FileRequest, FileResponse};
 use anyhow::Result;
@@ -360,7 +360,7 @@ impl EventLoop {
                     expires: None,
                 };
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
+                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
                     .to_string()
                     .parse()
                     .expect("Can not to parse relay peer id.");
@@ -416,7 +416,7 @@ impl EventLoop {
             } => {
                 info!("Request file {file_name:?}");
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
+                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
                     .to_string()
                     .parse()
                     .expect("Can not to parse relay peer id.");
