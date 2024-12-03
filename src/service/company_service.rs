@@ -402,6 +402,39 @@ pub struct Company {
     pub signatories: Vec<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct CompanyPublicData {
+    pub id: String,
+    pub legal_name: String,
+    pub postal_address: String,
+    pub legal_email: String,
+    pub public_key: String,
+}
+
+impl CompanyPublicData {
+    pub fn from_all(id: String, company: Company, company_keys: CompanyKeys) -> CompanyPublicData {
+        CompanyPublicData {
+            id,
+            legal_name: company.legal_name,
+            postal_address: company.postal_address,
+            legal_email: company.legal_email,
+            public_key: company_keys.public_key,
+        }
+    }
+}
+
+impl From<CompanyToReturn> for CompanyPublicData {
+    fn from(company: CompanyToReturn) -> Self {
+        Self {
+            id: company.id,
+            legal_name: company.legal_name,
+            postal_address: company.postal_address,
+            legal_email: company.legal_email,
+            public_key: company.public_key,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CompanyKeys {
     pub private_key: String,
