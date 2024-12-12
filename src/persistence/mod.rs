@@ -6,6 +6,7 @@ pub mod file_upload;
 pub mod identity;
 pub mod nostr;
 
+use crate::util;
 use bill::FileBasedBillStore;
 use db::{
     company::SurrealCompanyStore, contact::SurrealContactStore, get_surreal_db,
@@ -52,8 +53,14 @@ pub enum Error {
     #[error("Failed to convert integer {0}")]
     FromInt(#[from] std::num::TryFromIntError),
 
+    #[error("Cryptography error: {0}")]
+    CryptoUtil(#[from] util::crypto::Error),
+
     #[error("Blockchain error: {0}")]
     Blockchain(#[from] blockchain::Error),
+
+    #[error("parse bytes to string error: {0}")]
+    Utf8(#[from] std::str::Utf8Error),
 }
 
 pub use contact::ContactStoreApi;

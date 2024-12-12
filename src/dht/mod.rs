@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::constants::{
     RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
+use crate::util::crypto::BcrKeys;
 use behaviour::{ComposedEvent, Event, MyBehaviour};
 use borsh::{to_vec, BorshDeserialize};
 use borsh_derive::{BorshDeserialize, BorshSerialize};
@@ -30,7 +31,6 @@ use crate::persistence::identity::IdentityStoreApi;
 use crate::util::rsa;
 use crate::{blockchain, persistence, util};
 pub use client::Client;
-use libp2p::identity::Keypair;
 use log::{error, info};
 use std::sync::Arc;
 use thiserror::Error;
@@ -117,6 +117,10 @@ pub enum Error {
     #[error("invalid listen p2p url error")]
     ListenP2pUrlInvalid,
 
+    /// errors from internal crypto operations
+    #[error("Cryptography error: {0}")]
+    CryptoUtil(#[from] util::crypto::Error),
+
     /// errors that stem from interacting with a blockchain
     #[error("Blockchain error: {0}")]
     Blockchain(#[from] blockchain::Error),
@@ -176,14 +180,15 @@ async fn new(
     identity_store: Arc<dyn IdentityStoreApi>,
     file_upload_store: Arc<dyn FileUploadStoreApi>,
 ) -> Result<(Client, Receiver<Event>, EventLoop)> {
-    if !identity_store.libp2p_credentials_exist().await {
-        let ed25519_keys = Keypair::generate_ed25519();
-        let peer_id = ed25519_keys.public().to_peer_id();
-        identity_store.save_node_id(&peer_id).await?;
-        identity_store.save_key_pair(&ed25519_keys).await?;
+    if !identity_store.exists().await {
+        let keys = BcrKeys::new();
+        let p2p_keys = keys.get_libp2p_keys()?;
+        let node_id = p2p_keys.public().to_peer_id();
+        identity_store.save_node_id(&node_id).await?;
+        identity_store.save_key_pair(&keys).await?;
     }
 
-    let local_public_key = identity_store.get_key_pair().await?;
+    let local_public_key = identity_store.get_key_pair().await?.get_libp2p_keys()?;
     let local_node_id = identity_store.get_node_id().await?;
     info!("Local node id: {local_node_id:?}");
 

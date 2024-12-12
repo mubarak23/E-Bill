@@ -1,10 +1,13 @@
+use core::str;
+
 use super::Result;
 use crate::{
     persistence::{identity::IdentityStoreApi, Error},
     service::identity_service::{Identity, IdentityWithAll},
+    util::BcrKeys,
 };
 use async_trait::async_trait;
-use libp2p::{identity::Keypair, PeerId};
+use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
 use surrealdb::{engine::any::Any, Surreal};
 
@@ -99,7 +102,7 @@ impl IdentityStoreApi for SurrealIdentityStore {
         }
     }
 
-    async fn save_key_pair(&self, key_pair: &Keypair) -> Result<()> {
+    async fn save_key_pair(&self, key_pair: &BcrKeys) -> Result<()> {
         let entity: KeyDb = key_pair.try_into()?;
         let _: Option<KeyDb> = self
             .db
@@ -109,7 +112,7 @@ impl IdentityStoreApi for SurrealIdentityStore {
         Ok(())
     }
 
-    async fn get_key_pair(&self) -> Result<Keypair> {
+    async fn get_key_pair(&self) -> Result<BcrKeys> {
         let result: Option<KeyDb> = self.db.select((Self::KEY_TABLE, Self::UNIQUE_ID)).await?;
         match result {
             None => Err(Error::NoIdentityKey),
@@ -198,21 +201,21 @@ impl From<&PeerId> for NodeIdDb {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyDb {
-    pub key: Vec<u8>,
+    pub key: String,
 }
 
-impl TryFrom<&Keypair> for KeyDb {
+impl TryFrom<&BcrKeys> for KeyDb {
     type Error = crate::persistence::Error;
-    fn try_from(value: &Keypair) -> Result<Self> {
-        let data = value.to_protobuf_encoding()?;
+    fn try_from(value: &BcrKeys) -> Result<Self> {
+        let data = value.get_private_key_string();
         Ok(KeyDb { key: data })
     }
 }
 
-impl TryFrom<KeyDb> for Keypair {
+impl TryFrom<KeyDb> for BcrKeys {
     type Error = crate::persistence::Error;
     fn try_from(value: KeyDb) -> Result<Self> {
-        let key_pair = Keypair::from_protobuf_encoding(&value.key)?;
+        let key_pair = BcrKeys::from_private_key(&value.key)?;
         Ok(key_pair)
     }
 }
@@ -243,10 +246,7 @@ mod tests {
         assert!(!store.libp2p_credentials_exist().await);
         store.save_node_id(&PeerId::random()).await.unwrap();
         assert!(!store.libp2p_credentials_exist().await);
-        store
-            .save_key_pair(&Keypair::generate_ed25519())
-            .await
-            .unwrap();
+        store.save_key_pair(&BcrKeys::new()).await.unwrap();
         assert!(store.libp2p_credentials_exist().await)
     }
 
@@ -266,7 +266,7 @@ mod tests {
         let mut identity = Identity::new_empty();
         identity.name = "Minka".to_string();
         let node_id = PeerId::random();
-        let key_pair = Keypair::generate_ed25519();
+        let key_pair = BcrKeys::new();
         store.save(&identity).await.unwrap();
         store.save_node_id(&node_id).await.unwrap();
         store.save_key_pair(&key_pair).await.unwrap();
@@ -276,7 +276,10 @@ mod tests {
             node_id.to_string(),
             fetched_full_identity.peer_id.to_string()
         );
-        assert_eq!(key_pair.public(), fetched_full_identity.key_pair.public());
+        assert_eq!(
+            key_pair.get_public_key(),
+            fetched_full_identity.key_pair.get_public_key()
+        );
     }
 
     #[tokio::test]
@@ -290,10 +293,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_key_pair() {
-        let key_pair = Keypair::generate_ed25519();
+        let key_pair = BcrKeys::new();
         let store = get_store().await;
         store.save_key_pair(&key_pair).await.unwrap();
         let fetched_key_pair = store.get_key_pair().await.unwrap();
-        assert_eq!(key_pair.public(), fetched_key_pair.public());
+        assert_eq!(key_pair.get_public_key(), fetched_key_pair.get_public_key());
     }
 }

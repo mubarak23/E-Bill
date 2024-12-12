@@ -1,8 +1,11 @@
 use super::Result;
 use async_trait::async_trait;
-use libp2p::{identity::Keypair, PeerId};
+use libp2p::PeerId;
 
-use crate::service::identity_service::{Identity, IdentityWithAll};
+use crate::{
+    service::identity_service::{Identity, IdentityWithAll},
+    util::crypto::BcrKeys,
+};
 #[cfg(test)]
 use mockall::automock;
 
@@ -12,6 +15,7 @@ pub trait IdentityStoreApi: Send + Sync {
     /// Checks if the identity has been created
     async fn exists(&self) -> bool;
     /// Checks if the libp2p credentials for the identity have been created
+    #[allow(dead_code)]
     async fn libp2p_credentials_exist(&self) -> bool;
     /// Saves the given identity
     async fn save(&self, identity: &Identity) -> Result<()>;
@@ -24,7 +28,7 @@ pub trait IdentityStoreApi: Send + Sync {
     /// Gets the local node id
     async fn get_node_id(&self) -> Result<PeerId>;
     /// Saves the given key pair
-    async fn save_key_pair(&self, key_pair: &Keypair) -> Result<()>;
+    async fn save_key_pair(&self, key_pair: &BcrKeys) -> Result<()>;
     /// Gets the local key pair
-    async fn get_key_pair(&self) -> Result<Keypair>;
+    async fn get_key_pair(&self) -> Result<BcrKeys>;
 }

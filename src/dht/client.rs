@@ -1557,6 +1557,7 @@ mod test {
         kad::record::{Key, Record},
     };
     use std::collections::{HashMap, HashSet};
+    use util::BcrKeys;
 
     fn get_baseline_company_data(id: &str) -> (String, (Company, CompanyKeys)) {
         (
@@ -3087,7 +3088,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 peer_id: node_id,
-                key_pair: Keypair::generate_ed25519(),
+                key_pair: BcrKeys::new(),
             })
         });
 
