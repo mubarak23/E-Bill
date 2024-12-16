@@ -295,9 +295,8 @@ impl BillService {
             last_block.id + 1,
             last_block.hash.clone(),
             data_for_new_block_encrypted_in_string_format,
-            identity.identity.public_key_pem,
             operation_code,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             timestamp,
         )?;
 
@@ -682,10 +681,8 @@ impl BillServiceApi for BillService {
 
         let chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             public_data_drawer,
-            drawer.identity.public_key_pem,
-            drawer.identity.private_key_pem,
+            drawer.key_pair,
             public_key_pem,
             timestamp,
         )?;
@@ -1127,10 +1124,8 @@ pub mod test {
         let bill = bill.unwrap_or(get_baseline_bill("some name"));
         BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new_empty(),
-            TEST_PUB_KEY.to_owned(),
-            TEST_PRIVATE_KEY.to_owned(),
+            get_baseline_identity().key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -1628,9 +1623,8 @@ pub mod test {
                 123456,
                 "prevhash".to_string(),
                 "hash".to_string(),
-                TEST_PUB_KEY.to_owned(),
                 BillOpCode::Accept,
-                TEST_PRIVATE_KEY.to_owned(),
+                identity.key_pair,
                 1731593928,
             )
             .unwrap(),

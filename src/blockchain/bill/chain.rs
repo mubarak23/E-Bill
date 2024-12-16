@@ -13,7 +13,7 @@ use crate::constants::{AMOUNT, SIGNED_BY};
 use crate::service::bill_service::BillKeys;
 use crate::service::bill_service::BitcreditBill;
 use crate::service::contact_service::IdentityPublicData;
-use crate::util::rsa;
+use crate::util::{rsa, BcrKeys};
 use borsh::{from_slice, to_vec};
 use serde::{Deserialize, Serialize};
 
@@ -39,10 +39,8 @@ impl BillBlockchain {
     /// key
     pub fn new(
         bill: &BitcreditBill,
-        operation_code: BillOpCode,
         drawer: IdentityPublicData,
-        drawer_public_key: String,
-        drawer_private_key: String,
+        drawer_key_pair: BcrKeys,
         bill_public_key_pem: String,
         timestamp: i64,
     ) -> Result<Self> {
@@ -60,9 +58,8 @@ impl BillBlockchain {
             1,
             genesis_hash,
             encrypted_and_hashed_bill_data,
-            drawer_public_key,
-            operation_code,
-            drawer_private_key,
+            BillOpCode::Issue,
+            drawer_key_pair,
             timestamp,
         )?;
 
@@ -341,7 +338,7 @@ mod test {
     use super::*;
     use crate::{
         blockchain::bill::test::get_baseline_identity,
-        tests::test::{get_bill_keys, TEST_PRIVATE_KEY, TEST_PUB_KEY},
+        tests::test::{get_bill_keys, TEST_PUB_KEY},
         util::rsa,
     };
     use libp2p::PeerId;
@@ -364,9 +361,8 @@ mod test {
             2,
             prevhash,
             hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
-            TEST_PUB_KEY.to_owned(),
             BillOpCode::Sell,
-            TEST_PRIVATE_KEY.to_owned(),
+            BcrKeys::new(),
             1731593928,
         )
         .unwrap()
@@ -379,10 +375,8 @@ mod test {
 
         let chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -398,10 +392,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -420,10 +412,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -450,10 +440,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -478,10 +466,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -513,10 +499,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -541,10 +525,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
@@ -568,10 +550,8 @@ mod test {
 
         let mut chain = BillBlockchain::new(
             &bill,
-            BillOpCode::Issue,
             IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
-            identity.identity.public_key_pem,
-            identity.identity.private_key_pem,
+            identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,
         )
