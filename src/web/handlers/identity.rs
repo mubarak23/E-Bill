@@ -16,8 +16,8 @@ pub async fn return_identity(state: &State<ServiceContext>) -> Result<Json<Ident
     Ok(Json(my_identity))
 }
 
-#[get("/peer_id/return")]
-pub async fn return_peer_id(state: &State<ServiceContext>) -> Result<Json<NodeId>> {
+#[get("/node_id/return")]
+pub async fn return_node_id(state: &State<ServiceContext>) -> Result<Json<NodeId>> {
     let node_id = state.identity_service.get_node_id().await?;
     let node_id = NodeId::new(node_id.to_string());
     Ok(Json(node_id))

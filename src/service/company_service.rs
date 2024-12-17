@@ -268,7 +268,7 @@ impl CompanyServiceApi for CompanyService {
         let contacts = self.contact_store.get_map().await?;
         let is_in_contacts = contacts
             .iter()
-            .any(|(_name, identity)| identity.peer_id == signatory_node_id);
+            .any(|(_name, identity)| identity.node_id == signatory_node_id);
         if !is_in_contacts {
             return Err(super::Error::Validation(format!(
                 "Node Id {signatory_node_id} is not in the contacts.",
@@ -820,7 +820,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -866,7 +866,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -889,7 +889,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });

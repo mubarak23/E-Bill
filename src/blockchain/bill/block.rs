@@ -149,17 +149,17 @@ impl BillBlock {
             Issue => {
                 let bill: BitcreditBill = from_slice(&self.get_decrypted_block_bytes(bill_keys)?)?;
 
-                let drawer_name = &bill.drawer.peer_id;
+                let drawer_name = &bill.drawer.node_id;
                 if !drawer_name.is_empty() {
                     nodes.insert(drawer_name.to_owned());
                 }
 
-                let payee_name = &bill.payee.peer_id;
+                let payee_name = &bill.payee.node_id;
                 if !payee_name.is_empty() {
                     nodes.insert(payee_name.to_owned());
                 }
 
-                let drawee_name = &bill.drawee.peer_id;
+                let drawee_name = &bill.drawee.node_id;
                 if !drawee_name.is_empty() {
                     nodes.insert(drawee_name.to_owned());
                 }
@@ -172,7 +172,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Endorse: No endorsee found")),
                     )?,
                 )?)?;
-                let endorsee_node_id = endorsee.peer_id;
+                let endorsee_node_id = endorsee.node_id;
                 if !endorsee_node_id.is_empty() {
                     nodes.insert(endorsee_node_id);
                 }
@@ -182,7 +182,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Endorse: No endorser found")),
                     )?,
                 )?)?;
-                let endorser_node_id = endorser.peer_id;
+                let endorser_node_id = endorser.node_id;
                 if !endorser_node_id.is_empty() {
                     nodes.insert(endorser_node_id);
                 }
@@ -194,7 +194,7 @@ impl BillBlock {
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_TO)
                         .ok_or(Error::InvalidBlockdata(String::from("Mint: No mint found")))?,
                 )?)?;
-                let mint_node_id = mint.peer_id;
+                let mint_node_id = mint.node_id;
                 if !mint_node_id.is_empty() {
                     nodes.insert(mint_node_id);
                 }
@@ -204,7 +204,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Mint: No minter found")),
                     )?,
                 )?)?;
-                let minter_node_id = minter.peer_id;
+                let minter_node_id = minter.node_id;
                 if !minter_node_id.is_empty() {
                     nodes.insert(minter_node_id);
                 }
@@ -219,7 +219,7 @@ impl BillBlock {
                         )),
                     )?,
                 )?)?;
-                let requester_node_id = requester.peer_id;
+                let requester_node_id = requester.node_id;
                 if !requester_node_id.is_empty() {
                     nodes.insert(requester_node_id);
                 }
@@ -232,7 +232,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Accept: No accepter found")),
                     )?,
                 )?)?;
-                let accepter_node_id = accepter.peer_id;
+                let accepter_node_id = accepter.node_id;
                 if !accepter_node_id.is_empty() {
                     nodes.insert(accepter_node_id);
                 }
@@ -245,7 +245,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Request to Pay: No requester found")),
                     )?,
                 )?)?;
-                let requester_node_id = requester.peer_id;
+                let requester_node_id = requester.node_id;
                 if !requester_node_id.is_empty() {
                     nodes.insert(requester_node_id);
                 }
@@ -258,7 +258,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Sell: No buyer found")),
                     )?,
                 )?)?;
-                let buyer_node_id = buyer.peer_id;
+                let buyer_node_id = buyer.node_id;
                 if !buyer_node_id.is_empty() {
                     nodes.insert(buyer_node_id);
                 }
@@ -268,7 +268,7 @@ impl BillBlock {
                         Error::InvalidBlockdata(String::from("Sell: No seller found")),
                     )?,
                 )?)?;
-                let seller_node_id = seller.peer_id;
+                let seller_node_id = seller.node_id;
                 if !seller_node_id.is_empty() {
                     nodes.insert(seller_node_id);
                 }
@@ -416,11 +416,11 @@ mod test {
     fn get_nodes_from_block_issue() {
         let mut bill = BitcreditBill::new_empty();
         let mut drawer = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
+        let node_id = PeerId::random().to_string();
         let mut payer = IdentityPublicData::new_empty();
-        let payer_peer_id = PeerId::random().to_string();
-        payer.peer_id = payer_peer_id.clone();
-        drawer.peer_id = peer_id.clone();
+        let payer_node_id = PeerId::random().to_string();
+        payer.node_id = payer_node_id.clone();
+        drawer.node_id = node_id.clone();
         bill.drawer = drawer.clone();
         bill.payee = drawer.clone();
         bill.drawee = payer;
@@ -441,8 +441,8 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 2);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
-        assert!(res.as_ref().unwrap().contains(&payer_peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
+        assert!(res.as_ref().unwrap().contains(&payer_node_id));
     }
 
     #[test]
@@ -477,11 +477,11 @@ mod test {
     #[test]
     fn get_nodes_from_block_endorse() {
         let mut endorsee = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        endorsee.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        endorsee.node_id = node_id.clone();
         let mut endorser = IdentityPublicData::new_empty();
-        let endorser_peer_id = PeerId::random().to_string();
-        endorser.peer_id = endorser_peer_id.clone();
+        let endorser_node_id = PeerId::random().to_string();
+        endorser.node_id = endorser_node_id.clone();
         let hashed_endorsee = hex::encode(serde_json::to_vec(&endorsee).unwrap());
         let hashed_endorser = hex::encode(serde_json::to_vec(&endorser).unwrap());
 
@@ -502,8 +502,8 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 2);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
-        assert!(res.as_ref().unwrap().contains(&endorser_peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
+        assert!(res.as_ref().unwrap().contains(&endorser_node_id));
     }
 
     #[test]
@@ -537,11 +537,11 @@ mod test {
     #[test]
     fn get_nodes_from_block_mint() {
         let mut mint = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        mint.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        mint.node_id = node_id.clone();
         let mut minter = IdentityPublicData::new_empty();
-        let minter_peer_id = PeerId::random().to_string();
-        minter.peer_id = minter_peer_id.clone();
+        let minter_node_id = PeerId::random().to_string();
+        minter.node_id = minter_node_id.clone();
         let hashed_mint = hex::encode(serde_json::to_vec(&mint).unwrap());
         let hashed_minter = hex::encode(serde_json::to_vec(&minter).unwrap());
 
@@ -562,8 +562,8 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 2);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
-        assert!(res.as_ref().unwrap().contains(&minter_peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
+        assert!(res.as_ref().unwrap().contains(&minter_node_id));
     }
 
     #[test]
@@ -597,8 +597,8 @@ mod test {
     #[test]
     fn get_nodes_from_block_req_to_accept() {
         let mut requester = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        requester.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        requester.node_id = node_id.clone();
         let hashed_requester = hex::encode(serde_json::to_vec(&requester).unwrap());
 
         let data = format!("{}{}", REQ_TO_ACCEPT_BY, &hashed_requester);
@@ -615,7 +615,7 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 1);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
     }
 
     #[test]
@@ -647,8 +647,8 @@ mod test {
     #[test]
     fn get_nodes_from_block_accept() {
         let mut accepter = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        accepter.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        accepter.node_id = node_id.clone();
         let hashed_accepter = hex::encode(serde_json::to_vec(&accepter).unwrap());
 
         let data = format!("{}{}", ACCEPTED_BY, &hashed_accepter);
@@ -665,7 +665,7 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 1);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
     }
 
     #[test]
@@ -697,8 +697,8 @@ mod test {
     #[test]
     fn get_nodes_from_block_accept_fails_for_invalid_data() {
         let mut accepter = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        accepter.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        accepter.node_id = node_id.clone();
         let hashed_accepter = hex::encode(serde_json::to_vec(&accepter).unwrap());
 
         let data = format!("{}{}", ACCEPTED_BY, &hashed_accepter);
@@ -742,8 +742,8 @@ mod test {
     #[test]
     fn get_nodes_from_block_req_to_pay() {
         let mut requester = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        requester.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        requester.node_id = node_id.clone();
         let hashed_requester = hex::encode(serde_json::to_vec(&requester).unwrap());
 
         let data = format!("{}{}", REQ_TO_PAY_BY, &hashed_requester);
@@ -760,7 +760,7 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 1);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
     }
 
     #[test]
@@ -792,11 +792,11 @@ mod test {
     #[test]
     fn get_nodes_from_block_sell() {
         let mut buyer = IdentityPublicData::new_empty();
-        let peer_id = PeerId::random().to_string();
-        buyer.peer_id = peer_id.clone();
+        let node_id = PeerId::random().to_string();
+        buyer.node_id = node_id.clone();
         let mut seller = IdentityPublicData::new_empty();
-        let endorser_peer_id = PeerId::random().to_string();
-        seller.peer_id = endorser_peer_id.clone();
+        let endorser_node_id = PeerId::random().to_string();
+        seller.node_id = endorser_node_id.clone();
         let hashed_buyer = hex::encode(serde_json::to_vec(&buyer).unwrap());
         let hashed_seller = hex::encode(serde_json::to_vec(&seller).unwrap());
 
@@ -814,8 +814,8 @@ mod test {
         let res = block.get_nodes_from_block(&get_bill_keys());
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().len(), 2);
-        assert!(res.as_ref().unwrap().contains(&peer_id));
-        assert!(res.as_ref().unwrap().contains(&endorser_peer_id));
+        assert!(res.as_ref().unwrap().contains(&node_id));
+        assert!(res.as_ref().unwrap().contains(&endorser_node_id));
     }
 
     #[test]

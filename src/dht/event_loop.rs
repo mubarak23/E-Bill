@@ -2,7 +2,7 @@ use super::behaviour::{Command, ComposedEvent, Event, MyBehaviour};
 use super::{GossipsubEvent, GossipsubEventId};
 use crate::blockchain::Blockchain;
 use crate::constants::{
-    BILL_PREFIX, COMPANY_PREFIX, RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID,
+    RELAY_BOOTSTRAP_NODE_ONE_node_id, BILL_PREFIX, COMPANY_PREFIX, RELAY_BOOTSTRAP_NODE_ONE_IP,
     RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use crate::dht::behaviour::{CompanyEvent, FileRequest, FileResponse};
@@ -260,12 +260,12 @@ impl EventLoop {
 
             //--------------GOSSIPSUB EVENTS--------------
             SwarmEvent::Behaviour(ComposedEvent::Gossipsub(gossipsub::Event::Message {
-                propagation_source: peer_id,
+                propagation_source: node_id,
                 message_id: id,
                 message,
             })) => {
                 info!(
-                    "Got message with id: {id} from peer: {peer_id} in topic: {}",
+                    "Got message with id: {id} from peer: {node_id} in topic: {}",
                     message.topic.as_str()
                 );
                 if message.topic.as_str().starts_with(COMPANY_PREFIX) {
@@ -309,15 +309,13 @@ impl EventLoop {
                         }
                     }
                 } else if message.topic.as_str().starts_with(BILL_PREFIX) {
-                    if let Some(bill_name) = message.topic.as_str().strip_prefix(BILL_PREFIX) {
+                    if let Some(bill_id) = message.topic.as_str().strip_prefix(BILL_PREFIX) {
                         if let Ok(event) = GossipsubEvent::from_byte_array(&message.data) {
                             match event.id {
                                 GossipsubEventId::BillBlock => {
                                     if let Ok(block) = serde_json::from_slice(&event.message) {
-                                        if let Ok(mut chain) = self
-                                            .bill_store
-                                            .read_bill_chain_from_file(bill_name)
-                                            .await
+                                        if let Ok(mut chain) =
+                                            self.bill_store.read_bill_chain_from_file(bill_id).await
                                         {
                                             chain.try_add_block(block);
                                             if chain.is_chain_valid() {
@@ -327,11 +325,11 @@ impl EventLoop {
                                                     if let Err(e) = self
                                                         .bill_store
                                                         .write_blockchain_to_file(
-                                                            bill_name, chain_json,
+                                                            bill_id, chain_json,
                                                         )
                                                         .await
                                                     {
-                                                        error!("Could not persist chain for bill {bill_name}: {e}");
+                                                        error!("Could not persist chain for bill {bill_id}: {e}");
                                                     }
                                                 }
                                             }
@@ -342,10 +340,8 @@ impl EventLoop {
                                     if let Ok(receive_chain) =
                                         serde_json::from_slice(&event.message)
                                     {
-                                        if let Ok(mut local_chain) = self
-                                            .bill_store
-                                            .read_bill_chain_from_file(bill_name)
-                                            .await
+                                        if let Ok(mut local_chain) =
+                                            self.bill_store.read_bill_chain_from_file(bill_id).await
                                         {
                                             let should_persist =
                                                 local_chain.compare_chain(&receive_chain);
@@ -356,11 +352,11 @@ impl EventLoop {
                                                     if let Err(e) = self
                                                         .bill_store
                                                         .write_blockchain_to_file(
-                                                            bill_name, chain_json,
+                                                            bill_id, chain_json,
                                                         )
                                                         .await
                                                     {
-                                                        error!("Could not persist chain for bill {bill_name}: {e}");
+                                                        error!("Could not persist chain for bill {bill_id}: {e}");
                                                     }
                                                 }
                                             }
@@ -369,7 +365,7 @@ impl EventLoop {
                                 }
                                 GossipsubEventId::CommandGetBillBlockchain => {
                                     if let Ok(chain) =
-                                        self.bill_store.read_bill_chain_from_file(bill_name).await
+                                        self.bill_store.read_bill_chain_from_file(bill_id).await
                                     {
                                         if let Ok(chain_bytes) = serde_json::to_vec(&chain) {
                                             let event = GossipsubEvent::new(
@@ -380,7 +376,7 @@ impl EventLoop {
                                                 if let Err(e) =
                                                     self.swarm.behaviour_mut().gossipsub.publish(
                                                         gossipsub::IdentTopic::new(format!(
-                                                            "{BILL_PREFIX}{bill_name}"
+                                                            "{BILL_PREFIX}{bill_id}"
                                                         )),
                                                         message,
                                                     )
@@ -431,8 +427,8 @@ impl EventLoop {
 
             SwarmEvent::OutgoingConnectionError { .. } => {
                 error!("OutgoingConnectionError event {event:?}");
-                // if let Some(peer_id) = peer_id {
-                //     if let Some(sender) = self.pending_dial.remove(&peer_id) {
+                // if let Some(node_id) = node_id {
+                //     if let Some(sender) = self.pending_dial.remove(&node_id) {
                 //         let _ = sender.send(Err(Box::new(error)));
                 //     }
                 // }
@@ -478,7 +474,7 @@ impl EventLoop {
                     expires: None,
                 };
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
+                let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_node_id
                     .to_string()
                     .parse()
                     .map_err(|e| {
@@ -490,7 +486,7 @@ impl EventLoop {
                     .behaviour_mut()
                     .kademlia
                     //TODO: what quorum use?
-                    .put_record_to(record, iter::once(relay_peer_id), Quorum::All);
+                    .put_record_to(record, iter::once(relay_node_id), Quorum::All);
             }
 
             Command::SendMessage { msg, topic } => {
@@ -548,7 +544,7 @@ impl EventLoop {
             } => {
                 info!("Request file {file_name:?}");
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
+                let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_node_id
                     .to_string()
                     .parse()
                     .map_err(|e| {
@@ -557,7 +553,7 @@ impl EventLoop {
                 let relay_address = Multiaddr::empty()
                     .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
                     .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
-                    .with(Protocol::P2p(Multihash::from(relay_peer_id)))
+                    .with(Protocol::P2p(Multihash::from(relay_node_id)))
                     .with(Protocol::P2pCircuit)
                     .with(Protocol::P2p(Multihash::from(peer)));
 

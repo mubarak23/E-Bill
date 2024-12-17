@@ -154,7 +154,7 @@ impl IdentityServiceApi for IdentityService {
 #[derive(Clone, Debug)]
 pub struct IdentityWithAll {
     pub identity: Identity,
-    pub peer_id: PeerId,
+    pub node_id: PeerId,
     #[allow(dead_code)]
     pub key_pair: BcrKeys,
 }
@@ -428,7 +428,7 @@ mod test {
     async fn get_full_identity_calls_storage() {
         let identity = IdentityWithAll {
             identity: Identity::new_empty(),
-            peer_id: PeerId::random(),
+            node_id: PeerId::random(),
             key_pair: BcrKeys::new(),
         };
         let arced = Arc::new(identity.clone());

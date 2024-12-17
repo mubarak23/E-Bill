@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::constants::{
-    RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID, RELAY_BOOTSTRAP_NODE_ONE_TCP,
+    RELAY_BOOTSTRAP_NODE_ONE_node_id, RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use crate::util::crypto::BcrKeys;
 use behaviour::{ComposedEvent, Event, MyBehaviour};
@@ -239,11 +239,11 @@ async fn new(
         }
     }
 
-    let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID.to_string().parse()?;
+    let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_node_id.to_string().parse()?;
     let relay_address = Multiaddr::empty()
         .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
         .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
-        .with(Protocol::P2p(Multihash::from(relay_peer_id)));
+        .with(Protocol::P2p(Multihash::from(relay_node_id)));
     info!("Relay address: {:?}", relay_address);
 
     swarm.dial(relay_address.clone())?;
