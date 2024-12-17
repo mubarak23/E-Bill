@@ -86,7 +86,7 @@ impl OperationCode {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BlockToReturn {
     pub id: u64,
-    pub bill_name: String,
+    pub bill_id: String,
     pub hash: String,
     pub timestamp: i64,
     pub data: String,
@@ -103,7 +103,7 @@ impl BlockToReturn {
 
         Self {
             id: block.id,
-            bill_name: block.bill_name,
+            bill_id: block.bill_id,
             hash: block.hash,
             timestamp: block.timestamp,
             data: block.data,
@@ -191,7 +191,7 @@ pub fn start_blockchain_for_new_bill(
 
 fn calculate_hash(
     id: &u64,
-    bill_name: &str,
+    bill_id: &str,
     previous_hash: &str,
     data: &str,
     timestamp: &i64,
@@ -200,7 +200,7 @@ fn calculate_hash(
 ) -> Vec<u8> {
     let data = serde_json::json!({
         "id": id,
-        "bill_name": bill_name,
+        "bill_id": bill_id,
         "previous_hash": previous_hash,
         "data": data,
         "timestamp": timestamp,

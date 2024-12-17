@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Block {
     pub id: u64,
-    pub bill_name: String,
+    pub bill_id: String,
     pub hash: String,
     pub timestamp: i64,
     pub data: String,
@@ -41,7 +41,7 @@ impl Block {
     /// - `id`: The unique identifier of the block (`u64`).
     /// - `previous_hash`: A `String` representing the hash of the previous block in the chain.
     /// - `data`: A `String` containing the data to be stored in the block.
-    /// - `bill_name`: A `String` representing the name of the bill associated with the block.
+    /// - `bill_id`: A `String` representing the name of the bill associated with the block.
     /// - `public_key`: A `String` containing the public RSA key in PEM format.
     /// - `operation_code`: An `OperationCode` indicating the operation type associated with the block.
     /// - `private_key`: A `String` containing the private RSA key in PEM format, used to sign the block.
@@ -57,7 +57,7 @@ impl Block {
         id: u64,
         previous_hash: String,
         data: String,
-        bill_name: String,
+        bill_id: String,
         public_key: String,
         operation_code: OperationCode,
         private_key: String,
@@ -65,7 +65,7 @@ impl Block {
     ) -> Self {
         let hash: String = mine_block(
             &id,
-            &bill_name,
+            &bill_id,
             &previous_hash,
             &data,
             &timestamp,
@@ -76,7 +76,7 @@ impl Block {
 
         Self {
             id,
-            bill_name,
+            bill_id,
             hash,
             timestamp,
             previous_hash,
@@ -121,7 +121,7 @@ impl Block {
                 }
             }
             Endorse => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -153,21 +153,21 @@ impl Block {
                 let endorsee_bill_u8 = hex::decode(part_with_endorsee).unwrap();
                 let endorsee_bill: IdentityPublicData =
                     serde_json::from_slice(&endorsee_bill_u8).unwrap();
-                let endorsee_bill_name = endorsee_bill.node_id.clone();
-                if !endorsee_bill_name.is_empty() && !nodes.contains(&endorsee_bill_name) {
-                    nodes.push(endorsee_bill_name);
+                let endorsee_bill_id = endorsee_bill.node_id.clone();
+                if !endorsee_bill_id.is_empty() && !nodes.contains(&endorsee_bill_id) {
+                    nodes.push(endorsee_bill_id);
                 }
 
                 let endorser_bill_u8 = hex::decode(part_with_endorsed_by).unwrap();
                 let endorser_bill: IdentityPublicData =
                     serde_json::from_slice(&endorser_bill_u8).unwrap();
-                let endorser_bill_name = endorser_bill.node_id.clone();
-                if !endorser_bill_name.is_empty() && !nodes.contains(&endorser_bill_name) {
-                    nodes.push(endorser_bill_name);
+                let endorser_bill_id = endorser_bill.node_id.clone();
+                if !endorser_bill_id.is_empty() && !nodes.contains(&endorser_bill_id) {
+                    nodes.push(endorser_bill_id);
                 }
             }
             Mint => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -198,21 +198,21 @@ impl Block {
 
                 let mint_bill_u8 = hex::decode(part_with_mint).unwrap();
                 let mint_bill: IdentityPublicData = serde_json::from_slice(&mint_bill_u8).unwrap();
-                let mint_bill_name = mint_bill.node_id.clone();
-                if !mint_bill_name.is_empty() && !nodes.contains(&mint_bill_name) {
-                    nodes.push(mint_bill_name);
+                let mint_bill_id = mint_bill.node_id.clone();
+                if !mint_bill_id.is_empty() && !nodes.contains(&mint_bill_id) {
+                    nodes.push(mint_bill_id);
                 }
 
                 let minter_bill_u8 = hex::decode(part_with_minter).unwrap();
                 let minter_bill: IdentityPublicData =
                     serde_json::from_slice(&minter_bill_u8).unwrap();
-                let minter_bill_name = minter_bill.node_id.clone();
-                if !minter_bill_name.is_empty() && !nodes.contains(&minter_bill_name) {
-                    nodes.push(minter_bill_name);
+                let minter_bill_id = minter_bill.node_id.clone();
+                if !minter_bill_id.is_empty() && !nodes.contains(&minter_bill_id) {
+                    nodes.push(minter_bill_id);
                 }
             }
             RequestToAccept => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -228,15 +228,15 @@ impl Block {
                 let requester_to_accept_bill_u8 = hex::decode(part_with_identity).unwrap();
                 let requester_to_accept_bill: IdentityPublicData =
                     serde_json::from_slice(&requester_to_accept_bill_u8).unwrap();
-                let requester_to_accept_bill_name = requester_to_accept_bill.node_id.clone();
-                if !requester_to_accept_bill_name.is_empty()
-                    && !nodes.contains(&requester_to_accept_bill_name)
+                let requester_to_accept_bill_id = requester_to_accept_bill.node_id.clone();
+                if !requester_to_accept_bill_id.is_empty()
+                    && !nodes.contains(&requester_to_accept_bill_id)
                 {
-                    nodes.push(requester_to_accept_bill_name);
+                    nodes.push(requester_to_accept_bill_id);
                 }
             }
             Accept => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -252,13 +252,13 @@ impl Block {
                 let accepter_bill_u8 = hex::decode(part_with_identity).unwrap();
                 let accepter_bill: IdentityPublicData =
                     serde_json::from_slice(&accepter_bill_u8).unwrap();
-                let accepter_bill_name = accepter_bill.node_id.clone();
-                if !accepter_bill_name.is_empty() && !nodes.contains(&accepter_bill_name) {
-                    nodes.push(accepter_bill_name);
+                let accepter_bill_id = accepter_bill.node_id.clone();
+                if !accepter_bill_id.is_empty() && !nodes.contains(&accepter_bill_id) {
+                    nodes.push(accepter_bill_id);
                 }
             }
             RequestToPay => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -274,15 +274,15 @@ impl Block {
                 let requester_to_pay_bill_u8 = hex::decode(part_with_identity).unwrap();
                 let requester_to_pay_bill: IdentityPublicData =
                     serde_json::from_slice(&requester_to_pay_bill_u8).unwrap();
-                let requester_to_pay_bill_name = requester_to_pay_bill.node_id.clone();
-                if !requester_to_pay_bill_name.is_empty()
-                    && !nodes.contains(&requester_to_pay_bill_name)
+                let requester_to_pay_bill_id = requester_to_pay_bill.node_id.clone();
+                if !requester_to_pay_bill_id.is_empty()
+                    && !nodes.contains(&requester_to_pay_bill_id)
                 {
-                    nodes.push(requester_to_pay_bill_name);
+                    nodes.push(requester_to_pay_bill_id);
                 }
             }
             Sell => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -370,7 +370,7 @@ impl Block {
                 }
             }
             Endorse => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -399,7 +399,7 @@ impl Block {
                 endorser_bill.name + ", " + &endorser_bill.postal_address
             }
             Mint => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -430,7 +430,7 @@ impl Block {
             RequestToAccept => {
                 let time_of_request_to_accept = Utc.timestamp_opt(self.timestamp, 0).unwrap();
 
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -457,7 +457,7 @@ impl Block {
             Accept => {
                 let time_of_accept = Utc.timestamp_opt(self.timestamp, 0).unwrap();
 
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -482,7 +482,7 @@ impl Block {
             RequestToPay => {
                 let time_of_request_to_pay = Utc.timestamp_opt(self.timestamp, 0).unwrap();
 
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -506,7 +506,7 @@ impl Block {
                 )
             }
             Sell => {
-                let bill_keys = read_keys_from_bill_file(&self.bill_name);
+                let bill_keys = read_keys_from_bill_file(&self.bill_id);
                 let key: Rsa<Private> =
                     Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                 let bytes = hex::decode(self.data.clone()).unwrap();
@@ -575,7 +575,7 @@ impl Block {
 /// # Arguments
 ///
 /// - `id`: A reference to the unique identifier (`u64`) of the block.
-/// - `bill_name`: A reference to a string slice representing the name of the bill associated with the block.
+/// - `bill_id`: A reference to a string slice representing the name of the bill associated with the block.
 /// - `previous_hash`: A reference to a string slice containing the hash of the previous block in the chain.
 /// - `data`: A reference to a string slice containing the data to be stored in the block.
 /// - `timestamp`: A reference to an `i64` timestamp indicating when the block is being mined.
@@ -589,7 +589,7 @@ impl Block {
 
 fn mine_block(
     id: &u64,
-    bill_name: &str,
+    bill_id: &str,
     previous_hash: &str,
     data: &str,
     timestamp: &i64,
@@ -598,7 +598,7 @@ fn mine_block(
 ) -> String {
     let hash = calculate_hash(
         id,
-        bill_name,
+        bill_id,
         previous_hash,
         data,
         timestamp,

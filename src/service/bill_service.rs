@@ -113,24 +113,24 @@ pub trait BillServiceApi: Send + Sync {
     async fn get_bills(&self) -> Result<Vec<BitcreditBillToReturn>>;
 
     /// Gets the full bill for the given bill name
-    async fn get_full_bill(&self, bill_name: &str) -> Result<BitcreditBillToReturn>;
+    async fn get_full_bill(&self, bill_id: &str) -> Result<BitcreditBillToReturn>;
 
     /// Gets the bill for the given bill name
-    async fn get_bill(&self, bill_name: &str) -> Result<BitcreditBill>;
+    async fn get_bill(&self, bill_id: &str) -> Result<BitcreditBill>;
 
     /// Gets the blockchain for the given bill name
-    async fn get_blockchain_for_bill(&self, bill_name: &str) -> Result<Chain>;
+    async fn get_blockchain_for_bill(&self, bill_id: &str) -> Result<Chain>;
 
     /// Try to get the given bill from the dht and saves it locally, if found
-    async fn find_bill_in_dht(&self, bill_name: &str) -> Result<()>;
+    async fn find_bill_in_dht(&self, bill_id: &str) -> Result<()>;
 
     /// Gets the keys for a given bill
-    async fn get_bill_keys(&self, bill_name: &str) -> Result<BillKeys>;
+    async fn get_bill_keys(&self, bill_id: &str) -> Result<BillKeys>;
 
     /// opens and decrypts the attached file from the given bill
     async fn open_and_decrypt_attached_file(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         file_name: &str,
         bill_private_key: &str,
     ) -> Result<Vec<u8>>;
@@ -141,7 +141,7 @@ pub trait BillServiceApi: Send + Sync {
         &self,
         file_name: &str,
         file_bytes: &[u8],
-        bill_name: &str,
+        bill_id: &str,
         bill_public_key: &str,
     ) -> Result<File>;
 
@@ -165,31 +165,31 @@ pub trait BillServiceApi: Send + Sync {
     /// propagates the given bill to the DHT
     async fn propagate_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         drawer_node_id: &str,
         drawee_node_id: &str,
         payee_node_id: &str,
     ) -> Result<()>;
 
     /// propagates the given block to the DHT
-    async fn propagate_block(&self, bill_name: &str, block: &Block) -> Result<()>;
+    async fn propagate_block(&self, bill_id: &str, block: &Block) -> Result<()>;
 
     /// adds the given bill for the given node on the DHT
-    async fn propagate_bill_for_node(&self, bill_name: &str, node_id: &str) -> Result<()>;
+    async fn propagate_bill_for_node(&self, bill_id: &str, node_id: &str) -> Result<()>;
 
     /// accepts the given bill
-    async fn accept_bill(&self, bill_name: &str, timestamp: i64) -> Result<Chain>;
+    async fn accept_bill(&self, bill_id: &str, timestamp: i64) -> Result<Chain>;
 
     /// request pay for a bill
-    async fn request_pay(&self, bill_name: &str, timestamp: i64) -> Result<Chain>;
+    async fn request_pay(&self, bill_id: &str, timestamp: i64) -> Result<Chain>;
 
     /// request acceptance for a bill
-    async fn request_acceptance(&self, bill_name: &str, timestamp: i64) -> Result<Chain>;
+    async fn request_acceptance(&self, bill_id: &str, timestamp: i64) -> Result<Chain>;
 
     /// mint bitcredit bill
     async fn mint_bitcredit_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         mintnode: IdentityPublicData,
         timestamp: i64,
     ) -> Result<Chain>;
@@ -197,7 +197,7 @@ pub trait BillServiceApi: Send + Sync {
     /// sell bitcredit bill
     async fn sell_bitcredit_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         buyer: IdentityPublicData,
         timestamp: i64,
         amount_numbers: u64,
@@ -206,7 +206,7 @@ pub trait BillServiceApi: Send + Sync {
     /// endorse bitcredit bill
     async fn endorse_bitcredit_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         endorsee: IdentityPublicData,
         timestamp: i64,
     ) -> Result<Chain>;
@@ -266,7 +266,7 @@ impl BillService {
     /// mutating the chain
     async fn add_block_for_operation(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         blockchain: &mut Chain,
         timestamp: i64,
         operation_code: OperationCode,
@@ -275,7 +275,7 @@ impl BillService {
     ) -> Result<()> {
         let last_block = blockchain.get_latest_block();
 
-        let keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let key: Rsa<Private> = Rsa::private_key_from_pem(keys.private_key_pem.as_bytes())
             .map_err(|_| Error::Validation(String::from("invalid bill key")))?;
 
@@ -289,7 +289,7 @@ impl BillService {
             last_block.id + 1,
             last_block.hash.clone(),
             data_for_new_block_encrypted_in_string_format,
-            bill_name.to_owned(),
+            bill_id.to_owned(),
             identity.identity.public_key_pem,
             operation_code,
             identity.identity.private_key_pem,
@@ -299,7 +299,7 @@ impl BillService {
         let try_add_block = blockchain.try_add_block(new_block);
         if try_add_block && blockchain.is_chain_valid() {
             self.store
-                .write_blockchain_to_file(bill_name, blockchain.to_pretty_printed_json()?)
+                .write_blockchain_to_file(bill_id, blockchain.to_pretty_printed_json()?)
                 .await?;
             Ok(())
         } else {
@@ -378,10 +378,10 @@ impl BillServiceApi for BillService {
         Ok(res)
     }
 
-    async fn get_full_bill(&self, bill_name: &str) -> Result<BitcreditBillToReturn> {
+    async fn get_full_bill(&self, bill_id: &str) -> Result<BitcreditBillToReturn> {
         let identity = self.identity_store.get_full().await?;
-        let chain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let chain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = chain.get_last_version_bill(&bill_keys).await;
 
         let drawer = chain.get_drawer(&bill_keys);
@@ -507,37 +507,35 @@ impl BillServiceApi for BillService {
         })
     }
 
-    async fn get_bill(&self, bill_name: &str) -> Result<BitcreditBill> {
-        let chain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+    async fn get_bill(&self, bill_id: &str) -> Result<BitcreditBill> {
+        let chain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         Ok(chain.get_last_version_bill(&bill_keys).await)
     }
 
-    async fn get_blockchain_for_bill(&self, bill_name: &str) -> Result<Chain> {
-        let chain = self.store.read_bill_chain_from_file(bill_name).await?;
+    async fn get_blockchain_for_bill(&self, bill_id: &str) -> Result<Chain> {
+        let chain = self.store.read_bill_chain_from_file(bill_id).await?;
         Ok(chain)
     }
 
-    async fn find_bill_in_dht(&self, bill_name: &str) -> Result<()> {
-        let bill_bytes = self.client.clone().get_bill(bill_name).await?;
-        self.store
-            .write_bill_to_file(bill_name, &bill_bytes)
-            .await?;
+    async fn find_bill_in_dht(&self, bill_id: &str) -> Result<()> {
+        let bill_bytes = self.client.clone().get_bill(bill_id).await?;
+        self.store.write_bill_to_file(bill_id, &bill_bytes).await?;
         Ok(())
     }
 
-    async fn get_bill_keys(&self, bill_name: &str) -> Result<BillKeys> {
-        let keys = self.store.read_bill_keys_from_file(bill_name).await?;
+    async fn get_bill_keys(&self, bill_id: &str) -> Result<BillKeys> {
+        let keys = self.store.read_bill_keys_from_file(bill_id).await?;
         Ok(keys)
     }
 
     async fn open_and_decrypt_attached_file(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         file_name: &str,
         bill_private_key: &str,
     ) -> Result<Vec<u8>> {
-        let read_file = self.store.open_attached_file(bill_name, file_name).await?;
+        let read_file = self.store.open_attached_file(bill_id, file_name).await?;
         let decrypted =
             util::rsa::decrypt_bytes_with_private_key(&read_file, bill_private_key.to_owned());
         Ok(decrypted)
@@ -547,15 +545,15 @@ impl BillServiceApi for BillService {
         &self,
         file_name: &str,
         file_bytes: &[u8],
-        bill_name: &str,
+        bill_id: &str,
         bill_public_key: &str,
     ) -> Result<File> {
         let file_hash = util::sha256_hash(file_bytes);
         let encrypted = util::rsa::encrypt_bytes_with_public_key(file_bytes, bill_public_key);
         self.store
-            .save_attached_file(&encrypted, bill_name, file_name)
+            .save_attached_file(&encrypted, bill_id, file_name)
             .await?;
-        info!("Saved file {file_name} with hash {file_hash} for bill {bill_name}");
+        info!("Saved file {file_name} with hash {file_hash} for bill {bill_id}");
         Ok(File {
             name: file_name.to_owned(),
             hash: file_hash,
@@ -579,7 +577,7 @@ impl BillServiceApi for BillService {
     ) -> Result<BitcreditBill> {
         let (private_key, public_key) = util::create_bitcoin_keypair(*USERNETWORK);
 
-        let bill_name = util::sha256_hash(&public_key.to_bytes());
+        let bill_id = util::sha256_hash(&public_key.to_bytes());
 
         let private_key_bitcoin: String = private_key.to_string();
         let public_key_bitcoin: String = public_key.to_string();
@@ -591,7 +589,7 @@ impl BillServiceApi for BillService {
             .map_err(|e| Error::Cryptography(e.to_string()))?;
         self.store
             .write_bill_keys_to_file(
-                bill_name.clone(),
+                bill_id.clone(),
                 private_key_pem.clone(),
                 public_key_pem.clone(),
             )
@@ -618,7 +616,7 @@ impl BillServiceApi for BillService {
                     self.encrypt_and_save_uploaded_file(
                         &file_name,
                         &file_bytes,
-                        &bill_name,
+                        &bill_id,
                         &public_key_pem,
                     )
                     .await?,
@@ -627,7 +625,7 @@ impl BillServiceApi for BillService {
         }
 
         let bill = BitcreditBill {
-            name: bill_name,
+            name: bill_id,
             to_payee,
             bill_jurisdiction,
             timestamp_at_drawing: timestamp,
@@ -674,29 +672,29 @@ impl BillServiceApi for BillService {
         Ok(bill)
     }
 
-    async fn propagate_block(&self, bill_name: &str, block: &Block) -> Result<()> {
+    async fn propagate_block(&self, bill_id: &str, block: &Block) -> Result<()> {
         let block_bytes = serde_json::to_vec(block)?;
         let event = GossipsubEvent::new(GossipsubEventId::Block, block_bytes);
         let message = event.to_byte_array();
 
         self.client
             .clone()
-            .add_message_to_topic(message, bill_name.to_owned())
+            .add_message_to_topic(message, bill_id.to_owned())
             .await?;
         Ok(())
     }
 
-    async fn propagate_bill_for_node(&self, bill_name: &str, node_id: &str) -> Result<()> {
+    async fn propagate_bill_for_node(&self, bill_id: &str, node_id: &str) -> Result<()> {
         self.client
             .clone()
-            .add_bill_to_dht_for_node(bill_name, node_id)
+            .add_bill_to_dht_for_node(bill_id, node_id)
             .await?;
         Ok(())
     }
 
     async fn propagate_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         drawer_node_id: &str,
         drawee_node_id: &str,
         payee_node_id: &str,
@@ -705,22 +703,22 @@ impl BillServiceApi for BillService {
 
         for node in [drawer_node_id, drawee_node_id, payee_node_id] {
             if !node.is_empty() {
-                info!("issue bill: add {} for node {}", bill_name, &node);
-                client.add_bill_to_dht_for_node(bill_name, node).await?;
+                info!("issue bill: add {} for node {}", bill_id, &node);
+                client.add_bill_to_dht_for_node(bill_id, node).await?;
             }
         }
 
-        client.subscribe_to_topic(bill_name.to_owned()).await?;
+        client.subscribe_to_topic(bill_id.to_owned()).await?;
 
-        client.put(bill_name).await?;
+        client.put(bill_id).await?;
         Ok(())
     }
 
-    async fn accept_bill(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
+    async fn accept_bill(&self, bill_id: &str, timestamp: i64) -> Result<Chain> {
         let my_node_id = self.identity_store.get_node_id().await?.to_string();
-        let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
+        let mut blockchain = self.store.read_bill_chain_from_file(bill_id).await?;
 
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
         let accepted = blockchain.exist_block_with_operation_code(OperationCode::Accept);
@@ -737,7 +735,7 @@ impl BillServiceApi for BillService {
         let data_for_new_block =
             self.get_data_for_new_block(&identity, "Accepted by ", None, "")?;
         self.add_block_for_operation(
-            bill_name,
+            bill_id,
             &mut blockchain,
             timestamp,
             OperationCode::Accept,
@@ -748,10 +746,10 @@ impl BillServiceApi for BillService {
         Ok(blockchain)
     }
 
-    async fn request_pay(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
+    async fn request_pay(&self, bill_id: &str, timestamp: i64) -> Result<Chain> {
         let my_node_id = self.identity_store.get_node_id().await?.to_string();
-        let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let mut blockchain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
         if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
@@ -761,7 +759,7 @@ impl BillServiceApi for BillService {
             let data_for_new_block =
                 self.get_data_for_new_block(&identity, "Requested to pay by ", None, "")?;
             self.add_block_for_operation(
-                bill_name,
+                bill_id,
                 &mut blockchain,
                 timestamp,
                 OperationCode::RequestToPay,
@@ -774,10 +772,10 @@ impl BillServiceApi for BillService {
         Err(Error::CallerIsNotPayeeOrEndorsee)
     }
 
-    async fn request_acceptance(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
+    async fn request_acceptance(&self, bill_id: &str, timestamp: i64) -> Result<Chain> {
         let my_node_id = self.identity_store.get_node_id().await?.to_string();
-        let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let mut blockchain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
         if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
@@ -787,7 +785,7 @@ impl BillServiceApi for BillService {
             let data_for_new_block =
                 self.get_data_for_new_block(&identity, "Requested to accept by ", None, "")?;
             self.add_block_for_operation(
-                bill_name,
+                bill_id,
                 &mut blockchain,
                 timestamp,
                 OperationCode::RequestToAccept,
@@ -802,13 +800,13 @@ impl BillServiceApi for BillService {
 
     async fn mint_bitcredit_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         mintnode: IdentityPublicData,
         timestamp: i64,
     ) -> Result<Chain> {
         let my_node_id = self.identity_store.get_node_id().await?.to_string();
-        let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let mut blockchain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
         if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
@@ -822,7 +820,7 @@ impl BillServiceApi for BillService {
                 "",
             )?;
             self.add_block_for_operation(
-                bill_name,
+                bill_id,
                 &mut blockchain,
                 timestamp,
                 OperationCode::Mint,
@@ -837,14 +835,14 @@ impl BillServiceApi for BillService {
 
     async fn sell_bitcredit_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         buyer: IdentityPublicData,
         timestamp: i64,
         amount_numbers: u64,
     ) -> Result<Chain> {
         let my_node_id = self.identity_store.get_node_id().await?.to_string();
-        let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let mut blockchain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
         if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_or_sold())
@@ -858,7 +856,7 @@ impl BillServiceApi for BillService {
                 &format!(" amount: {amount_numbers}"),
             )?;
             self.add_block_for_operation(
-                bill_name,
+                bill_id,
                 &mut blockchain,
                 timestamp,
                 OperationCode::Sell,
@@ -873,13 +871,13 @@ impl BillServiceApi for BillService {
 
     async fn endorse_bitcredit_bill(
         &self,
-        bill_name: &str,
+        bill_id: &str,
         endorsee: IdentityPublicData,
         timestamp: i64,
     ) -> Result<Chain> {
         let my_node_id = self.identity_store.get_node_id().await?.to_string();
-        let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
+        let mut blockchain = self.store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.store.read_bill_keys_from_file(bill_id).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
         if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
@@ -893,7 +891,7 @@ impl BillServiceApi for BillService {
                 "",
             )?;
             self.add_block_for_operation(
-                bill_name,
+                bill_id,
                 &mut blockchain,
                 timestamp,
                 OperationCode::Endorse,
@@ -1071,7 +1069,7 @@ mod test {
         }
     }
 
-    fn get_baseline_bill(bill_name: &str) -> BitcreditBill {
+    fn get_baseline_bill(bill_id: &str) -> BitcreditBill {
         let mut bill = BitcreditBill::new_empty();
         let s = bitcoin::secp256k1::Secp256k1::new();
         let private_key = bitcoin::PrivateKey::new(
@@ -1083,13 +1081,13 @@ mod test {
         bill.payee = IdentityPublicData::new_empty();
         bill.payee.name = "payee".to_owned();
         bill.payee.bitcoin_public_key = public_key.to_string();
-        bill.name = bill_name.to_owned();
+        bill.name = bill_id.to_owned();
         bill.public_key = public_key.to_string();
         bill.private_key = private_key.to_string();
         bill
     }
 
-    fn get_genesis_chain(bill_name: &str, bill: Option<BitcreditBill>) -> Chain {
+    fn get_genesis_chain(bill_id: &str, bill: Option<BitcreditBill>) -> Chain {
         let bill = bill.unwrap_or(get_baseline_bill("some name"));
         let data = to_vec(&bill).unwrap();
         let key = Rsa::private_key_from_pem(TEST_PRIVATE_KEY.as_bytes()).unwrap();
@@ -1099,7 +1097,7 @@ mod test {
             123456,
             "prevhash".to_string(),
             encoded,
-            bill_name.to_string(),
+            bill_id.to_string(),
             TEST_PUB_KEY.to_owned(),
             OperationCode::Issue,
             TEST_PRIVATE_KEY.to_owned(),
@@ -1209,7 +1207,7 @@ mod test {
 
     #[tokio::test]
     async fn save_encrypt_open_decrypt_compare_hashes() {
-        let bill_name = "test_bill_name";
+        let bill_id = "test_bill_id";
         let file_name = "invoice_00000000-0000-0000-0000-000000000000.pdf";
         let file_bytes = String::from("hello world").as_bytes().to_vec();
         let expected_encrypted =
@@ -1218,19 +1216,19 @@ mod test {
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_save_attached_file()
-            .with(always(), eq(bill_name), eq(file_name))
+            .with(always(), eq(bill_id), eq(file_name))
             .times(1)
             .returning(|_, _, _| Ok(()));
 
         storage
             .expect_open_attached_file()
-            .with(eq(bill_name), eq(file_name))
+            .with(eq(bill_id), eq(file_name))
             .times(1)
             .returning(move |_, _| Ok(expected_encrypted.clone()));
         let service = get_service(storage);
 
         let bill_file = service
-            .encrypt_and_save_uploaded_file(file_name, &file_bytes, bill_name, TEST_PUB_KEY)
+            .encrypt_and_save_uploaded_file(file_name, &file_bytes, bill_id, TEST_PUB_KEY)
             .await
             .unwrap();
         assert_eq!(
@@ -1240,7 +1238,7 @@ mod test {
         assert_eq!(bill_file.name, String::from(file_name));
 
         let decrypted = service
-            .open_and_decrypt_attached_file(bill_name, file_name, TEST_PRIVATE_KEY)
+            .open_and_decrypt_attached_file(bill_id, file_name, TEST_PRIVATE_KEY)
             .await
             .unwrap();
         assert_eq!(str::from_utf8(&decrypted).unwrap(), "hello world");

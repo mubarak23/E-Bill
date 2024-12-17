@@ -260,35 +260,35 @@ impl EventLoop {
                 message_id: id,
                 message,
             })) => {
-                let bill_name = message.topic.clone().into_string();
-                info!("Got message with id: {id} from peer: {node_id} in topic: {bill_name}",);
+                let bill_id = message.topic.clone().into_string();
+                info!("Got message with id: {id} from peer: {node_id} in topic: {bill_id}",);
                 let event = GossipsubEvent::from_byte_array(&message.data);
 
                 if event.id.eq(&GossipsubEventId::Block) {
                     let block: Block =
                         serde_json::from_slice(&event.message).expect("Block are not valid.");
-                    let mut chain: Chain = Chain::read_chain_from_file(&bill_name);
+                    let mut chain: Chain = Chain::read_chain_from_file(&bill_id);
                     chain.try_add_block(block);
                     if chain.is_chain_valid() {
-                        chain.write_chain_to_file(&bill_name);
+                        chain.write_chain_to_file(&bill_id);
                     }
                 } else if event.id.eq(&GossipsubEventId::Chain) {
                     let receive_chain: Chain =
                         serde_json::from_slice(&event.message).expect("Chain are not valid.");
-                    let mut local_chain = Chain::read_chain_from_file(&bill_name);
-                    local_chain.compare_chain(receive_chain, &bill_name);
+                    let mut local_chain = Chain::read_chain_from_file(&bill_id);
+                    local_chain.compare_chain(receive_chain, &bill_id);
                 } else if event.id.eq(&GossipsubEventId::CommandGetChain) {
-                    let chain = Chain::read_chain_from_file(&bill_name);
+                    let chain = Chain::read_chain_from_file(&bill_id);
                     let chain_bytes = serde_json::to_vec(&chain).expect("Can not serialize chain.");
                     let event = GossipsubEvent::new(GossipsubEventId::Chain, chain_bytes);
                     let message = event.to_byte_array();
                     self.swarm
                         .behaviour_mut()
                         .gossipsub
-                        .publish(gossipsub::IdentTopic::new(bill_name.clone()), message)
+                        .publish(gossipsub::IdentTopic::new(bill_id.clone()), message)
                         .expect("Can not publish message.");
                 } else {
-                    warn!("Unknown event id: {id} from peer: {node_id} in topic: {bill_name}");
+                    warn!("Unknown event id: {id} from peer: {node_id} in topic: {bill_id}");
                 }
             }
             //--------------OTHERS BEHAVIOURS EVENTS--------------

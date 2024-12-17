@@ -115,11 +115,11 @@ impl Client {
             let record_in_dht = std::str::from_utf8(&value)?.to_string();
             let mut new_record: String = record_in_dht.clone();
 
-            let bill_names = self.bill_store.get_bill_names().await?;
-            for bill_name in bill_names {
-                if !record_in_dht.contains(&bill_name) {
-                    new_record += (",".to_string() + &bill_name.clone()).as_str();
-                    self.put(&bill_name).await?;
+            let bill_ids = self.bill_store.get_bill_ids().await?;
+            for bill_id in bill_ids {
+                if !record_in_dht.contains(&bill_id) {
+                    new_record += (",".to_string() + &bill_id.clone()).as_str();
+                    self.put(&bill_id).await?;
                 }
             }
             if !record_in_dht.eq(&new_record) {
@@ -127,14 +127,14 @@ impl Client {
             }
         } else {
             let mut new_record = String::new();
-            let bill_names = self.bill_store.get_bill_names().await?;
-            for bill_name in bill_names {
+            let bill_ids = self.bill_store.get_bill_ids().await?;
+            for bill_id in bill_ids {
                 if new_record.is_empty() {
-                    new_record = bill_name.clone();
-                    self.put(&bill_name).await?;
+                    new_record = bill_id.clone();
+                    self.put(&bill_id).await?;
                 } else {
-                    new_record += (",".to_string() + &bill_name.clone()).as_str();
-                    self.put(&bill_name).await?;
+                    new_record += (",".to_string() + &bill_id.clone()).as_str();
+                    self.put(&bill_id).await?;
                 }
             }
             if !new_record.is_empty() {
@@ -145,7 +145,7 @@ impl Client {
     }
 
     pub async fn start_providing_bills(&mut self) -> Result<()> {
-        let bills = self.bill_store.get_bill_names().await?;
+        let bills = self.bill_store.get_bill_ids().await?;
         for bill in bills {
             self.put(&bill).await?;
         }
@@ -189,18 +189,18 @@ impl Client {
         Ok(identity_public_data)
     }
 
-    pub async fn add_bill_to_dht_for_node(&mut self, bill_name: &str, node_id: &str) -> Result<()> {
+    pub async fn add_bill_to_dht_for_node(&mut self, bill_id: &str, node_id: &str) -> Result<()> {
         let node_request = BILLS_PREFIX.to_string() + node_id;
         let mut record_for_saving_in_dht;
         let list_bills_for_node = self.get_record(node_request.clone()).await?;
         let value = list_bills_for_node.value;
         if !value.is_empty() {
             record_for_saving_in_dht = std::str::from_utf8(&value)?.to_string();
-            if !record_for_saving_in_dht.contains(bill_name) {
-                record_for_saving_in_dht = record_for_saving_in_dht.to_string() + "," + bill_name;
+            if !record_for_saving_in_dht.contains(bill_id) {
+                record_for_saving_in_dht = record_for_saving_in_dht.to_string() + "," + bill_id;
             }
         } else {
-            record_for_saving_in_dht = bill_name.to_owned();
+            record_for_saving_in_dht = bill_id.to_owned();
         }
 
         if !std::str::from_utf8(&value)?
@@ -249,43 +249,43 @@ impl Client {
 
     /// Requests the given file for the given bill name, decrypting it, checking it's hash,
     /// encrypting it and saving it once it arrives
-    pub async fn get_bill_attachment(&mut self, bill_name: &str, file_name: &str) -> Result<()> {
+    pub async fn get_bill_attachment(&mut self, bill_id: &str, file_name: &str) -> Result<()> {
         // check if there is such a bill and if it contains this file
         let bill = self
             .bill_store
-            .read_bill_chain_from_file(bill_name)
+            .read_bill_chain_from_file(bill_id)
             .await?
             .get_first_version_bill();
         let local_hash = match bill.files.iter().find(|file| file.name.eq(file_name)) {
             None => {
-                return Err(super::Error::FileNotFoundInBill(format!("Get Bill Attachment: No file found in bill {bill_name} with file name {file_name}")));
+                return Err(super::Error::FileNotFoundInBill(format!("Get Bill Attachment: No file found in bill {bill_id} with file name {file_name}")));
             }
             Some(file) => &file.hash,
         };
 
         let local_node_id = self.identity_store.get_node_id().await?;
-        let mut providers = self.get_providers(bill_name.to_owned()).await?;
+        let mut providers = self.get_providers(bill_id.to_owned()).await?;
         providers.remove(&local_node_id);
         if providers.is_empty() {
             return Err(super::Error::NoProviders(format!(
-                "Get Bill Attachment: No providers found for {bill_name}",
+                "Get Bill Attachment: No providers found for {bill_id}",
             )));
         }
 
         let requests = providers.into_iter().map(|node_id| {
             let mut network_client = self.clone();
             let file_request =
-                file_request_for_bill_attachment(&local_node_id.to_string(), bill_name, file_name);
+                file_request_for_bill_attachment(&local_node_id.to_string(), bill_id, file_name);
             async move { network_client.request_file(node_id, file_request).await }.boxed()
         });
 
         match futures::future::select_ok(requests).await {
             Err(e) => Err(super::Error::NoFileFromProviders(format!(
-                "Get Bill Attachment: None of the providers returned the file for {bill_name}: {e}"
+                "Get Bill Attachment: None of the providers returned the file for {bill_id}: {e}"
             ))),
             Ok(file_content) => {
                 let bytes = file_content.0;
-                let keys = self.bill_store.read_bill_keys_from_file(bill_name).await?;
+                let keys = self.bill_store.read_bill_keys_from_file(bill_id).await?;
                 let pr_key = self
                     .identity_store
                     .get_full()
@@ -301,7 +301,7 @@ impl Client {
                 );
                 let remote_hash = util::sha256_hash(&decrypted_with_bill_key);
                 if local_hash != remote_hash.as_str() {
-                    return Err(super::Error::FileHashesDidNotMatch(format!("Get Bill Attachment: Hashes didn't match for bill {bill_name} and file name {file_name}, remote: {remote_hash}, local: {local_hash}")));
+                    return Err(super::Error::FileHashesDidNotMatch(format!("Get Bill Attachment: Hashes didn't match for bill {bill_id} and file name {file_name}, remote: {remote_hash}, local: {local_hash}")));
                 }
                 // encrypt with bill public key and save file locally
                 let encrypted = util::rsa::encrypt_bytes_with_public_key(
@@ -309,7 +309,7 @@ impl Client {
                     &keys.public_key_pem,
                 );
                 self.bill_store
-                    .save_attached_file(&encrypted, bill_name, file_name)
+                    .save_attached_file(&encrypted, bill_id, file_name)
                     .await?;
                 Ok(())
             }
@@ -449,8 +449,8 @@ impl Client {
                 match parsed {
                     // We can send the bill to anyone requesting it, since the content is encrypted
                     // and is useless without the keys
-                    ParsedInboundFileRequest::Bill(BillFileRequest { bill_name }) => {
-                        match self.bill_store.get_bill_as_bytes(&bill_name).await {
+                    ParsedInboundFileRequest::Bill(BillFileRequest { bill_id }) => {
+                        match self.bill_store.get_bill_as_bytes(&bill_id).await {
                             Err(e) => {
                                 error!("Could not handle inbound request {request}: {e}")
                             }
@@ -493,10 +493,10 @@ impl Client {
                     // We only send attachments (encrypted with the bill public key) to participants of the bill, encrypted with their public key
                     ParsedInboundFileRequest::BillAttachment(BillAttachmentFileRequest {
                         node_id,
-                        bill_name,
+                        bill_id,
                         file_name,
                     }) => {
-                        let chain = Chain::read_chain_from_file(&bill_name);
+                        let chain = Chain::read_chain_from_file(&bill_id);
                         if chain.bill_contains_node(&node_id) {
                             match self.get_identity_public_data_from_dht(node_id).await {
                                 Err(e) => {
@@ -507,7 +507,7 @@ impl Client {
 
                                     match self
                                         .bill_store
-                                        .open_attached_file(&bill_name, &file_name)
+                                        .open_attached_file(&bill_id, &file_name)
                                         .await
                                     {
                                         Err(e) => {

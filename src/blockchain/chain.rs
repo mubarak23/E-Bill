@@ -33,7 +33,7 @@ pub struct Chain {
 pub struct BlockForHistory {
     id: u64,
     text: String,
-    bill_name: String,
+    bill_id: String,
 }
 
 impl Chain {
@@ -47,15 +47,15 @@ impl Chain {
     /// Reads a blockchain from a file and deserializes it into a `Chain` object.
     /// # Returns
     /// Returns an instance of `Self` (typically a `Chain`) that is deserialized from the blockchain file.
-    pub fn read_chain_from_file(bill_name: &str) -> Self {
-        let input_path = get_path_for_bill(bill_name);
+    pub fn read_chain_from_file(bill_id: &str) -> Self {
+        let input_path = get_path_for_bill(bill_id);
 
         let blockchain_from_file = std::fs::read(input_path).expect("file not found");
         serde_json::from_slice(blockchain_from_file.as_slice()).unwrap()
     }
 
-    pub fn write_chain_to_file(&self, bill_name: &str) {
-        let output_path = get_path_for_bill(bill_name);
+    pub fn write_chain_to_file(&self, bill_id: &str) {
+        let output_path = get_path_for_bill(bill_id);
 
         std::fs::write(output_path, serde_json::to_string_pretty(&self).unwrap()).unwrap();
     }
@@ -356,7 +356,7 @@ impl Chain {
         if self.exist_block_with_operation_code(Sell.clone())
             && last_block.id == last_version_block_sell.id
         {
-            let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_name);
+            let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_id);
             let key: Rsa<Private> =
                 Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
             let bytes = hex::decode(last_version_block_sell.data.clone()).unwrap();
@@ -486,7 +486,7 @@ impl Chain {
         if self.exist_block_with_operation_code(Sell) {
             let last_version_block_sell = self.get_last_version_block_with_operation_code(Sell);
 
-            let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_name);
+            let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_id);
             let key: Rsa<Private> =
                 Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
             let bytes = hex::decode(last_version_block_sell.data.clone()).unwrap();
@@ -552,7 +552,7 @@ impl Chain {
     ) -> String {
         let public_key_bill = bitcoin::PublicKey::from_str(&bill.public_key).unwrap();
 
-        let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_name);
+        let bill_keys = read_keys_from_bill_file(&last_version_block_sell.bill_id);
         let key: Rsa<Private> =
             Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
         let bytes = hex::decode(last_version_block_sell.data.clone()).unwrap();
@@ -620,7 +620,7 @@ impl Chain {
 
     pub fn get_first_version_bill(&self) -> BitcreditBill {
         let first_block_data = &self.get_first_block();
-        let bill_keys = read_keys_from_bill_file(&first_block_data.bill_name);
+        let bill_keys = read_keys_from_bill_file(&first_block_data.bill_id);
         self.get_first_version_bill_with_keys(&bill_keys)
     }
 
@@ -653,10 +653,10 @@ impl Chain {
     /// # Parameters
     /// - `other_chain: Chain`  
     ///   The chain to compare and synchronize with.
-    /// - `bill_name: &str`  
+    /// - `bill_id: &str`  
     ///   The name of the bill, used to persist the updated chain to a file if synchronization is successful.
     ///
-    pub fn compare_chain(&mut self, other_chain: Chain, bill_name: &str) {
+    pub fn compare_chain(&mut self, other_chain: Chain, bill_id: &str) {
         let local_chain_last_id = self.get_latest_block().id;
         let other_chain_last_id = other_chain.get_latest_block().id;
         if local_chain_last_id.eq(&other_chain_last_id) {
@@ -668,7 +668,7 @@ impl Chain {
                 let block = other_chain.get_block_by_id(local_chain_last_id + block_id);
                 let try_add_block = self.try_add_block(block);
                 if try_add_block && self.is_chain_valid() {
-                    self.write_chain_to_file(bill_name);
+                    self.write_chain_to_file(bill_id);
                 } else {
                     return;
                 }
@@ -750,7 +750,7 @@ impl Chain {
                 Endorse => {
                     let block = self.get_block_by_id(block.id);
 
-                    let bill_keys = read_keys_from_bill_file(&block.bill_name);
+                    let bill_keys = read_keys_from_bill_file(&block.bill_id);
                     let key: Rsa<Private> =
                         Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                     let bytes = hex::decode(block.data.clone()).unwrap();
@@ -796,7 +796,7 @@ impl Chain {
                 Mint => {
                     let block = self.get_block_by_id(block.id);
 
-                    let bill_keys = read_keys_from_bill_file(&block.bill_name);
+                    let bill_keys = read_keys_from_bill_file(&block.bill_id);
                     let key: Rsa<Private> =
                         Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                     let bytes = hex::decode(block.data.clone()).unwrap();
@@ -842,7 +842,7 @@ impl Chain {
                 RequestToAccept => {
                     let block = self.get_block_by_id(block.id);
 
-                    let bill_keys = read_keys_from_bill_file(&block.bill_name);
+                    let bill_keys = read_keys_from_bill_file(&block.bill_id);
                     let key: Rsa<Private> =
                         Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                     let bytes = hex::decode(block.data.clone()).unwrap();
@@ -866,7 +866,7 @@ impl Chain {
                 Accept => {
                     let block = self.get_block_by_id(block.id);
 
-                    let bill_keys = read_keys_from_bill_file(&block.bill_name);
+                    let bill_keys = read_keys_from_bill_file(&block.bill_id);
                     let key: Rsa<Private> =
                         Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                     let bytes = hex::decode(block.data.clone()).unwrap();
@@ -890,7 +890,7 @@ impl Chain {
                 RequestToPay => {
                     let block = self.get_block_by_id(block.id);
 
-                    let bill_keys = read_keys_from_bill_file(&block.bill_name);
+                    let bill_keys = read_keys_from_bill_file(&block.bill_id);
                     let key: Rsa<Private> =
                         Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                     let bytes = hex::decode(block.data.clone()).unwrap();
@@ -914,7 +914,7 @@ impl Chain {
                 Sell => {
                     let block = self.get_block_by_id(block.id);
 
-                    let bill_keys = read_keys_from_bill_file(&block.bill_name);
+                    let bill_keys = read_keys_from_bill_file(&block.bill_id);
                     let key: Rsa<Private> =
                         Rsa::private_key_from_pem(bill_keys.private_key_pem.as_bytes()).unwrap();
                     let bytes = hex::decode(block.data.clone()).unwrap();
@@ -997,7 +997,7 @@ fn is_block_valid(block: &Block, previous_block: &Block) -> bool {
         return false;
     } else if hex::encode(calculate_hash(
         &block.id,
-        &block.bill_name,
+        &block.bill_id,
         &block.previous_hash,
         &block.data,
         &block.timestamp,
