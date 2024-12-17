@@ -161,7 +161,7 @@ impl CompanyServiceApi for CompanyService {
         };
 
         let identity = self.identity_store.get().await?;
-        let peer_id = self.identity_store.get_node_id().await?;
+        let node_id = self.identity_store.get_node_id().await?;
 
         let proof_of_registration_file = self
             .process_upload_file(
@@ -186,7 +186,7 @@ impl CompanyServiceApi for CompanyService {
             registration_date,
             proof_of_registration_file,
             logo_file,
-            signatories: vec![peer_id.to_string()], // add caller as signatory
+            signatories: vec![node_id.to_string()], // add caller as signatory
         };
         self.store.insert(&id, &company).await?;
 
@@ -220,10 +220,10 @@ impl CompanyServiceApi for CompanyService {
                 "No company with id: {id} found",
             )));
         }
-        let peer_id = self.identity_store.get_node_id().await?;
+        let node_id = self.identity_store.get_node_id().await?;
         let mut company = self.store.get(id).await?;
 
-        if !company.signatories.contains(&peer_id.to_string()) {
+        if !company.signatories.contains(&node_id.to_string()) {
             return Err(super::Error::Validation(String::from(
                 "Caller must be signatory for company",
             )));
@@ -306,12 +306,12 @@ impl CompanyServiceApi for CompanyService {
             )));
         }
 
-        let peer_id = self.identity_store.get_node_id().await?;
+        let node_id = self.identity_store.get_node_id().await?;
 
         company.signatories.retain(|i| i != &signatory_node_id);
         self.store.update(id, &company).await?;
 
-        if peer_id.to_string() == signatory_node_id {
+        if node_id.to_string() == signatory_node_id {
             info!("Removing self from company {id}");
             self.store.remove(id).await?;
         }

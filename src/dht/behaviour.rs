@@ -41,7 +41,7 @@ pub struct MyBehaviour {
 
 impl MyBehaviour {
     pub fn new(
-        local_peer_id: PeerId,
+        local_node_id: PeerId,
         local_public_key: Keypair,
         client: relay::client::Behaviour,
     ) -> Self {
@@ -54,8 +54,8 @@ impl MyBehaviour {
                 )
             },
             kademlia: {
-                let store = MemoryStore::new(local_peer_id);
-                Kademlia::new(local_peer_id, store)
+                let store = MemoryStore::new(local_node_id);
+                Kademlia::new(local_node_id, store)
             },
             identify: {
                 let cfg_identify =
@@ -70,7 +70,7 @@ impl MyBehaviour {
                     .expect("Correct configuration")
             },
             relay_client: { client },
-            dcutr: { dcutr::Behaviour::new(local_peer_id) },
+            dcutr: { dcutr::Behaviour::new(local_node_id) },
         }
     }
 

@@ -256,12 +256,12 @@ impl EventLoop {
 
             //--------------GOSSIPSUB EVENTS--------------
             SwarmEvent::Behaviour(ComposedEvent::Gossipsub(gossipsub::Event::Message {
-                propagation_source: peer_id,
+                propagation_source: node_id,
                 message_id: id,
                 message,
             })) => {
                 let bill_name = message.topic.clone().into_string();
-                info!("Got message with id: {id} from peer: {peer_id} in topic: {bill_name}",);
+                info!("Got message with id: {id} from peer: {node_id} in topic: {bill_name}",);
                 let event = GossipsubEvent::from_byte_array(&message.data);
 
                 if event.id.eq(&GossipsubEventId::Block) {
@@ -288,7 +288,7 @@ impl EventLoop {
                         .publish(gossipsub::IdentTopic::new(bill_name.clone()), message)
                         .expect("Can not publish message.");
                 } else {
-                    warn!("Unknown event id: {id} from peer: {peer_id} in topic: {bill_name}");
+                    warn!("Unknown event id: {id} from peer: {node_id} in topic: {bill_name}");
                 }
             }
             //--------------OTHERS BEHAVIOURS EVENTS--------------
@@ -321,8 +321,8 @@ impl EventLoop {
 
             SwarmEvent::OutgoingConnectionError { .. } => {
                 error!("OutgoingConnectionError event {event:?}");
-                // if let Some(peer_id) = peer_id {
-                //     if let Some(sender) = self.pending_dial.remove(&peer_id) {
+                // if let Some(node_id) = node_id {
+                //     if let Some(sender) = self.pending_dial.remove(&node_id) {
                 //         let _ = sender.send(Err(Box::new(error)));
                 //     }
                 // }
@@ -360,7 +360,7 @@ impl EventLoop {
                     expires: None,
                 };
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
+                let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
                     .to_string()
                     .parse()
                     .expect("Can not to parse relay peer id.");
@@ -370,7 +370,7 @@ impl EventLoop {
                     .behaviour_mut()
                     .kademlia
                     //TODO: what quorum use?
-                    .put_record_to(record, iter::once(relay_peer_id), Quorum::All);
+                    .put_record_to(record, iter::once(relay_node_id), Quorum::All);
             }
 
             Command::SendMessage { msg, topic } => {
@@ -416,14 +416,14 @@ impl EventLoop {
             } => {
                 info!("Request file {file_name:?}");
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
+                let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
                     .to_string()
                     .parse()
                     .expect("Can not to parse relay peer id.");
                 let relay_address = Multiaddr::empty()
                     .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
                     .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
-                    .with(Protocol::P2p(Multihash::from(relay_peer_id)))
+                    .with(Protocol::P2p(Multihash::from(relay_node_id)))
                     .with(Protocol::P2pCircuit)
                     .with(Protocol::P2p(Multihash::from(peer)));
 

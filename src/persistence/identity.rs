@@ -20,8 +20,8 @@ pub trait IdentityStoreApi: Send + Sync {
     async fn get(&self) -> Result<Identity>;
     /// Gets the local identity with it's peer id and key pair
     async fn get_full(&self) -> Result<IdentityWithAll>;
-    /// Saves the peer id
-    async fn save_peer_id(&self, peer_id: &PeerId) -> Result<()>;
+    /// Saves the node id
+    async fn save_node_id(&self, node_id: &PeerId) -> Result<()>;
     /// Gets the local peer id
     async fn get_node_id(&self) -> Result<PeerId>;
     /// Saves the given key pair
@@ -33,7 +33,7 @@ pub trait IdentityStoreApi: Send + Sync {
 #[derive(Clone)]
 pub struct FileBasedIdentityStore {
     identity_file: String,
-    peer_id_file: String,
+    node_id_file: String,
     key_pair_file: String,
 }
 
@@ -42,13 +42,13 @@ impl FileBasedIdentityStore {
         data_dir: &str,
         path: &str,
         identity_file_name: &str,
-        peer_id_file_name: &str,
+        node_id_file_name: &str,
         key_pair_file_name: &str,
     ) -> Result<Self> {
         let directory = file_storage_path(data_dir, path).await?;
         Ok(Self {
             identity_file: format!("{}/{}", directory, identity_file_name),
-            peer_id_file: format!("{}/{}", directory, peer_id_file_name),
+            node_id_file: format!("{}/{}", directory, node_id_file_name),
             key_pair_file: format!("{}/{}", directory, key_pair_file_name),
         })
     }
@@ -58,11 +58,11 @@ impl FileBasedIdentityStore {
 impl IdentityStoreApi for FileBasedIdentityStore {
     async fn exists(&self) -> bool {
         let identity_path = self.identity_file.clone();
-        let peer_id_path = self.peer_id_file.clone();
+        let node_id_path = self.node_id_file.clone();
         let key_pair_path = self.key_pair_file.clone();
         task::spawn_blocking(move || {
             Path::new(&identity_path).exists()
-                && Path::new(&peer_id_path).exists()
+                && Path::new(&node_id_path).exists()
                 && Path::new(&key_pair_path).exists()
         })
         .await
@@ -103,16 +103,16 @@ impl IdentityStoreApi for FileBasedIdentityStore {
         Ok(())
     }
 
-    async fn save_peer_id(&self, peer_id: &PeerId) -> Result<()> {
-        let data = peer_id.to_bytes();
-        fs::write(&self.peer_id_file, &data).await?;
+    async fn save_node_id(&self, node_id: &PeerId) -> Result<()> {
+        let data = node_id.to_bytes();
+        fs::write(&self.node_id_file, &data).await?;
         Ok(())
     }
 
     async fn get_node_id(&self) -> Result<PeerId> {
-        let data = fs::read(&self.peer_id_file).await?;
-        let peer_id = PeerId::from_bytes(&data)?;
-        Ok(peer_id)
+        let data = fs::read(&self.node_id_file).await?;
+        let node_id = PeerId::from_bytes(&data)?;
+        Ok(node_id)
     }
 
     async fn save_key_pair(&self, key_pair: &Keypair) -> Result<()> {

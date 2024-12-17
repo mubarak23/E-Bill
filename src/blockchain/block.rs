@@ -322,17 +322,17 @@ impl Block {
                 let buyer_bill_u8 = hex::decode(part_with_buyer).unwrap();
                 let buyer_bill: IdentityPublicData =
                     serde_json::from_slice(&buyer_bill_u8).unwrap();
-                let buyer_peer_id = buyer_bill.node_id.clone();
-                if !buyer_peer_id.is_empty() && !nodes.contains(&buyer_peer_id) {
-                    nodes.push(buyer_peer_id);
+                let buyer_node_id = buyer_bill.node_id.clone();
+                if !buyer_node_id.is_empty() && !nodes.contains(&buyer_node_id) {
+                    nodes.push(buyer_node_id);
                 }
 
                 let seller_bill_u8 = hex::decode(part_with_seller).unwrap();
                 let seller_bill: IdentityPublicData =
                     serde_json::from_slice(&seller_bill_u8).unwrap();
-                let seller_bill_peer_id = seller_bill.node_id.clone();
-                if !seller_bill_peer_id.is_empty() && !nodes.contains(&seller_bill_peer_id) {
-                    nodes.push(seller_bill_peer_id);
+                let seller_bill_node_id = seller_bill.node_id.clone();
+                if !seller_bill_node_id.is_empty() && !nodes.contains(&seller_bill_node_id) {
+                    nodes.push(seller_bill_node_id);
                 }
             }
         }

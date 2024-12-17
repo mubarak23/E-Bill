@@ -166,9 +166,9 @@ pub trait BillServiceApi: Send + Sync {
     async fn propagate_bill(
         &self,
         bill_name: &str,
-        drawer_peer_id: &str,
-        drawee_peer_id: &str,
-        payee_peer_id: &str,
+        drawer_node_id: &str,
+        drawee_node_id: &str,
+        payee_node_id: &str,
     ) -> Result<()>;
 
     /// propagates the given block to the DHT
@@ -697,13 +697,13 @@ impl BillServiceApi for BillService {
     async fn propagate_bill(
         &self,
         bill_name: &str,
-        drawer_peer_id: &str,
-        drawee_peer_id: &str,
-        payee_peer_id: &str,
+        drawer_node_id: &str,
+        drawee_node_id: &str,
+        payee_node_id: &str,
     ) -> Result<()> {
         let mut client = self.client.clone();
 
-        for node in [drawer_peer_id, drawee_peer_id, payee_peer_id] {
+        for node in [drawer_node_id, drawee_node_id, payee_node_id] {
             if !node.is_empty() {
                 info!("issue bill: add {} for node {}", bill_name, &node);
                 client.add_bill_to_dht_for_node(bill_name, node).await?;
@@ -717,7 +717,7 @@ impl BillServiceApi for BillService {
     }
 
     async fn accept_bill(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
-        let my_peer_id = self.identity_store.get_node_id().await?.to_string();
+        let my_node_id = self.identity_store.get_node_id().await?.to_string();
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
 
         let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
@@ -729,7 +729,7 @@ impl BillServiceApi for BillService {
             return Err(Error::BillAlreadyAccepted);
         }
 
-        if !bill.drawee.node_id.eq(&my_peer_id) {
+        if !bill.drawee.node_id.eq(&my_node_id) {
             return Err(Error::CallerIsNotDrawee);
         }
 
@@ -749,13 +749,13 @@ impl BillServiceApi for BillService {
     }
 
     async fn request_pay(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
-        let my_peer_id = self.identity_store.get_node_id().await?.to_string();
+        let my_node_id = self.identity_store.get_node_id().await?.to_string();
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
-        if (my_peer_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
-            || (my_peer_id.eq(&bill.endorsee.node_id))
+        if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
+            || (my_node_id.eq(&bill.endorsee.node_id))
         {
             let identity = self.identity_store.get_full().await?;
             let data_for_new_block =
@@ -775,13 +775,13 @@ impl BillServiceApi for BillService {
     }
 
     async fn request_acceptance(&self, bill_name: &str, timestamp: i64) -> Result<Chain> {
-        let my_peer_id = self.identity_store.get_node_id().await?.to_string();
+        let my_node_id = self.identity_store.get_node_id().await?.to_string();
         let mut blockchain = self.store.read_bill_chain_from_file(bill_name).await?;
         let bill_keys = self.store.read_bill_keys_from_file(bill_name).await?;
         let bill = blockchain.get_last_version_bill(&bill_keys).await;
 
-        if (my_peer_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
-            || (my_peer_id.eq(&bill.endorsee.node_id))
+        if (my_node_id.eq(&bill.payee.node_id) && !blockchain.has_been_endorsed_sold_or_minted())
+            || (my_node_id.eq(&bill.endorsee.node_id))
         {
             let identity = self.identity_store.get_full().await?;
             let data_for_new_block =
@@ -1066,7 +1066,7 @@ mod test {
         identity.private_key_pem = TEST_PRIVATE_KEY.to_owned();
         IdentityWithAll {
             identity,
-            peer_id: PeerId::random(),
+            node_id: PeerId::random(),
             key_pair: Keypair::generate_ed25519(),
         }
     }
@@ -1180,7 +1180,7 @@ mod test {
         identity.public_key_pem = TEST_PUB_KEY.to_owned();
         let drawer = IdentityWithAll {
             identity,
-            peer_id: PeerId::random(),
+            node_id: PeerId::random(),
             key_pair: Keypair::generate_ed25519(),
         };
         let drawee = IdentityPublicData::new_empty();

@@ -143,8 +143,8 @@ async fn new(
 ) -> Result<(Client, Receiver<Event>, EventLoop)> {
     if !identity_store.exists().await {
         let ed25519_keys = Keypair::generate_ed25519();
-        let peer_id = ed25519_keys.public().to_peer_id();
-        identity_store.save_peer_id(&peer_id).await?;
+        let node_id = ed25519_keys.public().to_peer_id();
+        identity_store.save_node_id(&node_id).await?;
         identity_store.save_key_pair(&ed25519_keys).await?;
     }
 
@@ -199,11 +199,11 @@ async fn new(
         }
     }
 
-    let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID.to_string().parse()?;
+    let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID.to_string().parse()?;
     let relay_address = Multiaddr::empty()
         .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
         .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
-        .with(Protocol::P2p(Multihash::from(relay_peer_id)));
+        .with(Protocol::P2p(Multihash::from(relay_node_id)));
     info!("Relay address: {:?}", relay_address);
 
     swarm.dial(relay_address.clone())?;

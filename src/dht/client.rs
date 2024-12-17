@@ -263,20 +263,20 @@ impl Client {
             Some(file) => &file.hash,
         };
 
-        let local_peer_id = self.identity_store.get_node_id().await?;
+        let local_node_id = self.identity_store.get_node_id().await?;
         let mut providers = self.get_providers(bill_name.to_owned()).await?;
-        providers.remove(&local_peer_id);
+        providers.remove(&local_node_id);
         if providers.is_empty() {
             return Err(super::Error::NoProviders(format!(
                 "Get Bill Attachment: No providers found for {bill_name}",
             )));
         }
 
-        let requests = providers.into_iter().map(|peer_id| {
+        let requests = providers.into_iter().map(|node_id| {
             let mut network_client = self.clone();
             let file_request =
-                file_request_for_bill_attachment(&local_peer_id.to_string(), bill_name, file_name);
-            async move { network_client.request_file(peer_id, file_request).await }.boxed()
+                file_request_for_bill_attachment(&local_node_id.to_string(), bill_name, file_name);
+            async move { network_client.request_file(node_id, file_request).await }.boxed()
         });
 
         match futures::future::select_ok(requests).await {

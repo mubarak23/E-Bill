@@ -17,7 +17,7 @@ pub trait IdentityServiceApi: Send + Sync {
     async fn get_full_identity(&self) -> Result<IdentityWithAll>;
     /// Gets the local identity
     async fn get_identity(&self) -> Result<Identity>;
-    /// Gets the local peer_id
+    /// Gets the local node_id
     async fn get_node_id(&self) -> Result<PeerId>;
     /// Checks if the identity has been created
     async fn identity_exists(&self) -> bool;
@@ -272,20 +272,20 @@ mod test {
     }
 
     #[tokio::test]
-    async fn get_peer_id_calls_storage() {
-        let peer_id = PeerId::random();
+    async fn get_node_id_calls_storage() {
+        let node_id = PeerId::random();
         let mut storage = MockIdentityStoreApi::new();
-        storage.expect_get_peer_id().returning(move || Ok(peer_id));
+        storage.expect_get_peer_id().returning(move || Ok(node_id));
 
         let service = get_service(storage);
         let res = service.get_node_id().await;
 
         assert!(res.is_ok());
-        assert_eq!(res.unwrap(), peer_id);
+        assert_eq!(res.unwrap(), node_id);
     }
 
     #[tokio::test]
-    async fn get_peer_id_propagates_errors() {
+    async fn get_node_id_propagates_errors() {
         let mut storage = MockIdentityStoreApi::new();
         storage.expect_get_peer_id().returning(|| {
             Err(persistence::Error::Io(std::io::Error::new(
