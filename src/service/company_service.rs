@@ -567,7 +567,7 @@ mod test {
             Ok(identity)
         });
         identity_store
-            .expect_get_peer_id()
+            .expect_get_node_id()
             .returning(|| Ok(PeerId::random()));
         file_upload_store
             .expect_read_temp_upload_files()
@@ -630,7 +630,7 @@ mod test {
             Ok(identity)
         });
         identity_store
-            .expect_get_peer_id()
+            .expect_get_node_id()
             .returning(|| Ok(PeerId::random()));
         let service = get_service(storage, file_upload_store, identity_store, contact_store);
         let res = service
@@ -651,12 +651,12 @@ mod test {
 
     #[tokio::test]
     async fn edit_company_baseline() {
-        let peer_id = PeerId::random();
+        let node_id = PeerId::random();
         let (mut storage, mut file_upload_store, mut identity_store, contact_store) =
             get_storages();
         storage.expect_get().returning(move |_| {
             let mut data = get_baseline_company_data().1 .0;
-            data.signatories = vec![peer_id.to_string()];
+            data.signatories = vec![node_id.to_string()];
             Ok(data)
         });
         storage.expect_exists().returning(|_| true);
@@ -665,8 +665,8 @@ mod test {
             .expect_save_attached_file()
             .returning(|_, _, _| Ok(()));
         identity_store
-            .expect_get_peer_id()
-            .returning(move || Ok(peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(node_id));
         identity_store.expect_get().returning(|| {
             let mut identity = Identity::new_empty();
             identity.public_key_pem = TEST_PUB_KEY.to_string();
@@ -715,7 +715,7 @@ mod test {
 
     #[tokio::test]
     async fn edit_company_fails_if_caller_is_not_signatory() {
-        let peer_id = PeerId::random();
+        let node_id = PeerId::random();
         let (mut storage, file_upload_store, mut identity_store, contact_store) = get_storages();
         storage.expect_exists().returning(|_| false);
         storage.expect_get().returning(|_| {
@@ -724,8 +724,8 @@ mod test {
             Ok(data)
         });
         identity_store
-            .expect_get_peer_id()
-            .returning(move || Ok(peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(node_id));
         let service = get_service(storage, file_upload_store, identity_store, contact_store);
         let res = service
             .edit_company(
@@ -742,10 +742,10 @@ mod test {
     #[tokio::test]
     async fn edit_company_propagates_persistence_errors() {
         let (mut storage, file_upload_store, mut identity_store, contact_store) = get_storages();
-        let peer_id = PeerId::random();
+        let node_id = PeerId::random();
         storage.expect_get().returning(move |_| {
             let mut data = get_baseline_company_data().1 .0;
-            data.signatories = vec![peer_id.to_string()];
+            data.signatories = vec![node_id.to_string()];
             Ok(data)
         });
         storage.expect_exists().returning(|_| true);
@@ -761,8 +761,8 @@ mod test {
             Ok(identity)
         });
         identity_store
-            .expect_get_peer_id()
-            .returning(move || Ok(peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(node_id));
         let service = get_service(storage, file_upload_store, identity_store, contact_store);
         let res = service
             .edit_company(
@@ -784,7 +784,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -830,7 +830,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -853,7 +853,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -885,7 +885,7 @@ mod test {
             Ok(data)
         });
         identity_store
-            .expect_get_peer_id()
+            .expect_get_node_id()
             .returning(|| Ok(PeerId::random()));
         storage.expect_update().returning(|_, _| Ok(()));
         let service = get_service(storage, file_upload_store, identity_store, contact_store);
@@ -908,23 +908,23 @@ mod test {
 
     #[tokio::test]
     async fn remove_signatory_removing_self_removes_company() {
-        let peer_id = PeerId::random();
+        let node_id = PeerId::random();
         let (mut storage, file_upload_store, mut identity_store, contact_store) = get_storages();
         storage.expect_exists().returning(|_| true);
         storage.expect_get().returning(move |_| {
             let mut data = get_baseline_company_data().1 .0;
             data.signatories.push("the founder".to_string());
-            data.signatories.push(peer_id.to_string());
+            data.signatories.push(node_id.to_string());
             Ok(data)
         });
         identity_store
-            .expect_get_peer_id()
-            .returning(move || Ok(peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(node_id));
         storage.expect_update().returning(|_, _| Ok(()));
         storage.expect_remove().returning(|_| Ok(()));
         let service = get_service(storage, file_upload_store, identity_store, contact_store);
         let res = service
-            .remove_signatory("some_id", peer_id.to_string())
+            .remove_signatory("some_id", node_id.to_string())
             .await;
         assert!(res.is_ok());
     }
@@ -975,7 +975,7 @@ mod test {
             Ok(data)
         });
         identity_store
-            .expect_get_peer_id()
+            .expect_get_node_id()
             .returning(|| Ok(PeerId::random()));
         storage.expect_update().returning(|_, _| {
             Err(persistence::Error::Io(std::io::Error::new(

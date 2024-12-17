@@ -275,7 +275,7 @@ mod test {
     async fn get_node_id_calls_storage() {
         let node_id = PeerId::random();
         let mut storage = MockIdentityStoreApi::new();
-        storage.expect_get_peer_id().returning(move || Ok(node_id));
+        storage.expect_get_node_id().returning(move || Ok(node_id));
 
         let service = get_service(storage);
         let res = service.get_node_id().await;
@@ -287,7 +287,7 @@ mod test {
     #[tokio::test]
     async fn get_node_id_propagates_errors() {
         let mut storage = MockIdentityStoreApi::new();
-        storage.expect_get_peer_id().returning(|| {
+        storage.expect_get_node_id().returning(|| {
             Err(persistence::Error::Io(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "test error",
@@ -373,7 +373,7 @@ mod test {
     async fn get_full_identity_calls_storage() {
         let identity = IdentityWithAll {
             identity: Identity::new_empty(),
-            peer_id: PeerId::random(),
+            node_id: PeerId::random(),
             key_pair: Keypair::generate_ed25519(),
         };
         let arced = Arc::new(identity.clone());

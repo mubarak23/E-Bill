@@ -1491,8 +1491,8 @@ mod test {
     async fn get_full_bill_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.drawee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
-        let drawee_peer_id = bill.drawee.peer_id.clone();
+        bill.drawee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
+        let drawee_node_id = bill.drawee.node_id.clone();
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1505,8 +1505,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1515,14 +1515,14 @@ mod test {
         let res = service.get_full_bill("some name").await;
         assert!(res.is_ok());
         assert_eq!(res.as_ref().unwrap().name, "some name".to_string());
-        assert_eq!(res.as_ref().unwrap().drawee.peer_id, drawee_peer_id);
+        assert_eq!(res.as_ref().unwrap().drawee.node_id, drawee_node_id);
     }
 
     #[tokio::test]
     async fn accept_bill_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.drawee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.drawee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_blockchain_to_file()
@@ -1538,8 +1538,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1555,7 +1555,7 @@ mod test {
     async fn accept_bill_fails_if_drawee_not_caller() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.drawee = IdentityPublicData::new_only_peer_id(PeerId::random().to_string());
+        bill.drawee = IdentityPublicData::new_only_node_id(PeerId::random().to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1568,8 +1568,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service.accept_bill("some name", 1731593928).await;
@@ -1580,7 +1580,7 @@ mod test {
     async fn accept_bill_fails_if_already_accepted() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.drawee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.drawee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1604,8 +1604,8 @@ mod test {
             .returning(move |_| Ok(chain.clone()));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service.accept_bill("some name", 1731593928).await;
@@ -1616,7 +1616,7 @@ mod test {
     async fn request_pay_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_blockchain_to_file()
@@ -1632,8 +1632,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1649,7 +1649,7 @@ mod test {
     async fn request_pay_fails_if_payee_not_caller() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(PeerId::random().to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(PeerId::random().to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1662,8 +1662,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service.request_pay("some name", 1731593928).await;
@@ -1674,7 +1674,7 @@ mod test {
     async fn request_acceptance_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_blockchain_to_file()
@@ -1690,8 +1690,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1707,7 +1707,7 @@ mod test {
     async fn request_acceptance_fails_if_payee_not_caller() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(PeerId::random().to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(PeerId::random().to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1720,8 +1720,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service.request_acceptance("some name", 1731593928).await;
@@ -1732,7 +1732,7 @@ mod test {
     async fn mint_bitcredit_bill_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_blockchain_to_file()
@@ -1748,8 +1748,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1767,7 +1767,7 @@ mod test {
     async fn mint_bitcredit_bill_fails_if_payee_not_caller() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(PeerId::random().to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(PeerId::random().to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1780,8 +1780,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service
@@ -1794,7 +1794,7 @@ mod test {
     async fn sell_bitcredit_bill_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_blockchain_to_file()
@@ -1810,8 +1810,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1834,7 +1834,7 @@ mod test {
     async fn sell_bitcredit_bill_fails_if_payee_not_caller() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(PeerId::random().to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(PeerId::random().to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1847,8 +1847,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service
@@ -1866,7 +1866,7 @@ mod test {
     async fn endorse_bitcredit_bill_baseline() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(identity.peer_id.to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(identity.node_id.to_string());
         let mut storage = MockBillStoreApi::new();
         storage
             .expect_write_blockchain_to_file()
@@ -1882,8 +1882,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
@@ -1901,7 +1901,7 @@ mod test {
     async fn endorse_bitcredit_bill_fails_if_payee_not_caller() {
         let identity = get_baseline_identity();
         let mut bill = get_baseline_bill("some name");
-        bill.payee = IdentityPublicData::new_only_peer_id(PeerId::random().to_string());
+        bill.payee = IdentityPublicData::new_only_node_id(PeerId::random().to_string());
         let mut storage = MockBillStoreApi::new();
         storage.expect_read_bill_keys_from_file().returning(|_| {
             Ok(BillKeys {
@@ -1914,8 +1914,8 @@ mod test {
             .returning(move |_| Ok(get_genesis_chain("some name", Some(bill.clone()))));
         let mut identity_storage = MockIdentityStoreApi::new();
         identity_storage
-            .expect_get_peer_id()
-            .returning(move || Ok(identity.peer_id));
+            .expect_get_node_id()
+            .returning(move || Ok(identity.node_id));
         let service = get_service_with_identity_store(storage, identity_storage);
 
         let res = service

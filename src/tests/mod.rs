@@ -161,17 +161,17 @@ HnZAVCxlGQ7ooHRIxJnp09ogDo7cDIevyMn1VmIZDm9JR1TUL6pbsg==
     // #[test]
     // fn test_new_bill_enc() {
     //     let public_data_drawee = IdentityPublicData {
-    //         peer_id: "".to_string(),
+    //         node_id: "".to_string(),
     //         name: "bill.drawee_name".to_string(),
     //         bitcoin_public_key: "".to_string(),
     //         postal_address: "".to_string(),
     //         email: "".to_string(),
     //     };
     //
-    //     let peer_id = read_peer_id_from_file().to_string();
+    //     let node_id = read_node_id_from_file().to_string();
     //
     //     let public_data_payee = IdentityPublicData {
-    //         peer_id: peer_id,
+    //         node_id: node_id,
     //         name: "bill.payee_name".to_string(),
     //         bitcoin_public_key: "".to_string(),
     //         postal_address: "".to_string(),
@@ -199,10 +199,10 @@ HnZAVCxlGQ7ooHRIxJnp09ogDo7cDIevyMn1VmIZDm9JR1TUL6pbsg==
 
     // #[test]
     // fn test_new_bill_end() {
-    //     let peer_id = read_peer_id_from_file().to_string();
+    //     let node_id = read_node_id_from_file().to_string();
     //
     //     let public_data_drawee = IdentityPublicData {
-    //         peer_id,
+    //         node_id,
     //         name: "bill.drawee_name".to_string(),
     //         bitcoin_public_key: "".to_string(),
     //         postal_address: "".to_string(),
@@ -452,27 +452,27 @@ HnZAVCxlGQ7ooHRIxJnp09ogDo7cDIevyMn1VmIZDm9JR1TUL6pbsg==
     }
 
     #[test]
-    fn peer_id_and_keypair_serialization_and_deserialization() {
+    fn node_id_and_keypair_serialization_and_deserialization() {
         let ed25519_keys = Keypair::generate_ed25519();
-        let peer_id = PeerId::from(ed25519_keys.public());
+        let node_id = PeerId::from(ed25519_keys.public());
 
         let bytes_ed25519_keys = ed25519_keys.to_protobuf_encoding().unwrap();
-        let bytes_peer_id = peer_id.to_bytes();
+        let bytes_node_id = node_id.to_bytes();
 
         if !Path::new("test").exists() {
             fs::create_dir("test").expect("Can't create folder.");
         }
 
         fs::write("test/keys", bytes_ed25519_keys).expect("Unable to write keys in file");
-        fs::write("test/peer_id", bytes_peer_id).expect("Unable to write peer id in file");
+        fs::write("test/node_id", bytes_node_id).expect("Unable to write peer id in file");
 
         let data_key = fs::read("test/keys").expect("Unable to read file with keypair");
         let key_pair_deserialized = Keypair::from_protobuf_encoding(&data_key).unwrap();
         assert_eq!(ed25519_keys.public(), key_pair_deserialized.public());
 
-        let data_peer_id = fs::read("test/peer_id").expect("Unable to read file with peer_id");
-        let peer_id_deserialized = PeerId::from_bytes(&data_peer_id).unwrap();
-        assert_eq!(peer_id, peer_id_deserialized);
+        let data_node_id = fs::read("test/node_id").expect("Unable to read file with node_id");
+        let node_id_deserialized = PeerId::from_bytes(&data_node_id).unwrap();
+        assert_eq!(node_id, node_id_deserialized);
     }
 
     // #[test]

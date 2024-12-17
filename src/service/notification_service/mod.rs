@@ -120,10 +120,10 @@ mod tests {
         let mut mock = MockNotificationJsonTransportApi::new();
         mock.expect_send()
             .withf(|r, e| {
-                let valid_peer_id = r.peer_id == "payer" && e.peer_id == "payer";
+                let valid_node_id = r.node_id == "payer" && e.node_id == "payer";
                 let valid_event_type = e.event_type == EventType::BillSigned;
                 let event: Event<BillActionEventPayload> = e.clone().try_into().unwrap();
-                valid_peer_id
+                valid_node_id
                     && valid_event_type
                     && event.data.action_type == ActionType::ApproveBill
             })
@@ -131,10 +131,10 @@ mod tests {
 
         mock.expect_send()
             .withf(|r, e| {
-                let valid_peer_id = r.peer_id == "payee" && e.peer_id == "payee";
+                let valid_node_id = r.node_id == "payee" && e.node_id == "payee";
                 let valid_event_type = e.event_type == EventType::BillSigned;
                 let event: Event<BillActionEventPayload> = e.clone().try_into().unwrap();
-                valid_peer_id && valid_event_type && event.data.action_type == ActionType::CheckBill
+                valid_node_id && valid_event_type && event.data.action_type == ActionType::CheckBill
             })
             .returning(|_, _| Ok(()));
 
