@@ -104,7 +104,7 @@ impl BillBlock {
             &timestamp,
             &keys.get_public_key(),
             &operation_code,
-        );
+        )?;
         let signature = crypto::signature(&hash, &keys.get_private_key_string())?;
 
         Ok(Self {
@@ -128,7 +128,7 @@ impl BillBlock {
 
     /// Decrypts the block data using the bill's private key, returning the raw bytes
     pub fn get_decrypted_block_bytes(&self, bill_keys: &BillKeys) -> Result<Vec<u8>> {
-        let bytes = hex::decode(&self.data)?;
+        let bytes = util::base58_decode(&self.data)?;
         let decrypted_bytes =
             rsa::decrypt_bytes_with_private_key(&bytes, &bill_keys.private_key_pem)?;
         Ok(decrypted_bytes)
@@ -167,7 +167,7 @@ impl BillBlock {
             Endorse => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let endorsee: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let endorsee: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_TO).ok_or(
                         Error::InvalidBlockdata(String::from("Endorse: No endorsee found")),
                     )?,
@@ -177,7 +177,7 @@ impl BillBlock {
                     nodes.insert(endorsee_node_id);
                 }
 
-                let endorser: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let endorser: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Endorse: No endorser found")),
                     )?,
@@ -190,7 +190,7 @@ impl BillBlock {
             Mint => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let mint: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let mint: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_TO)
                         .ok_or(Error::InvalidBlockdata(String::from("Mint: No mint found")))?,
                 )?)?;
@@ -199,7 +199,7 @@ impl BillBlock {
                     nodes.insert(mint_node_id);
                 }
 
-                let minter: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let minter: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Mint: No minter found")),
                     )?,
@@ -212,7 +212,7 @@ impl BillBlock {
             RequestToAccept => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let requester: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let requester: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, REQ_TO_ACCEPT_BY).ok_or(
                         Error::InvalidBlockdata(String::from(
                             "Request to accept: No requester found",
@@ -227,7 +227,7 @@ impl BillBlock {
             Accept => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let accepter: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let accepter: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ACCEPTED_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Accept: No accepter found")),
                     )?,
@@ -240,7 +240,7 @@ impl BillBlock {
             RequestToPay => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let requester: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let requester: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, REQ_TO_PAY_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Request to Pay: No requester found")),
                     )?,
@@ -253,7 +253,7 @@ impl BillBlock {
             Sell => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let buyer: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let buyer: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, SOLD_TO).ok_or(
                         Error::InvalidBlockdata(String::from("Sell: No buyer found")),
                     )?,
@@ -263,7 +263,7 @@ impl BillBlock {
                     nodes.insert(buyer_node_id);
                 }
 
-                let seller: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let seller: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, SOLD_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Sell: No seller found")),
                     )?,
@@ -310,7 +310,7 @@ impl BillBlock {
             Endorse => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let endorser: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let endorser: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Endorse: No endorser found")),
                     )?,
@@ -321,7 +321,7 @@ impl BillBlock {
             Mint => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let minter: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let minter: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ENDORSED_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Mint: No minter found")),
                     )?,
@@ -333,7 +333,7 @@ impl BillBlock {
                 let time_of_request_to_accept = util::date::seconds(self.timestamp);
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let requester: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let requester: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, REQ_TO_ACCEPT_BY).ok_or(
                         Error::InvalidBlockdata(String::from(
                             "Request to accept: No requester found",
@@ -350,7 +350,7 @@ impl BillBlock {
                 let time_of_accept = util::date::seconds(self.timestamp);
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let accepter: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let accepter: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, ACCEPTED_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Accept: No accepter found")),
                     )?,
@@ -365,7 +365,7 @@ impl BillBlock {
                 let time_of_request_to_pay = util::date::seconds(self.timestamp);
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let requester: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let requester: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, REQ_TO_PAY_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Request to pay: No requester found")),
                     )?,
@@ -379,7 +379,7 @@ impl BillBlock {
             Sell => {
                 let block_data_decrypted = self.get_decrypted_block_data(bill_keys)?;
 
-                let seller: IdentityPublicData = serde_json::from_slice(&hex::decode(
+                let seller: IdentityPublicData = serde_json::from_slice(&util::base58_decode(
                     &extract_after_phrase(&block_data_decrypted, SOLD_BY).ok_or(
                         Error::InvalidBlockdata(String::from("Sell: No seller found")),
                     )?,
@@ -425,8 +425,8 @@ mod test {
         bill.payee = drawer.clone();
         bill.drawee = payer;
 
-        let hashed_bill = hex::encode(
-            rsa::encrypt_bytes_with_public_key(&to_vec(&bill).unwrap(), TEST_PUB_KEY).unwrap(),
+        let hashed_bill = util::base58_encode(
+            &rsa::encrypt_bytes_with_public_key(&to_vec(&bill).unwrap(), TEST_PUB_KEY).unwrap(),
         );
 
         let block = BillBlock::new(
@@ -453,8 +453,8 @@ mod test {
         drawer.name = "bill".to_string();
         bill.drawer = drawer.clone();
 
-        let hashed_bill = hex::encode(
-            rsa::encrypt_bytes_with_public_key(&to_vec(&bill).unwrap(), TEST_PUB_KEY).unwrap(),
+        let hashed_bill = util::base58_encode(
+            &rsa::encrypt_bytes_with_public_key(&to_vec(&bill).unwrap(), TEST_PUB_KEY).unwrap(),
         );
 
         let block = BillBlock::new(
@@ -485,6 +485,7 @@ mod test {
         let hashed_endorsee = hex::encode(serde_json::to_vec(&endorsee).unwrap());
         let hashed_endorser = hex::encode(serde_json::to_vec(&endorser).unwrap());
 
+
         let data = format!(
             "{}{}{}{}",
             ENDORSED_TO, &hashed_endorsee, ENDORSED_BY, &hashed_endorser
@@ -493,7 +494,9 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Endorse,
             BcrKeys::new(),
             1731593928,
@@ -512,8 +515,8 @@ mod test {
         let mut endorser = IdentityPublicData::new_empty();
         endorser.name = "bill".to_string();
         endorser.postal_address = "some street 1".to_string();
-        let hashed_endorsee = hex::encode(serde_json::to_vec(&endorsee).unwrap());
-        let hashed_endorser = hex::encode(serde_json::to_vec(&endorser).unwrap());
+        let hashed_endorsee = util::base58_encode(&serde_json::to_vec(&endorsee).unwrap());
+        let hashed_endorser = util::base58_encode(&serde_json::to_vec(&endorser).unwrap());
 
         let data = format!(
             "{}{}{}{}",
@@ -523,7 +526,9 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Endorse,
             BcrKeys::new(),
             1731593928,
@@ -545,6 +550,7 @@ mod test {
         let hashed_mint = hex::encode(serde_json::to_vec(&mint).unwrap());
         let hashed_minter = hex::encode(serde_json::to_vec(&minter).unwrap());
 
+
         let data = format!(
             "{}{}{}{}",
             ENDORSED_TO, &hashed_mint, ENDORSED_BY, &hashed_minter
@@ -553,7 +559,9 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Mint,
             BcrKeys::new(),
             1731593928,
@@ -572,8 +580,8 @@ mod test {
         let mut minter = IdentityPublicData::new_empty();
         minter.name = "bill".to_string();
         minter.postal_address = "some street 1".to_string();
-        let hashed_endorsee = hex::encode(serde_json::to_vec(&mint).unwrap());
-        let hashed_endorser = hex::encode(serde_json::to_vec(&minter).unwrap());
+        let hashed_endorsee = util::base58_encode(&serde_json::to_vec(&mint).unwrap());
+        let hashed_endorser = util::base58_encode(&serde_json::to_vec(&minter).unwrap());
 
         let data = format!(
             "{}{}{}{}",
@@ -583,7 +591,9 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Mint,
             BcrKeys::new(),
             1731593928,
@@ -601,12 +611,15 @@ mod test {
         requester.node_id = node_id.clone();
         let hashed_requester = hex::encode(serde_json::to_vec(&requester).unwrap());
 
+
         let data = format!("{}{}", REQ_TO_ACCEPT_BY, &hashed_requester);
 
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::RequestToAccept,
             BcrKeys::new(),
             1731593928,
@@ -623,14 +636,16 @@ mod test {
         let mut requester = IdentityPublicData::new_empty();
         requester.name = "bill".to_string();
         requester.postal_address = "some street 1".to_string();
-        let hashed_requester = hex::encode(serde_json::to_vec(&requester).unwrap());
+        let hashed_requester = util::base58_encode(&serde_json::to_vec(&requester).unwrap());
 
         let data = format!("{}{}", REQ_TO_ACCEPT_BY, &hashed_requester);
 
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::RequestToAccept,
             BcrKeys::new(),
             1731593928,
@@ -651,12 +666,15 @@ mod test {
         accepter.node_id = node_id.clone();
         let hashed_accepter = hex::encode(serde_json::to_vec(&accepter).unwrap());
 
+
         let data = format!("{}{}", ACCEPTED_BY, &hashed_accepter);
 
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Accept,
             BcrKeys::new(),
             1731593928,
@@ -673,14 +691,16 @@ mod test {
         let mut accepter = IdentityPublicData::new_empty();
         accepter.name = "bill".to_string();
         accepter.postal_address = "some street 1".to_string();
-        let hashed_accepter = hex::encode(serde_json::to_vec(&accepter).unwrap());
+        let hashed_accepter = util::base58_encode(&serde_json::to_vec(&accepter).unwrap());
 
         let data = format!("{}{}", ACCEPTED_BY, &hashed_accepter);
 
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Accept,
             BcrKeys::new(),
             1731593928,
@@ -707,7 +727,7 @@ mod test {
             1,
             String::from("prevhash"),
             // not encrypted
-            hex::encode(data.as_bytes()),
+            util::base58_encode(data.as_bytes()),
             BillOpCode::Accept,
             BcrKeys::new(),
             1731593928,
@@ -722,8 +742,8 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(
-                rsa::encrypt_bytes_with_public_key(
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(
                     // invalid data
                     "some data".to_string().as_bytes(),
                     TEST_PUB_KEY,
@@ -751,7 +771,9 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::RequestToPay,
             BcrKeys::new(),
             1731593928,
@@ -768,14 +790,16 @@ mod test {
         let mut requester = IdentityPublicData::new_empty();
         requester.name = "bill".to_string();
         requester.postal_address = "some street 1".to_string();
-        let hashed_requester = hex::encode(serde_json::to_vec(&requester).unwrap());
+        let hashed_requester = util::base58_encode(&serde_json::to_vec(&requester).unwrap());
 
         let data = format!("{}{}", REQ_TO_PAY_BY, &hashed_requester);
 
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::RequestToPay,
             BcrKeys::new(),
             1731593928,
@@ -805,7 +829,9 @@ mod test {
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Sell,
             BcrKeys::new(),
             1731593928,
@@ -823,14 +849,16 @@ mod test {
         let mut seller = IdentityPublicData::new_empty();
         seller.name = "bill".to_string();
         seller.postal_address = "some street 1".to_string();
-        let hashed_seller = hex::encode(serde_json::to_vec(&seller).unwrap());
+        let hashed_seller = util::base58_encode(&serde_json::to_vec(&seller).unwrap());
 
         let data = format!("{}{}", SOLD_BY, &hashed_seller);
 
         let block = BillBlock::new(
             1,
             String::from("prevhash"),
-            hex::encode(rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap()),
+            util::base58_encode(
+                &rsa::encrypt_bytes_with_public_key(data.as_bytes(), TEST_PUB_KEY).unwrap(),
+            ),
             BillOpCode::Sell,
             BcrKeys::new(),
             1731593928,
