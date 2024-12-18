@@ -1363,7 +1363,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                node_id: node_id,
+                node_id,
             })
         });
         storage.expect_update().returning(|_, _| Ok(()));
