@@ -652,8 +652,8 @@ impl Client {
     // Bill-related logic --------------------------------------
     // ---------------------------------------------------------
 
-    fn bill_key(&self, bill_name: &str) -> String {
-        format!("{BILL_PREFIX}{bill_name}")
+    fn bill_key(&self, bill_id: &str) -> String {
+        format!("{BILL_PREFIX}{bill_id}")
     }
 
     fn node_request_for_bills(&self, node_id: &str) -> String {
@@ -664,13 +664,13 @@ impl Client {
     pub async fn update_bills_table(&mut self, node_id: String) -> Result<()> {
         let node_request = self.node_request_for_bills(&node_id);
 
-        let bill_names = self.bill_store.get_bill_names().await?;
+        let bill_ids = self.bill_store.get_bill_ids().await?;
         match self.get_record(node_request.clone()).await {
             Err(_) => {
-                let mut new_record = Vec::with_capacity(bill_names.len());
-                for bill_name in bill_names {
-                    new_record.push(bill_name.clone());
-                    self.start_providing_bill(&bill_name).await?;
+                let mut new_record = Vec::with_capacity(bill_ids.len());
+                for bill_id in bill_ids {
+                    new_record.push(bill_id.clone());
+                    self.start_providing_bill(&bill_id).await?;
                 }
                 if !new_record.is_empty() {
                     self.put_record(node_request.clone(), to_vec(&new_record)?)
@@ -683,10 +683,10 @@ impl Client {
                     let record_in_dht: Vec<String> = from_slice(&value)?;
                     let mut new_record = record_in_dht.clone();
 
-                    for bill_name in bill_names {
-                        if !record_in_dht.contains(&bill_name) {
-                            new_record.push(bill_name.clone());
-                            self.start_providing_bill(&bill_name).await?;
+                    for bill_id in bill_ids {
+                        if !record_in_dht.contains(&bill_id) {
+                            new_record.push(bill_id.clone());
+                            self.start_providing_bill(&bill_id).await?;
                         }
                     }
                     if !record_in_dht.eq(&new_record) {
@@ -694,10 +694,10 @@ impl Client {
                             .await?;
                     }
                 } else {
-                    let mut new_record = Vec::with_capacity(bill_names.len());
-                    for bill_name in bill_names {
-                        new_record.push(bill_name.clone());
-                        self.start_providing_bill(&bill_name).await?;
+                    let mut new_record = Vec::with_capacity(bill_ids.len());
+                    for bill_id in bill_ids {
+                        new_record.push(bill_id.clone());
+                        self.start_providing_bill(&bill_id).await?;
                     }
                     if !new_record.is_empty() {
                         self.put_record(node_request.clone(), to_vec(&new_record)?)
@@ -711,7 +711,7 @@ impl Client {
 
     /// Starts providing all locally available bills
     pub async fn start_providing_bills(&mut self) -> Result<()> {
-        let bills = self.bill_store.get_bill_names().await?;
+        let bills = self.bill_store.get_bill_ids().await?;
         for bill in bills {
             self.start_providing_bill(&bill).await?;
         }
@@ -720,7 +720,7 @@ impl Client {
 
     /// Adds the given bill for the given node id - if the data is empty, or invalid, we just push
     /// our data on the DHT, otherwise we check, if we have data the DHT doesn't have and add that
-    pub async fn add_bill_to_dht_for_node(&mut self, bill_name: &str, node_id: &str) -> Result<()> {
+    pub async fn add_bill_to_dht_for_node(&mut self, bill_id: &str, node_id: &str) -> Result<()> {
         let node_request = self.node_request_for_bills(node_id);
         let mut record_for_saving_in_dht: Vec<String> = vec![];
         match self.get_record(node_request.clone()).await {
@@ -729,8 +729,8 @@ impl Client {
                 match from_slice::<Vec<String>>(&list_bills_for_node) {
                     Ok(dht_record) => {
                         record_for_saving_in_dht = dht_record.clone();
-                        if !record_for_saving_in_dht.iter().any(|b| b == bill_name) {
-                            record_for_saving_in_dht.push(bill_name.to_owned());
+                        if !record_for_saving_in_dht.iter().any(|b| b == bill_id) {
+                            record_for_saving_in_dht.push(bill_id.to_owned());
                         }
                         if !dht_record.eq(&record_for_saving_in_dht) {
                             self.put_record(
@@ -741,14 +741,14 @@ impl Client {
                         }
                     }
                     Err(e) => {
-                        error!("Could not parse bill data in dht for {}: {e}", &bill_name);
-                        self.put_record(node_request.clone(), to_vec(&vec![bill_name.to_owned()])?)
+                        error!("Could not parse bill data in dht for {}: {e}", &bill_id);
+                        self.put_record(node_request.clone(), to_vec(&vec![bill_id.to_owned()])?)
                             .await?;
                     }
                 }
             }
             Err(_) => {
-                record_for_saving_in_dht.push(bill_name.to_owned());
+                record_for_saving_in_dht.push(bill_id.to_owned());
                 self.put_record(node_request.clone(), to_vec(&record_for_saving_in_dht)?)
                     .await?;
             }
@@ -866,7 +866,7 @@ impl Client {
     /// encrypting it and returning it's bytes with it's file name
     async fn request_bill_attachment_data(
         &mut self,
-        bill_name: &str,
+        bill_id: &str,
         file_name: &str,
         hash: &str,
         bill_keys: &BillKeys,
@@ -875,12 +875,12 @@ impl Client {
     ) -> Result<(String, Vec<u8>)> {
         let pr_key = self.identity_store.get().await?.private_key_pem;
         let requests = self.create_file_requests_for_peers(
-            file_request_for_bill_attachment(&local_node_id.to_string(), bill_name, file_name),
+            file_request_for_bill_attachment(&local_node_id.to_string(), bill_id, file_name),
             providers,
         );
         match futures::future::select_ok(requests).await {
             Err(e) => Err(super::Error::NoFileFromProviders(format!(
-                "Get Bill Attachment: None of the providers returned the file for {bill_name}: {e}"
+                "Get Bill Attachment: None of the providers returned the file for {bill_id}: {e}"
             ))),
             Ok(file_content) => {
                 let bytes = file_content.0;
@@ -893,7 +893,7 @@ impl Client {
                 )?;
                 let remote_hash = util::sha256_hash(&decrypted_with_bill_key);
                 if hash != remote_hash.as_str() {
-                    return Err(super::Error::FileHashesDidNotMatch(format!("Get Bill Attachment: Hashes didn't match for bill {bill_name} and file name {file_name}, remote: {remote_hash}, local: {hash}")));
+                    return Err(super::Error::FileHashesDidNotMatch(format!("Get Bill Attachment: Hashes didn't match for bill {bill_id} and file name {file_name}, remote: {remote_hash}, local: {hash}")));
                 }
                 // encrypt with bill public key
                 let encrypted = util::rsa::encrypt_bytes_with_public_key(
@@ -1081,8 +1081,8 @@ impl Client {
     }
 
     /// Adds the current node to the list of providers for the given bill via the event loop
-    pub async fn start_providing_bill(&mut self, bill_name: &str) -> Result<()> {
-        let key = self.bill_key(bill_name);
+    pub async fn start_providing_bill(&mut self, bill_id: &str) -> Result<()> {
+        let key = self.bill_key(bill_id);
         self.start_providing(key).await?;
         Ok(())
     }
@@ -1294,8 +1294,8 @@ impl Client {
         Ok(file_encrypted)
     }
 
-    async fn handle_bill_file_request(&mut self, bill_name: &str) -> Result<Vec<u8>> {
-        let file = self.bill_store.get_bill_as_bytes(bill_name).await?;
+    async fn handle_bill_file_request(&mut self, bill_id: &str) -> Result<Vec<u8>> {
+        let file = self.bill_store.get_bill_as_bytes(bill_id).await?;
         Ok(file)
     }
 
@@ -1328,12 +1328,12 @@ impl Client {
 
     async fn handle_bill_file_request_for_attachment(
         &mut self,
-        bill_name: &str,
+        bill_id: &str,
         node_id: &str,
         file_name: &str,
     ) -> Result<Vec<u8>> {
-        let chain = self.bill_store.read_bill_chain_from_file(bill_name).await?;
-        let bill_keys = self.bill_store.read_bill_keys_from_file(bill_name).await?;
+        let chain = self.bill_store.read_bill_chain_from_file(bill_id).await?;
+        let bill_keys = self.bill_store.read_bill_keys_from_file(bill_id).await?;
         if chain
             .get_all_nodes_from_bill(&bill_keys)?
             .iter()
@@ -1345,14 +1345,14 @@ impl Client {
             let public_key = data.rsa_public_key_pem;
             let file = self
                 .file_upload_store
-                .open_attached_file(bill_name, file_name)
+                .open_attached_file(bill_id, file_name)
                 .await?;
             let file_encrypted = encrypt_bytes_with_public_key(&file, &public_key)?;
             Ok(file_encrypted)
         } else {
             Err(super::Error::CallerNotPartOfBill(
                 node_id.to_owned(),
-                bill_name.to_string(),
+                bill_id.to_string(),
             ))
         }
     }
@@ -1494,8 +1494,8 @@ impl Client {
                             }
                             // We can send the bill to anyone requesting it, since the content is encrypted
                             // and is useless without the keys
-                            ParsedInboundFileRequest::Bill(BillFileRequest { bill_name }) => {
-                                let bytes = self.handle_bill_file_request(&bill_name).await?;
+                            ParsedInboundFileRequest::Bill(BillFileRequest { bill_id }) => {
+                                let bytes = self.handle_bill_file_request(&bill_id).await?;
                                 self.respond_file(bytes, channel).await?;
                             }
                             // We check if the requester is part of the bill and if so, we get their
@@ -1513,13 +1513,13 @@ impl Client {
                             ParsedInboundFileRequest::BillAttachment(
                                 BillAttachmentFileRequest {
                                     node_id,
-                                    bill_name,
+                                    bill_id,
                                     file_name,
                                 },
                             ) => {
                                 let bytes = self
                                     .handle_bill_file_request_for_attachment(
-                                        &bill_name, &node_id, &file_name,
+                                        &bill_id, &node_id, &file_name,
                                     )
                                     .await?;
                                 self.respond_file(bytes, channel).await?;

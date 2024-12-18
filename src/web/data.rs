@@ -33,35 +33,35 @@ pub struct UploadFileForm<'r> {
 #[serde(crate = "rocket::serde")]
 pub struct EndorseBitcreditBillPayload {
     pub endorsee: String,
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct MintBitcreditBillPayload {
     pub mint_node: String,
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct AcceptMintBitcreditBillPayload {
     pub interest: u64,
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct RequestToMintBitcreditBillPayload {
     pub mint_node: String,
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct SellBitcreditBillPayload {
     pub buyer: String,
-    pub bill_name: String,
+    pub bill_id: String,
     pub amount_numbers: u64,
     pub currency_code: String,
 }
@@ -69,19 +69,19 @@ pub struct SellBitcreditBillPayload {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct RequestToAcceptBitcreditBillPayload {
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct RequestToPayBitcreditBillPayload {
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct AcceptBitcreditBillPayload {
-    pub bill_name: String,
+    pub bill_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

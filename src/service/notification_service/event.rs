@@ -35,7 +35,7 @@ pub enum ActionType {
 /// add more fields here and create multiple event types.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BillActionEventPayload {
-    pub bill_name: String,
+    pub bill_id: String,
     pub action_type: ActionType,
 }
 
