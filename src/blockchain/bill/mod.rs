@@ -125,7 +125,7 @@ mod test {
         identity.private_key_pem = TEST_PRIVATE_KEY.to_owned();
         IdentityWithAll {
             identity,
-            peer_id: PeerId::random(),
+            node_id: PeerId::random(),
             key_pair: BcrKeys::new(),
         }
     }
@@ -137,7 +137,7 @@ mod test {
 
         let result = BillBlockchain::new(
             &bill,
-            IdentityPublicData::new(identity.identity.clone(), identity.peer_id.to_string()),
+            IdentityPublicData::new(identity.identity.clone(), identity.node_id.to_string()),
             identity.key_pair,
             TEST_PUB_KEY.to_owned(),
             1731593928,

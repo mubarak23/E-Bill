@@ -2,7 +2,7 @@ use super::behaviour::{Command, ComposedEvent, Event, MyBehaviour};
 use super::{GossipsubEvent, GossipsubEventId};
 use crate::blockchain::Blockchain;
 use crate::constants::{
-    BILL_PREFIX, COMPANY_PREFIX, RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_PEER_ID,
+    BILL_PREFIX, COMPANY_PREFIX, RELAY_BOOTSTRAP_NODE_ONE_IP, RELAY_BOOTSTRAP_NODE_ONE_NODE_ID,
     RELAY_BOOTSTRAP_NODE_ONE_TCP,
 };
 use crate::dht::behaviour::{CompanyEvent, FileRequest, FileResponse};
@@ -260,12 +260,12 @@ impl EventLoop {
 
             //--------------GOSSIPSUB EVENTS--------------
             SwarmEvent::Behaviour(ComposedEvent::Gossipsub(gossipsub::Event::Message {
-                propagation_source: peer_id,
+                propagation_source: node_id,
                 message_id: id,
                 message,
             })) => {
                 info!(
-                    "Got message with id: {id} from peer: {peer_id} in topic: {}",
+                    "Got message with id: {id} from peer: {node_id} in topic: {}",
                     message.topic.as_str()
                 );
                 if message.topic.as_str().starts_with(COMPANY_PREFIX) {
@@ -431,8 +431,8 @@ impl EventLoop {
 
             SwarmEvent::OutgoingConnectionError { .. } => {
                 error!("OutgoingConnectionError event {event:?}");
-                // if let Some(peer_id) = peer_id {
-                //     if let Some(sender) = self.pending_dial.remove(&peer_id) {
+                // if let Some(node_id) = node_id {
+                //     if let Some(sender) = self.pending_dial.remove(&node_id) {
                 //         let _ = sender.send(Err(Box::new(error)));
                 //     }
                 // }
@@ -478,7 +478,7 @@ impl EventLoop {
                     expires: None,
                 };
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
+                let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
                     .to_string()
                     .parse()
                     .map_err(|e| {
@@ -490,7 +490,7 @@ impl EventLoop {
                     .behaviour_mut()
                     .kademlia
                     //TODO: what quorum use?
-                    .put_record_to(record, iter::once(relay_peer_id), Quorum::All);
+                    .put_record_to(record, iter::once(relay_node_id), Quorum::All);
             }
 
             Command::SendMessage { msg, topic } => {
@@ -548,7 +548,7 @@ impl EventLoop {
             } => {
                 info!("Request file {file_name:?}");
 
-                let relay_peer_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_PEER_ID
+                let relay_node_id: PeerId = RELAY_BOOTSTRAP_NODE_ONE_NODE_ID
                     .to_string()
                     .parse()
                     .map_err(|e| {
@@ -557,7 +557,7 @@ impl EventLoop {
                 let relay_address = Multiaddr::empty()
                     .with(Protocol::Ip4(RELAY_BOOTSTRAP_NODE_ONE_IP))
                     .with(Protocol::Tcp(RELAY_BOOTSTRAP_NODE_ONE_TCP))
-                    .with(Protocol::P2p(Multihash::from(relay_peer_id)))
+                    .with(Protocol::P2p(Multihash::from(relay_node_id)))
                     .with(Protocol::P2pCircuit)
                     .with(Protocol::P2p(Multihash::from(peer)));
 

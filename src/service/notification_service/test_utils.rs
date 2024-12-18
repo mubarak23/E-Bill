@@ -69,7 +69,7 @@ pub fn create_test_event_payload() -> TestEventPayload {
 pub fn create_test_event(event_type: &EventType) -> Event<TestEventPayload> {
     Event::new(
         event_type,
-        "peer_id".to_string(),
+        "node_id".to_string(),
         create_test_event_payload(),
     )
 }
@@ -84,12 +84,12 @@ pub fn get_test_email_message() -> EmailMessage {
 }
 
 pub fn get_identity_public_data(
-    peer_id: &str,
+    node_id: &str,
     email: &str,
     npub: Option<&str>,
     nostr_relay: Option<&str>,
 ) -> IdentityPublicData {
-    let mut identity = IdentityPublicData::new_only_peer_id(peer_id.to_owned());
+    let mut identity = IdentityPublicData::new_only_node_id(node_id.to_owned());
     identity.email = email.to_owned();
     identity.nostr_npub = npub.map(|npub| npub.to_owned());
     identity.nostr_relay = nostr_relay.map(|nostr_relay| nostr_relay.to_owned());

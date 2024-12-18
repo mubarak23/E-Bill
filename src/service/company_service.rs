@@ -209,7 +209,7 @@ impl CompanyServiceApi for CompanyService {
             registration_date,
             proof_of_registration_file,
             logo_file,
-            signatories: vec![full_identity.peer_id.to_string()], // add caller as signatory
+            signatories: vec![full_identity.node_id.to_string()], // add caller as signatory
         };
         self.store.insert(&id, &company).await?;
 
@@ -311,7 +311,7 @@ impl CompanyServiceApi for CompanyService {
         let contacts = self.contact_store.get_map().await?;
         let is_in_contacts = contacts
             .iter()
-            .any(|(_name, identity)| identity.peer_id == signatory_node_id);
+            .any(|(_name, identity)| identity.node_id == signatory_node_id);
         if !is_in_contacts {
             return Err(super::Error::Validation(format!(
                 "Node Id {signatory_node_id} is not in the contacts.",
@@ -374,7 +374,7 @@ impl CompanyServiceApi for CompanyService {
         company.signatories.retain(|i| i != &signatory_node_id);
         self.store.update(id, &company).await?;
 
-        if full_identity.peer_id.to_string() == signatory_node_id {
+        if full_identity.node_id.to_string() == signatory_node_id {
             info!("Removing self from company {id}");
             let _ = self.file_upload_store.delete_attached_files(id).await;
             self.store.remove(id).await?;
@@ -732,7 +732,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         file_upload_store
@@ -829,7 +829,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         let service = get_service(
@@ -1039,7 +1039,7 @@ mod test {
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -1052,7 +1052,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         identity_chain_store
@@ -1106,7 +1106,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         let service = get_service(
@@ -1138,7 +1138,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         let service = get_service(
@@ -1170,13 +1170,13 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -1214,13 +1214,13 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         contact_store.expect_get_map().returning(|| {
             let mut map = HashMap::new();
             let mut identity = IdentityPublicData::new_empty();
-            identity.peer_id = "new_signatory_node_id".to_string();
+            identity.node_id = "new_signatory_node_id".to_string();
             map.insert("my best friend".to_string(), identity);
             Ok(map)
         });
@@ -1269,7 +1269,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         storage.expect_update().returning(|_, _| Ok(()));
@@ -1321,7 +1321,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         let service = get_service(
@@ -1363,7 +1363,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: node_id,
+                node_id: node_id,
             })
         });
         storage.expect_update().returning(|_, _| Ok(()));
@@ -1423,7 +1423,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         let service = get_service(
@@ -1460,7 +1460,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         let service = get_service(
@@ -1499,7 +1499,7 @@ mod test {
             Ok(IdentityWithAll {
                 identity,
                 key_pair: BcrKeys::new(),
-                peer_id: PeerId::random(),
+                node_id: PeerId::random(),
             })
         });
         storage.expect_update().returning(|_, _| {

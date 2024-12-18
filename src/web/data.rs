@@ -126,8 +126,8 @@ pub struct NodeId {
 }
 
 impl NodeId {
-    pub fn new(peer_id: String) -> Self {
-        Self { id: peer_id }
+    pub fn new(node_id: String) -> Self {
+        Self { id: node_id }
     }
 }
 

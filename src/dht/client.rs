@@ -595,8 +595,8 @@ impl Client {
     // Identity-related logic ---------------------------------------
     // --------------------------------------------------------------
 
-    fn identity_key(&self, peer_id: &str) -> String {
-        format!("{IDENTITY_PREFIX}{peer_id}")
+    fn identity_key(&self, node_id: &str) -> String {
+        format!("{IDENTITY_PREFIX}{node_id}")
     }
 
     /// Adds the local identity's public data into the DHT
@@ -605,10 +605,10 @@ impl Client {
             let identity = self.identity_store.get_full().await?;
             let identity_data = IdentityPublicData::new(
                 identity.identity.clone(),
-                identity.peer_id.to_string().clone(),
+                identity.node_id.to_string().clone(),
             );
 
-            let key = self.identity_key(&identity_data.peer_id);
+            let key = self.identity_key(&identity_data.node_id);
             match self.get_record(key.clone()).await {
                 Err(_) => {
                     let value = serde_json::to_string(&identity_data)?;
@@ -633,9 +633,9 @@ impl Client {
     /// Queries the DHT for the public identity data for the given peer id
     pub async fn get_identity_public_data_from_dht(
         &mut self,
-        peer_id: String,
+        node_id: String,
     ) -> Result<IdentityPublicData> {
-        let key = self.identity_key(&peer_id);
+        let key = self.identity_key(&node_id);
         let mut identity_public_data: IdentityPublicData = IdentityPublicData::new_empty();
         if let Ok(public_data) = self.get_record(key.clone()).await {
             let current_info = public_data.value;
@@ -2410,7 +2410,7 @@ mod test {
                     Command::GetRecord { key, sender } => {
                         assert_eq!(key, "IDENTITYsome_node_id".to_string());
                         let mut identity = IdentityPublicData::new_empty();
-                        identity.peer_id = "some_node_id".to_string();
+                        identity.node_id = "some_node_id".to_string();
                         identity.rsa_public_key_pem = TEST_PUB_KEY.to_string();
                         sender
                             .send(Ok(Record::new(
@@ -2459,7 +2459,7 @@ mod test {
                     Command::GetRecord { key, sender } => {
                         assert_eq!(key, "IDENTITYsome_other_node_id".to_string());
                         let mut identity = IdentityPublicData::new_empty();
-                        identity.peer_id = "some_node_id".to_string();
+                        identity.node_id = "some_node_id".to_string();
                         sender
                             .send(Ok(Record::new(
                                 Key::new(&"IDENTITYsome_other_node_id".to_string()),
@@ -2514,7 +2514,7 @@ mod test {
                     Command::GetRecord { key, sender } => {
                         assert_eq!(key, "IDENTITYsome_node_id".to_string());
                         let mut identity = IdentityPublicData::new_empty();
-                        identity.peer_id = "some_node_id".to_string();
+                        identity.node_id = "some_node_id".to_string();
                         identity.rsa_public_key_pem = TEST_PUB_KEY.to_string();
                         sender
                             .send(Ok(Record::new(
@@ -2648,7 +2648,7 @@ mod test {
                     Command::GetRecord { key, sender } => {
                         assert_eq!(key, "IDENTITYsome_node_id".to_string());
                         let mut identity = IdentityPublicData::new_empty();
-                        identity.peer_id = "some_node_id".to_string();
+                        identity.node_id = "some_node_id".to_string();
                         identity.rsa_public_key_pem = TEST_PUB_KEY.to_string();
                         sender
                             .send(Ok(Record::new(
@@ -2762,7 +2762,7 @@ mod test {
                     Command::GetRecord { key, sender } => {
                         assert_eq!(key, "IDENTITYsome_node_id".to_string());
                         let mut identity = IdentityPublicData::new_empty();
-                        identity.peer_id = "some_node_id".to_string();
+                        identity.node_id = "some_node_id".to_string();
                         identity.rsa_public_key_pem = TEST_PUB_KEY.to_string();
                         identity.name = "Minka".to_string();
                         sender
@@ -2781,7 +2781,7 @@ mod test {
             .get_identity_public_data_from_dht("some_node_id".to_string())
             .await;
         assert!(result.is_ok());
-        assert!(result.as_ref().unwrap().peer_id == *"some_node_id");
+        assert!(result.as_ref().unwrap().node_id == *"some_node_id");
         assert!(result.as_ref().unwrap().name == *"Minka");
     }
 
@@ -2790,11 +2790,11 @@ mod test {
         let (sender, mut receiver) = mpsc::channel(10);
         let (bill_store, mut company_store, mut identity_store, mut file_upload_store) =
             get_storages();
-        let peer_id = PeerId::random();
-        let provider_peer_id = PeerId::random();
+        let node_id = PeerId::random();
+        let provider_node_id = PeerId::random();
         identity_store
             .expect_get_node_id()
-            .returning(move || Ok(peer_id));
+            .returning(move || Ok(node_id));
 
         company_store.expect_get_all().returning(|| {
             let mut map = HashMap::new();
@@ -2832,12 +2832,12 @@ mod test {
             while let Some(event) = receiver.next().await {
                 match event {
                     Command::GetRecord { key, sender } => {
-                        assert_eq!(key, format!("COMPANIES{}", peer_id));
+                        assert_eq!(key, format!("COMPANIES{}", node_id));
                         let result: Vec<String> =
                             vec!["company_1".to_string(), "company_3".to_string()];
                         sender
                             .send(Ok(Record::new(
-                                Key::new(&format!("COMPANIES{}", peer_id)),
+                                Key::new(&format!("COMPANIES{}", node_id)),
                                 to_vec(&result).unwrap(),
                             )))
                             .unwrap();
@@ -2846,7 +2846,7 @@ mod test {
                         assert_eq!(entry, "COMPANYcompany_3".to_string());
 
                         let mut res = HashSet::new();
-                        res.insert(provider_peer_id);
+                        res.insert(provider_node_id);
                         sender.send(res).unwrap();
                     }
                     Command::RequestFile {
@@ -2854,7 +2854,7 @@ mod test {
                         file_name,
                         peer,
                     } => {
-                        assert_eq!(peer, provider_peer_id);
+                        assert_eq!(peer, provider_node_id);
                         let mut company_data = get_baseline_company_data("company_3");
                         let file_bytes = "helloworld".to_string().into_bytes();
                         company_data.1 .0.logo_file = Some(File {
@@ -2923,11 +2923,11 @@ mod test {
         let (sender, mut receiver) = mpsc::channel(10);
         let (mut bill_store, company_store, mut identity_store, mut file_upload_store) =
             get_storages();
-        let peer_id = PeerId::random();
-        let provider_peer_id = PeerId::random();
+        let node_id = PeerId::random();
+        let provider_node_id = PeerId::random();
         identity_store
             .expect_get_node_id()
-            .returning(move || Ok(peer_id));
+            .returning(move || Ok(node_id));
 
         identity_store.expect_get().returning(|| {
             let mut identity = Identity::new_empty();
@@ -2954,11 +2954,11 @@ mod test {
             while let Some(event) = receiver.next().await {
                 match event {
                     Command::GetRecord { key, sender } => {
-                        assert_eq!(key, format!("BILLS{}", peer_id));
+                        assert_eq!(key, format!("BILLS{}", node_id));
                         let result: Vec<String> = vec!["bill_1".to_string(), "bill_2".to_string()];
                         sender
                             .send(Ok(Record::new(
-                                Key::new(&format!("BILLS{}", peer_id)),
+                                Key::new(&format!("BILLS{}", node_id)),
                                 to_vec(&result).unwrap(),
                             )))
                             .unwrap();
@@ -2967,7 +2967,7 @@ mod test {
                         assert_eq!(entry, "BILLbill_2".to_string());
 
                         let mut res = HashSet::new();
-                        res.insert(provider_peer_id);
+                        res.insert(provider_node_id);
                         sender.send(res).unwrap();
                     }
                     Command::RequestFile {
@@ -2975,7 +2975,7 @@ mod test {
                         file_name,
                         peer,
                     } => {
-                        assert_eq!(peer, provider_peer_id);
+                        assert_eq!(peer, provider_node_id);
                         let file_bytes = "helloworld".to_string().into_bytes();
 
                         if file_name.contains(KEY_PREFIX) {
@@ -3084,7 +3084,7 @@ mod test {
             identity.name = "myself".to_owned();
             Ok(IdentityWithAll {
                 identity,
-                peer_id: node_id,
+                node_id: node_id,
                 key_pair: BcrKeys::new(),
             })
         });
