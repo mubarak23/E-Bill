@@ -47,7 +47,7 @@ impl ContactStoreApi for SurrealContactStore {
         entity.name = name.to_owned();
         let _: Option<ContactDb> = self
             .db
-            .create((Self::TABLE, entity.peer_id.to_owned()))
+            .create((Self::TABLE, entity.node_id.to_owned()))
             .content(entity)
             .await?;
         Ok(())
@@ -77,7 +77,7 @@ impl ContactStoreApi for SurrealContactStore {
         entity.name = name.to_owned();
         let _: Option<ContactDb> = self
             .db
-            .update((Self::TABLE, entity.peer_id.to_owned()))
+            .update((Self::TABLE, entity.node_id.to_owned()))
             .content(entity)
             .await?;
         Ok(())
@@ -97,7 +97,7 @@ impl ContactStoreApi for SurrealContactStore {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContactDb {
-    pub peer_id: String,
+    pub node_id: String,
     pub name: String,
     pub company: Option<String>,
     pub bitcoin_public_key: Option<String>,
@@ -111,7 +111,7 @@ pub struct ContactDb {
 impl From<ContactDb> for IdentityPublicData {
     fn from(contact: ContactDb) -> Self {
         Self {
-            peer_id: contact.peer_id,
+            node_id: contact.node_id,
             name: contact.name,
             company: contact.company.unwrap_or("".to_owned()),
             bitcoin_public_key: contact.bitcoin_public_key.unwrap_or("".to_owned()),
@@ -127,7 +127,7 @@ impl From<ContactDb> for IdentityPublicData {
 impl From<IdentityPublicData> for ContactDb {
     fn from(value: IdentityPublicData) -> Self {
         Self {
-            peer_id: value.peer_id,
+            node_id: value.node_id,
             name: value.name,
             company: as_opt(value.company),
             bitcoin_public_key: as_opt(value.bitcoin_public_key),
@@ -156,7 +156,7 @@ mod tests {
     #[tokio::test]
     async fn test_insert_contact() {
         let store = get_store().await;
-        let identity = IdentityPublicData::new_only_peer_id("peer_id".to_string());
+        let identity = IdentityPublicData::new_only_node_id("node_id".to_string());
         store
             .insert("name", identity.clone())
             .await
@@ -169,13 +169,13 @@ mod tests {
             .expect("could not find created contact");
 
         assert_eq!(&stored.name, "name");
-        assert_eq!(&stored.peer_id, &identity.peer_id);
+        assert_eq!(&stored.node_id, &identity.node_id);
     }
 
     #[tokio::test]
     async fn test_delete_contact() {
         let store = get_store().await;
-        let identity = IdentityPublicData::new_only_peer_id("peer_id".to_string());
+        let identity = IdentityPublicData::new_only_node_id("node_id".to_string());
         store
             .insert("name", identity.clone())
             .await
@@ -204,7 +204,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_contact() {
         let store = get_store().await;
-        let identity = IdentityPublicData::new_only_peer_id("peer_id".to_string());
+        let identity = IdentityPublicData::new_only_node_id("node_id".to_string());
 
         store
             .insert("name", identity.clone())
@@ -231,7 +231,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_name() {
         let store = get_store().await;
-        let identity = IdentityPublicData::new_only_peer_id("peer_id".to_string());
+        let identity = IdentityPublicData::new_only_node_id("node_id".to_string());
 
         store
             .insert("name", identity.clone())
@@ -255,8 +255,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_map() {
         let store = get_store().await;
-        let identity = IdentityPublicData::new_only_peer_id("peer_id".to_string());
-        let identity2 = IdentityPublicData::new_only_peer_id("peer_id2".to_string());
+        let identity = IdentityPublicData::new_only_node_id("node_id".to_string());
+        let identity2 = IdentityPublicData::new_only_node_id("node_id2".to_string());
         store
             .insert("name", identity.clone())
             .await
@@ -271,7 +271,7 @@ mod tests {
         assert_eq!(all.len(), 2);
         assert!(all.contains_key("name"));
         assert!(all.contains_key("name2"));
-        assert_eq!(all.get("name2").unwrap().peer_id, "peer_id2");
+        assert_eq!(all.get("name2").unwrap().node_id, "node_id2");
     }
 
     async fn get_store() -> SurrealContactStore {
@@ -284,7 +284,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_by_npub() {
         let store = get_store().await;
-        let mut identity = IdentityPublicData::new_only_peer_id("peer_id".to_string());
+        let mut identity = IdentityPublicData::new_only_node_id("node_id".to_string());
         identity.nostr_npub = Some("npub".to_owned());
         identity.nostr_relay = Some("wss://example.relay".to_owned());
 
@@ -300,7 +300,7 @@ mod tests {
             .expect("could not find contact by npub");
 
         assert_eq!(&stored.name, "name");
-        assert_eq!(&stored.peer_id, &identity.peer_id);
+        assert_eq!(&stored.node_id, &identity.node_id);
         assert_eq!(&stored.nostr_npub.unwrap(), "npub");
         assert_eq!(&stored.nostr_relay.unwrap(), "wss://example.relay");
     }
