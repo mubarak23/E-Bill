@@ -3084,7 +3084,7 @@ mod test {
             identity.name = "myself".to_owned();
             Ok(IdentityWithAll {
                 identity,
-                node_id: node_id,
+                node_id,
                 key_pair: BcrKeys::new(),
             })
         });
