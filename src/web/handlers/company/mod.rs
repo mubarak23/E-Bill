@@ -23,9 +23,6 @@ pub mod data;
 
 #[get("/check_dht")]
 pub async fn check_companies_in_dht(state: &State<ServiceContext>) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     state.dht_client().check_companies().await?;
     Ok(Status::Ok)
 }

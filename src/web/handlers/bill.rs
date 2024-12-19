@@ -98,9 +98,6 @@ pub async fn return_bill(
 
 #[get("/dht")]
 pub async fn search_bill(state: &State<ServiceContext>) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let mut client = state.dht_client();
     client.check_new_bills().await?;
 
@@ -112,10 +109,6 @@ pub async fn upload_files(
     state: &State<ServiceContext>,
     files_upload_form: Form<UploadBillFilesForm<'_>>,
 ) -> Result<Json<UploadFilesResponse>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
-
     if files_upload_form.files.is_empty() {
         return Err(service::Error::PreconditionFailed);
     }
@@ -147,10 +140,6 @@ pub async fn issue_bill(
     state: &State<ServiceContext>,
     bill_payload: Json<BitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
-
     let drawer = state.identity_service.get_full_identity().await?;
 
     let (public_data_drawee, public_data_payee) =
@@ -274,10 +263,6 @@ pub async fn sell_bill(
     state: &State<ServiceContext>,
     sell_bill_payload: Json<SellBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
-
     let public_data_buyer = state
         .contact_service
         .get_identity_by_name(&sell_bill_payload.buyer)
@@ -318,10 +303,6 @@ pub async fn endorse_bill(
     state: &State<ServiceContext>,
     endorse_bill_payload: Json<EndorseBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
-
     let public_data_endorsee = state
         .contact_service
         .get_identity_by_name(&endorse_bill_payload.endorsee)
@@ -365,9 +346,6 @@ pub async fn request_to_pay_bill(
     state: &State<ServiceContext>,
     request_to_pay_bill_payload: Json<RequestToPayBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
 
     let chain = state
@@ -394,9 +372,6 @@ pub async fn request_to_accept_bill(
     state: &State<ServiceContext>,
     request_to_accept_bill_payload: Json<RequestToAcceptBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
 
     let chain = state
@@ -418,9 +393,6 @@ pub async fn accept_bill(
     state: &State<ServiceContext>,
     accept_bill_payload: Json<AcceptBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
     let chain = state
         .bill_service
@@ -475,9 +447,6 @@ pub async fn request_to_mint_bill(
     state: &State<ServiceContext>,
     request_to_mint_bill_payload: Json<RequestToMintBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let public_mint_node = state
         .contact_service
         .get_identity_by_name(&request_to_mint_bill_payload.mint_node)
@@ -512,9 +481,6 @@ pub async fn accept_mint_bill(
     state: &State<ServiceContext>,
     accept_mint_bill_payload: Json<AcceptMintBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let bill = state
         .bill_service
         .get_bill(&accept_mint_bill_payload.bill_id)
@@ -544,9 +510,6 @@ pub async fn mint_bill(
     state: &State<ServiceContext>,
     mint_bill_payload: Json<MintBitcreditBillPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let timestamp = external::time::TimeApi::get_atomic_time().await?.timestamp;
 
     let public_mint_node = state

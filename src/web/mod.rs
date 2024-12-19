@@ -8,6 +8,7 @@ use serde::Serialize;
 
 pub mod data;
 mod handlers;
+pub mod middleware;
 
 use crate::constants::MAX_FILE_SIZE_BYTES;
 use rocket::data::ByteUnit;
@@ -51,6 +52,7 @@ pub fn rocket_main(context: ServiceContext) -> Rocket<Build> {
     let rocket = rocket::custom(config)
         .register("/", catchers![default_catcher, not_found])
         .manage(context)
+        .attach(middleware::IdentityCheck)
         .mount("/exit", routes![handlers::exit])
         .mount(
             "/identity",
