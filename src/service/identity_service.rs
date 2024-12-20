@@ -171,20 +171,10 @@ impl IdentityServiceApi for IdentityService {
         postal_address: String,
         timestamp: i64,
     ) -> Result<()> {
+        let keys = self.store.get_or_create_key_pair().await?;
         let (private_key_pem, public_key_pem) = util::rsa::create_rsa_key_pair()?;
-
-        let keys = self.store.get_key_pair().await?;
+        let (private_key, public_key) = keys.get_bitcoin_keys(CONFIG.bitcoin_network());
         let node_id = self.store.get_node_id().await?.to_string();
-
-        let s = bitcoin::secp256k1::Secp256k1::new();
-
-        let private_key = bitcoin::PrivateKey::new(
-            s.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng())
-                .0,
-            CONFIG.bitcoin_network(),
-        );
-        let public_key = private_key.public_key(&s).to_string();
-        let private_key = private_key.to_string();
 
         let identity = Identity {
             name,
@@ -196,10 +186,10 @@ impl IdentityServiceApi for IdentityService {
             postal_address,
             public_key_pem,
             private_key_pem,
-            bitcoin_public_key: public_key,
-            bitcoin_private_key: private_key.clone(),
-            nostr_npub: None,
-            nostr_relay: None,
+            bitcoin_public_key: public_key.to_string(),
+            bitcoin_private_key: private_key.to_string(),
+            nostr_npub: Some(keys.get_nostr_npub()?),
+            nostr_relay: Some(CONFIG.nostr_relay.to_owned()),
         };
 
         let rsa_pub_key = identity.public_key_pem.clone();
@@ -268,6 +258,14 @@ impl Identity {
             nostr_relay: None,
         }
     }
+
+    pub fn get_nostr_name(&self) -> String {
+        if !self.name.is_empty() {
+            self.name.clone()
+        } else {
+            self.company.to_owned()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -323,6 +321,9 @@ mod test {
     #[tokio::test]
     async fn create_identity_baseline() {
         let mut storage = MockIdentityStoreApi::new();
+        storage
+            .expect_get_or_create_key_pair()
+            .returning(|| Ok(BcrKeys::new()));
         storage.expect_save().returning(move |_| Ok(()));
         storage
             .expect_get_key_pair()

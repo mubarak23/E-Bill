@@ -11,7 +11,8 @@ use crate::util;
 use bill::FileBasedBillStore;
 use db::{
     company::SurrealCompanyStore, contact::SurrealContactStore, get_surreal_db,
-    identity::SurrealIdentityStore, identity_chain::SurrealIdentityChainStore, SurrealDbConfig,
+    identity::SurrealIdentityStore, identity_chain::SurrealIdentityChainStore,
+    nostr_event_offset::SurrealNostrEventOffsetStore, SurrealDbConfig,
 };
 use log::error;
 use std::{path::Path, sync::Arc};
@@ -98,6 +99,7 @@ pub struct DbContext {
     pub identity_chain_store: Arc<dyn identity_chain::IdentityChainStoreApi>,
     pub company_store: Arc<dyn company::CompanyStoreApi>,
     pub file_upload_store: Arc<dyn file_upload::FileUploadStoreApi>,
+    pub nostr_event_offset_store: Arc<dyn nostr::NostrEventOffsetStoreApi>,
 }
 
 /// Creates a new instance of the DbContext with the given SurrealDB configuration.
@@ -121,6 +123,8 @@ pub async fn get_db_context(conf: &Config) -> Result<DbContext> {
     let identity_store = Arc::new(SurrealIdentityStore::new(db.clone()));
     let identity_chain_store = Arc::new(SurrealIdentityChainStore::new(db.clone()));
 
+    let nostr_event_offset_store = Arc::new(SurrealNostrEventOffsetStore::new(db.clone()));
+
     Ok(DbContext {
         contact_store,
         bill_store,
@@ -128,5 +132,6 @@ pub async fn get_db_context(conf: &Config) -> Result<DbContext> {
         identity_chain_store,
         company_store,
         file_upload_store,
+        nostr_event_offset_store,
     })
 }
