@@ -842,6 +842,10 @@ impl BillServiceApi for BillService {
         )
         .await?;
 
+        self.notification_service
+            .send_bill_is_accepted_event(&blockchain.get_last_version_bill(&bill_keys)?)
+            .await?;
+
         Ok(blockchain)
     }
 
@@ -876,6 +880,10 @@ impl BillServiceApi for BillService {
                 timestamp,
             )
             .await?;
+
+            self.notification_service
+                .send_request_to_pay_event(&blockchain.get_last_version_bill(&bill_keys)?)
+                .await?;
 
             return Ok(blockchain);
         }
@@ -913,6 +921,10 @@ impl BillServiceApi for BillService {
                 timestamp,
             )
             .await?;
+
+            self.notification_service
+                .send_request_to_accept_event(&blockchain.get_last_version_bill(&bill_keys)?)
+                .await?;
 
             return Ok(blockchain);
         }
@@ -959,6 +971,11 @@ impl BillServiceApi for BillService {
                 timestamp,
             )
             .await?;
+
+            let new_bill = blockchain.get_last_version_bill(&bill_keys)?;
+            self.notification_service
+                .send_request_to_mint_event(&new_bill)
+                .await?;
 
             return Ok(blockchain);
         }
@@ -1007,6 +1024,10 @@ impl BillServiceApi for BillService {
             )
             .await?;
 
+            self.notification_service
+                .send_request_to_sell_event(&blockchain.get_last_version_bill(&bill_keys)?)
+                .await?;
+
             return Ok(blockchain);
         }
         Err(Error::CallerIsNotPayeeOrEndorsee)
@@ -1052,6 +1073,10 @@ impl BillServiceApi for BillService {
                 timestamp,
             )
             .await?;
+
+            self.notification_service
+                .send_bill_is_endorsed_event(&blockchain.get_last_version_bill(&bill_keys)?)
+                .await?;
 
             return Ok(blockchain);
         }
@@ -1795,11 +1820,20 @@ pub mod test {
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
-        let service = get_service(
+
+        let mut notification_service = MockNotificationServiceApi::new();
+
+        // Should send bill accepted event
+        notification_service
+            .expect_send_bill_is_accepted_event()
+            .returning(|_| Ok(()));
+
+        let service = get_service_base(
             storage,
             identity_storage,
             file_upload_storage,
             identity_chain_store,
+            notification_service,
         );
 
         let res = service.accept_bill("some name", 1731593928).await;
@@ -1905,11 +1939,20 @@ pub mod test {
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
-        let service = get_service(
+
+        let mut notification_service = MockNotificationServiceApi::new();
+
+        // Request to pay event should be sent
+        notification_service
+            .expect_send_request_to_pay_event()
+            .returning(|_| Ok(()));
+
+        let service = get_service_base(
             storage,
             identity_storage,
             file_upload_storage,
             identity_chain_store,
+            notification_service,
         );
 
         let res = service.request_pay("some name", 1731593928).await;
@@ -1973,11 +2016,20 @@ pub mod test {
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
-        let service = get_service(
+
+        let mut notification_service = MockNotificationServiceApi::new();
+
+        // Request to accept event should be sent
+        notification_service
+            .expect_send_request_to_accept_event()
+            .returning(|_| Ok(()));
+
+        let service = get_service_base(
             storage,
             identity_storage,
             file_upload_storage,
             identity_chain_store,
+            notification_service,
         );
 
         let res = service.request_acceptance("some name", 1731593928).await;
@@ -2041,11 +2093,20 @@ pub mod test {
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
-        let service = get_service(
+
+        let mut notification_service = MockNotificationServiceApi::new();
+
+        // Asset request to mint event is sent
+        notification_service
+            .expect_send_request_to_mint_event()
+            .returning(|_| Ok(()));
+
+        let service = get_service_base(
             storage,
             identity_storage,
             file_upload_storage,
             identity_chain_store,
+            notification_service,
         );
 
         let res = service
@@ -2113,11 +2174,20 @@ pub mod test {
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
-        let service = get_service(
+
+        let mut notification_service = MockNotificationServiceApi::new();
+
+        // Request to sell event should be sent
+        notification_service
+            .expect_send_request_to_sell_event()
+            .returning(|_| Ok(()));
+
+        let service = get_service_base(
             storage,
             identity_storage,
             file_upload_storage,
             identity_chain_store,
+            notification_service,
         );
 
         let res = service
@@ -2195,11 +2265,20 @@ pub mod test {
         identity_storage
             .expect_get_full()
             .returning(move || Ok(identity.clone()));
-        let service = get_service(
+
+        let mut notification_service = MockNotificationServiceApi::new();
+
+        // Bill is endorsed event should be sent
+        notification_service
+            .expect_send_bill_is_endorsed_event()
+            .returning(|_| Ok(()));
+
+        let service = get_service_base(
             storage,
             identity_storage,
             file_upload_storage,
             identity_chain_store,
+            notification_service,
         );
 
         let res = service
