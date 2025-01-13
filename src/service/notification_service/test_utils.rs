@@ -6,6 +6,7 @@ use crate::{
         file_upload::MockFileUploadStoreApi,
         identity::{MockIdentityChainStoreApi, MockIdentityStoreApi},
         nostr::MockNostrEventOffsetStoreApi,
+        notification::MockNotificationStoreApi,
         DbContext,
     },
     service::{bill_service::BitcreditBill, contact_service::IdentityPublicData},
@@ -14,8 +15,8 @@ use crate::{
 use nostr_relay_builder::prelude::*;
 
 use super::{
-    email::EmailMessage, handler::NotificationHandlerApi, nostr::NostrClient, Event, EventEnvelope,
-    EventType, NostrConfig, Result,
+    email::EmailMessage, event::Event, handler::NotificationHandlerApi, nostr::NostrClient,
+    EventEnvelope, EventType, NostrConfig, Result,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
@@ -155,5 +156,6 @@ pub fn get_mock_db_context() -> DbContext {
         company_chain_store: Arc::new(MockCompanyChainStoreApi::new()),
         file_upload_store: Arc::new(MockFileUploadStoreApi::new()),
         nostr_event_offset_store: Arc::new(MockNostrEventOffsetStoreApi::new()),
+        notification_store: Arc::new(MockNotificationStoreApi::new()),
     }
 }

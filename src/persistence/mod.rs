@@ -5,6 +5,7 @@ pub mod db;
 pub mod file_upload;
 pub mod identity;
 pub mod nostr;
+pub mod notification;
 
 use crate::util;
 use bill::FileBasedBillStore;
@@ -12,9 +13,10 @@ use db::{
     company::SurrealCompanyStore, company_chain::SurrealCompanyChainStore,
     contact::SurrealContactStore, get_surreal_db, identity::SurrealIdentityStore,
     identity_chain::SurrealIdentityChainStore, nostr_event_offset::SurrealNostrEventOffsetStore,
-    SurrealDbConfig,
+    notification::SurrealNotificationStore, SurrealDbConfig,
 };
 use log::error;
+use notification::NotificationStoreApi;
 use std::{path::Path, sync::Arc};
 use thiserror::Error;
 
@@ -29,6 +31,9 @@ pub enum Error {
 
     #[error("SurrealDB connection error {0}")]
     SurrealConnection(#[from] surrealdb::Error),
+
+    #[error("Failed to insert into database: {0}")]
+    InsertFailed(String),
 
     #[error("unable to serialize/deserialize to/from JSON {0}")]
     Json(#[from] serde_json::Error),
@@ -107,6 +112,7 @@ pub struct DbContext {
     pub company_store: Arc<dyn company::CompanyStoreApi>,
     pub file_upload_store: Arc<dyn file_upload::FileUploadStoreApi>,
     pub nostr_event_offset_store: Arc<dyn nostr::NostrEventOffsetStoreApi>,
+    pub notification_store: Arc<dyn NotificationStoreApi>,
 }
 
 /// Creates a new instance of the DbContext with the given SurrealDB configuration.
@@ -132,6 +138,7 @@ pub async fn get_db_context(conf: &Config) -> Result<DbContext> {
     let company_chain_store = Arc::new(SurrealCompanyChainStore::new(db.clone()));
 
     let nostr_event_offset_store = Arc::new(SurrealNostrEventOffsetStore::new(db.clone()));
+    let notification_store = Arc::new(SurrealNotificationStore::new(db.clone()));
 
     Ok(DbContext {
         contact_store,
@@ -142,5 +149,6 @@ pub async fn get_db_context(conf: &Config) -> Result<DbContext> {
         company_store,
         file_upload_store,
         nostr_event_offset_store,
+        notification_store,
     })
 }
