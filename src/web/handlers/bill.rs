@@ -66,7 +66,7 @@ pub async fn attachment(
 }
 
 #[utoipa::path(
-    tag = "bills",
+    tag = "Bills",
     path = "bill/return",
     description = "Get all bill details",
     responses(
@@ -106,7 +106,7 @@ pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) ->
 }
 
 #[utoipa::path(
-    tag = "bills",
+    tag = "Bills",
     path = "bill/return/{id}",
     description = "Get bill details by id",
     params(
