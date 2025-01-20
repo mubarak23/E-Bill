@@ -201,12 +201,21 @@ impl CompanyServiceApi for CompanyService {
 
         let full_identity = self.identity_store.get_full().await?;
 
+        // Save the files locally with the identity public key
         let proof_of_registration_file = self
-            .process_upload_file(&proof_of_registration_file_upload_id, &id, &public_key)
+            .process_upload_file(
+                &proof_of_registration_file_upload_id,
+                &id,
+                &full_identity.key_pair.get_public_key(),
+            )
             .await?;
 
         let logo_file = self
-            .process_upload_file(&logo_file_upload_id, &id, &public_key)
+            .process_upload_file(
+                &logo_file_upload_id,
+                &id,
+                &full_identity.key_pair.get_public_key(),
+            )
             .await?;
 
         self.store.save_key_pair(&id, &company_keys).await?;
@@ -569,39 +578,6 @@ pub struct Company {
     pub proof_of_registration_file: Option<File>,
     pub logo_file: Option<File>,
     pub signatories: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct CompanyPublicData {
-    pub id: String,
-    pub name: String,
-    pub postal_address: String,
-    pub email: String,
-    pub public_key: String,
-}
-
-impl CompanyPublicData {
-    pub fn from_all(id: String, company: Company, company_keys: CompanyKeys) -> CompanyPublicData {
-        CompanyPublicData {
-            id,
-            name: company.name,
-            postal_address: company.postal_address,
-            email: company.email,
-            public_key: company_keys.public_key,
-        }
-    }
-}
-
-impl From<CompanyToReturn> for CompanyPublicData {
-    fn from(company: CompanyToReturn) -> Self {
-        Self {
-            id: company.id,
-            name: company.name,
-            postal_address: company.postal_address,
-            email: company.email,
-            public_key: company.public_key,
-        }
-    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, Clone)]
