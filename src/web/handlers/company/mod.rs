@@ -1,3 +1,4 @@
+use super::middleware::IdentityCheck;
 use crate::{
     dht::{GossipsubEvent, GossipsubEventId},
     external,
@@ -18,10 +19,10 @@ use rocket::{
 pub mod data;
 
 #[get("/check_dht")]
-pub async fn check_companies_in_dht(state: &State<ServiceContext>) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
+pub async fn check_companies_in_dht(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+) -> Result<Status> {
     state.dht_client().check_companies().await?;
     Ok(Status::Ok)
 }
@@ -63,13 +64,10 @@ pub async fn get_file(
 
 #[post("/upload_file", data = "<file_upload_form>")]
 pub async fn upload_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     file_upload_form: Form<UploadFileForm<'_>>,
 ) -> Result<Json<UploadFilesResponse>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(Error::PreconditionFailed);
-    }
-
     let file = &file_upload_form.file;
     let upload_file_handler: &dyn UploadFileHandler = file as &dyn UploadFileHandler;
 
