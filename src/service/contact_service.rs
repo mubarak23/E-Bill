@@ -11,7 +11,7 @@ use crate::{
     persistence::{file_upload::FileUploadStoreApi, identity::IdentityStoreApi, ContactStoreApi},
     service::identity_service::Identity,
     util,
-    web::data::File,
+    web::data::{File, OptionalPostalAddress, PostalAddress},
     CONFIG,
 };
 
@@ -39,7 +39,7 @@ pub trait ContactServiceApi: Send + Sync {
         node_id: &str,
         name: Option<String>,
         email: Option<String>,
-        postal_address: Option<String>,
+        postal_address: OptionalPostalAddress,
         avatar_file_upload_id: Option<String>,
     ) -> Result<()>;
 
@@ -50,7 +50,7 @@ pub trait ContactServiceApi: Send + Sync {
         t: u64,
         name: String,
         email: String,
-        postal_address: String,
+        postal_address: PostalAddress,
         date_of_birth_or_registration: Option<String>,
         country_of_birth_or_registration: Option<String>,
         city_of_birth_or_registration: Option<String>,
@@ -166,7 +166,7 @@ impl ContactServiceApi for ContactService {
         node_id: &str,
         name: Option<String>,
         email: Option<String>,
-        postal_address: Option<String>,
+        postal_address: OptionalPostalAddress,
         avatar_file_upload_id: Option<String>,
     ) -> Result<()> {
         let mut contact = match self.store.get(node_id).await? {
@@ -175,19 +175,55 @@ impl ContactServiceApi for ContactService {
                 return Err(super::Error::NotFound);
             }
         };
+        let mut changed = false;
 
         let identity_public_key = self.identity_store.get_key_pair().await?.get_public_key();
 
         if let Some(ref name_to_set) = name {
             contact.name = name_to_set.clone();
+            changed = true;
         }
 
         if let Some(ref email_to_set) = email {
             contact.email = email_to_set.clone();
+            changed = true;
         }
 
-        if let Some(ref postal_address_to_set) = postal_address {
-            contact.postal_address = postal_address_to_set.clone();
+        if let Some(ref postal_address_city_to_set) = postal_address.city {
+            contact.postal_address.city = postal_address_city_to_set.clone();
+            changed = true;
+        }
+
+        if let Some(ref postal_address_country_to_set) = postal_address.country {
+            contact.postal_address.country = postal_address_country_to_set.clone();
+            changed = true;
+        }
+
+        match contact.postal_address.zip {
+            Some(_) => {
+                if let Some(ref postal_address_zip_to_set) = postal_address.zip {
+                    contact.postal_address.zip = Some(postal_address_zip_to_set.clone());
+                    changed = true;
+                } else {
+                    contact.postal_address.zip = None;
+                    changed = true;
+                }
+            }
+            None => {
+                if let Some(ref postal_address_zip_to_set) = postal_address.zip {
+                    contact.postal_address.zip = Some(postal_address_zip_to_set.clone());
+                    changed = true;
+                }
+            }
+        };
+
+        if let Some(ref postal_address_address_to_set) = postal_address.address {
+            contact.postal_address.address = postal_address_address_to_set.clone();
+            changed = true;
+        }
+
+        if !changed && avatar_file_upload_id.is_none() {
+            return Ok(());
         }
 
         let avatar_file = self
@@ -206,7 +242,7 @@ impl ContactServiceApi for ContactService {
         t: u64,
         name: String,
         email: String,
-        postal_address: String,
+        postal_address: PostalAddress,
         date_of_birth_or_registration: Option<String>,
         country_of_birth_or_registration: Option<String>,
         city_of_birth_or_registration: Option<String>,
@@ -307,7 +343,8 @@ pub struct Contact {
     pub node_id: String,
     pub name: String,
     pub email: String,
-    pub postal_address: String,
+    #[serde(flatten)]
+    pub postal_address: PostalAddress,
     pub date_of_birth_or_registration: Option<String>,
     pub country_of_birth_or_registration: Option<String>,
     pub city_of_birth_or_registration: Option<String>,
@@ -329,7 +366,8 @@ pub struct IdentityPublicData {
     /// The name of the identity
     pub name: String,
     /// Full postal address of the identity
-    pub postal_address: String,
+    #[serde(flatten)]
+    pub postal_address: PostalAddress,
     /// email address of the identity
     pub email: Option<String>,
     /// The preferred Nostr relay to deliver Nostr messages to
@@ -380,7 +418,7 @@ impl IdentityPublicData {
             t: ContactType::Person,
             node_id: "".to_string(),
             name: "".to_string(),
-            postal_address: "".to_string(),
+            postal_address: PostalAddress::new_empty(),
             email: None,
             nostr_relay: None,
         }
@@ -392,7 +430,7 @@ impl IdentityPublicData {
             t: ContactType::Person,
             node_id,
             name: "".to_string(),
-            postal_address: "".to_string(),
+            postal_address: PostalAddress::new_empty(),
             email: None,
             nostr_relay: None,
         }
@@ -498,7 +536,7 @@ pub mod tests {
                 TEST_NODE_ID_SECP,
                 Some("new_name".to_string()),
                 None,
-                None,
+                OptionalPostalAddress::new_empty(),
                 None,
             )
             .await;
@@ -518,7 +556,7 @@ pub mod tests {
                 0,
                 "some_name".to_string(),
                 "some_email@example.com".to_string(),
-                "some_address".to_string(),
+                PostalAddress::new_empty(),
                 None,
                 None,
                 None,
