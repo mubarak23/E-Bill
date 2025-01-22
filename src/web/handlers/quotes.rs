@@ -1,3 +1,4 @@
+use super::middleware::IdentityCheck;
 use crate::external;
 use crate::external::mint::{
     check_bitcredit_quote, client_accept_bitcredit_quote, get_quote_from_map,
@@ -10,6 +11,7 @@ use std::thread;
 
 #[get("/return/<id>")]
 pub async fn return_quote(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: String,
 ) -> Result<Json<BitcreditEbillQuote>> {
@@ -35,6 +37,7 @@ pub async fn return_quote(
 
 #[put("/accept/<id>")]
 pub async fn accept_quote(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: String,
 ) -> Result<Json<BitcreditEbillQuote>> {

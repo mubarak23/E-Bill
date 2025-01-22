@@ -1,7 +1,8 @@
+use super::middleware::IdentityCheck;
 use crate::{
     dht::{GossipsubEvent, GossipsubEventId},
     external,
-    service::{self, company_service::CompanyToReturn, Error, Result, ServiceContext},
+    service::{self, company_service::CompanyToReturn, Result, ServiceContext},
     util::file::{detect_content_type_for_bytes, UploadFileHandler},
     web::data::{UploadFileForm, UploadFilesResponse},
 };
@@ -18,10 +19,10 @@ use rocket::{
 pub mod data;
 
 #[get("/check_dht")]
-pub async fn check_companies_in_dht(state: &State<ServiceContext>) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
+pub async fn check_companies_in_dht(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+) -> Result<Status> {
     state.dht_client().check_companies().await?;
     Ok(Status::Ok)
 }
@@ -34,6 +35,7 @@ pub async fn list(state: &State<ServiceContext>) -> Result<Json<Vec<CompanyToRet
 
 #[get("/file/<id>/<file_name>")]
 pub async fn get_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: &str,
     file_name: &str,
@@ -63,13 +65,10 @@ pub async fn get_file(
 
 #[post("/upload_file", data = "<file_upload_form>")]
 pub async fn upload_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     file_upload_form: Form<UploadFileForm<'_>>,
 ) -> Result<Json<UploadFilesResponse>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(Error::PreconditionFailed);
-    }
-
     let file = &file_upload_form.file;
     let upload_file_handler: &dyn UploadFileHandler = file as &dyn UploadFileHandler;
 
@@ -87,13 +86,18 @@ pub async fn upload_file(
 }
 
 #[get("/<id>")]
-pub async fn detail(state: &State<ServiceContext>, id: &str) -> Result<Json<CompanyToReturn>> {
+pub async fn detail(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+    id: &str,
+) -> Result<Json<CompanyToReturn>> {
     let company = state.company_service.get_company_by_id(id).await?;
     Ok(Json(company))
 }
 
 #[post("/create", format = "json", data = "<create_company_payload>")]
 pub async fn create(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     create_company_payload: Json<CreateCompanyPayload>,
 ) -> Result<Json<CompanyToReturn>> {
@@ -130,6 +134,7 @@ pub async fn create(
 
 #[put("/edit", format = "json", data = "<edit_company_payload>")]
 pub async fn edit(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     edit_company_payload: Json<EditCompanyPayload>,
 ) -> Result<Status> {
@@ -159,6 +164,7 @@ pub async fn edit(
 
 #[put("/add_signatory", format = "json", data = "<add_signatory_payload>")]
 pub async fn add_signatory(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     add_signatory_payload: Json<AddSignatoryPayload>,
 ) -> Result<()> {
@@ -194,6 +200,7 @@ pub async fn add_signatory(
     data = "<remove_signatory_payload>"
 )]
 pub async fn remove_signatory(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     remove_signatory_payload: Json<RemoveSignatoryPayload>,
 ) -> Result<()> {

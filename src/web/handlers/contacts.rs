@@ -1,4 +1,5 @@
 use super::super::data::{EditContactPayload, NewContactPayload};
+use super::middleware::IdentityCheck;
 use crate::service::contact_service::Contact;
 use crate::service::{self, Result, ServiceContext};
 use crate::util::file::{detect_content_type_for_bytes, UploadFileHandler};
@@ -10,6 +11,7 @@ use rocket::{delete, get, post, put, State};
 
 #[get("/file/<id>/<file_name>")]
 pub async fn get_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: &str,
     file_name: &str,
@@ -39,13 +41,10 @@ pub async fn get_file(
 
 #[post("/upload_file", data = "<file_upload_form>")]
 pub async fn upload_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     file_upload_form: Form<UploadFileForm<'_>>,
 ) -> Result<Json<UploadFilesResponse>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
-
     let file = &file_upload_form.file;
     let upload_file_handler: &dyn UploadFileHandler = file as &dyn UploadFileHandler;
 
@@ -63,40 +62,40 @@ pub async fn upload_file(
 }
 
 #[get("/list")]
-pub async fn return_contacts(state: &State<ServiceContext>) -> Result<Json<Vec<Contact>>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
+pub async fn return_contacts(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+) -> Result<Json<Vec<Contact>>> {
     let contacts: Vec<Contact> = state.contact_service.get_contacts().await?;
     Ok(Json(contacts))
 }
 
 #[get("/detail/<node_id>")]
-pub async fn return_contact(state: &State<ServiceContext>, node_id: &str) -> Result<Json<Contact>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
+pub async fn return_contact(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+    node_id: &str,
+) -> Result<Json<Contact>> {
     let contact: Contact = state.contact_service.get_contact(node_id).await?;
     Ok(Json(contact))
 }
 
 #[delete("/remove/<node_id>")]
-pub async fn remove_contact(state: &State<ServiceContext>, node_id: &str) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
+pub async fn remove_contact(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+    node_id: &str,
+) -> Result<Status> {
     state.contact_service.delete(node_id).await?;
     Ok(Status::Ok)
 }
 
 #[post("/create", format = "json", data = "<new_contact_payload>")]
 pub async fn new_contact(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     new_contact_payload: Json<NewContactPayload>,
 ) -> Result<Json<Contact>> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let payload = new_contact_payload.0;
     let contact = state
         .contact_service
@@ -119,12 +118,10 @@ pub async fn new_contact(
 
 #[put("/edit", format = "json", data = "<edit_contact_payload>")]
 pub async fn edit_contact(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     edit_contact_payload: Json<EditContactPayload>,
 ) -> Result<Status> {
-    if !state.identity_service.identity_exists().await {
-        return Err(service::Error::PreconditionFailed);
-    }
     let payload = edit_contact_payload.0;
     state
         .contact_service
