@@ -2,7 +2,7 @@ use super::middleware::IdentityCheck;
 use crate::{
     dht::{GossipsubEvent, GossipsubEventId},
     external,
-    service::{self, company_service::CompanyToReturn, Error, Result, ServiceContext},
+    service::{self, company_service::CompanyToReturn, Result, ServiceContext},
     util::file::{detect_content_type_for_bytes, UploadFileHandler},
     web::data::{UploadFileForm, UploadFilesResponse},
 };
@@ -35,6 +35,7 @@ pub async fn list(state: &State<ServiceContext>) -> Result<Json<Vec<CompanyToRet
 
 #[get("/file/<id>/<file_name>")]
 pub async fn get_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: &str,
     file_name: &str,
@@ -85,13 +86,18 @@ pub async fn upload_file(
 }
 
 #[get("/<id>")]
-pub async fn detail(state: &State<ServiceContext>, id: &str) -> Result<Json<CompanyToReturn>> {
+pub async fn detail(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+    id: &str,
+) -> Result<Json<CompanyToReturn>> {
     let company = state.company_service.get_company_by_id(id).await?;
     Ok(Json(company))
 }
 
 #[post("/create", format = "json", data = "<create_company_payload>")]
 pub async fn create(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     create_company_payload: Json<CreateCompanyPayload>,
 ) -> Result<Json<CompanyToReturn>> {
@@ -128,6 +134,7 @@ pub async fn create(
 
 #[put("/edit", format = "json", data = "<edit_company_payload>")]
 pub async fn edit(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     edit_company_payload: Json<EditCompanyPayload>,
 ) -> Result<Status> {
@@ -157,6 +164,7 @@ pub async fn edit(
 
 #[put("/add_signatory", format = "json", data = "<add_signatory_payload>")]
 pub async fn add_signatory(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     add_signatory_payload: Json<AddSignatoryPayload>,
 ) -> Result<()> {
@@ -192,6 +200,7 @@ pub async fn add_signatory(
     data = "<remove_signatory_payload>"
 )]
 pub async fn remove_signatory(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     remove_signatory_payload: Json<RemoveSignatoryPayload>,
 ) -> Result<()> {

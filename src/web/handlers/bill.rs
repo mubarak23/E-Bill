@@ -24,7 +24,11 @@ use rocket::{get, post, put, State};
 use std::thread;
 
 #[get("/holder/<id>")]
-pub async fn holder(state: &State<ServiceContext>, id: &str) -> Result<Json<bool>> {
+pub async fn holder(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+    id: &str,
+) -> Result<Json<bool>> {
     let bill_id_u8 = hex::decode(id).unwrap();
     let bill_id_base58 = base58_encode(&bill_id_u8);
 
@@ -36,6 +40,7 @@ pub async fn holder(state: &State<ServiceContext>, id: &str) -> Result<Json<bool
 
 #[get("/bitcoin-key/<id>")]
 pub async fn bitcoin_key(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: &str,
 ) -> Result<Json<BillCombinedBitcoinKey>> {
@@ -48,6 +53,7 @@ pub async fn bitcoin_key(
 
 #[get("/attachment/<bill_id>/<file_name>")]
 pub async fn attachment(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     bill_id: &str,
     file_name: &str,
@@ -79,6 +85,7 @@ pub async fn attachment(
 )]
 #[get("/return")]
 pub async fn return_bills_list(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
 ) -> Result<Json<Vec<BitcreditBillToReturn>>> {
     let bills = state.bill_service.get_bills().await?;
@@ -87,6 +94,7 @@ pub async fn return_bills_list(
 
 #[get("/return/basic/<id>")]
 pub async fn return_basic_bill(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: String,
 ) -> Result<Json<BitcreditBill>> {
@@ -96,6 +104,7 @@ pub async fn return_basic_bill(
 
 #[get("/chain/return/<id>")]
 pub async fn return_chain_of_blocks(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: String,
 ) -> Result<Json<BillBlockchain>> {
@@ -104,7 +113,11 @@ pub async fn return_chain_of_blocks(
 }
 
 #[get("/find/<bill_id>")]
-pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) -> Result<Status> {
+pub async fn find_bill_in_dht(
+    _identity: IdentityCheck,
+    state: &State<ServiceContext>,
+    bill_id: String,
+) -> Result<Status> {
     state.bill_service.find_bill_in_dht(&bill_id).await?;
     Ok(Status::Ok)
 }
@@ -123,6 +136,7 @@ pub async fn find_bill_in_dht(state: &State<ServiceContext>, bill_id: String) ->
 )]
 #[get("/return/<id>")]
 pub async fn return_bill(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: String,
 ) -> Result<Json<BitcreditBillToReturn>> {

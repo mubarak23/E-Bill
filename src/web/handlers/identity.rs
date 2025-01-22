@@ -1,3 +1,4 @@
+use super::middleware::IdentityCheck;
 use crate::external;
 use crate::service::Result;
 use crate::web::data::{ChangeIdentityPayload, IdentityPayload, SeedPhrase, SwitchIdentity};
@@ -67,6 +68,7 @@ pub async fn create_identity(
 )]
 #[put("/change", format = "json", data = "<identity_payload>")]
 pub async fn change_identity(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     identity_payload: Json<ChangeIdentityPayload>,
 ) -> Result<Status> {

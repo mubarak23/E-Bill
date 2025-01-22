@@ -11,6 +11,7 @@ use rocket::{delete, get, post, put, State};
 
 #[get("/file/<id>/<file_name>")]
 pub async fn get_file(
+    _identity: IdentityCheck,
     state: &State<ServiceContext>,
     id: &str,
     file_name: &str,

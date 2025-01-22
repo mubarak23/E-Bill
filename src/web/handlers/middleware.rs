@@ -1,12 +1,8 @@
 use crate::service::ServiceContext;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::State;
 
 pub struct IdentityCheck;
-
-#[derive(Debug)]
-pub struct IdentityCheckError;
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for IdentityCheck {
