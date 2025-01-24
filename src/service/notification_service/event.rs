@@ -12,7 +12,13 @@ pub enum EventType {
     BillSigned,
     BillAccepted,
     BillAcceptanceRequested,
+    BillAcceptanceRejected,
+    BillAcceptanceTimeout,
+    BillAcceptanceRecourse,
     BillPaymentRequested,
+    BillPaymentRejected,
+    BillPaymentRecourse,
+    BillPaymentTimeout,
     BillSellOffered,
     BillPaid,
     BillEndorsed,
@@ -28,7 +34,13 @@ impl EventType {
             Self::BillSigned,
             Self::BillAccepted,
             Self::BillAcceptanceRequested,
+            Self::BillAcceptanceRejected,
+            Self::BillAcceptanceTimeout,
+            Self::BillAcceptanceRecourse,
             Self::BillPaymentRequested,
+            Self::BillPaymentRejected,
+            Self::BillPaymentTimeout,
+            Self::BillPaymentRecourse,
             Self::BillSellOffered,
             Self::BillPaid,
             Self::BillEndorsed,
@@ -43,10 +55,42 @@ impl EventType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::enum_variant_names, dead_code)]
 pub enum ActionType {
-    ApproveBill,
+    AcceptBill,
     CheckBill,
     PayBill,
     CheckQuote,
+}
+
+impl ActionType {
+    /// Return a corresponding rejected event type for the action type
+    /// if the action has a rejected event type. If not, return None.
+    pub fn get_rejected_event_type(&self) -> Option<EventType> {
+        match self {
+            Self::AcceptBill => Some(EventType::BillAcceptanceRejected),
+            Self::PayBill => Some(EventType::BillPaymentRejected),
+            _ => None,
+        }
+    }
+
+    /// Return a corresponding timeout event type for the action type
+    /// if the action has a timeout event type. If not, return None.
+    pub fn get_timeout_event_type(&self) -> Option<EventType> {
+        match self {
+            Self::AcceptBill => Some(EventType::BillAcceptanceTimeout),
+            Self::PayBill => Some(EventType::BillPaymentTimeout),
+            _ => None,
+        }
+    }
+
+    // Return a corresponding recourse event type for the action type
+    // if the action has a recourse event type. If not, return None.
+    pub fn get_recourse_event_type(&self) -> Option<EventType> {
+        match self {
+            Self::AcceptBill => Some(EventType::BillAcceptanceRecourse),
+            Self::PayBill => Some(EventType::BillPaymentRecourse),
+            _ => None,
+        }
+    }
 }
 
 /// Can be used for all events that are just signalling an action
