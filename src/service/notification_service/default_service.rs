@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -217,11 +218,15 @@ impl NotificationServiceApi for DefaultNotificationService {
         recipients: Vec<IdentityPublicData>,
     ) -> Result<()> {
         if let Some(event_type) = timed_out_action.get_timeout_event_type() {
+            // only send to a recipient once
+            let unique: HashMap<String, IdentityPublicData> =
+                HashMap::from_iter(recipients.iter().map(|r| (r.node_id.clone(), r.clone())));
+
             let payload = BillActionEventPayload {
                 bill_id: bill_id.to_owned(),
                 action_type: ActionType::CheckBill,
             };
-            for recipient in recipients {
+            for (_, recipient) in unique {
                 let event = Event::new(event_type.to_owned(), &recipient.node_id, payload.clone());
                 self.notification_transport
                     .send(&recipient, event.try_into()?)
@@ -281,6 +286,31 @@ impl NotificationServiceApi for DefaultNotificationService {
             .get_latest_by_reference(bill_id, NotificationType::Bill)
             .await
             .unwrap_or_default()
+    }
+
+    async fn check_bill_notification_sent(
+        &self,
+        bill_id: &str,
+        block_height: i32,
+        action: ActionType,
+    ) -> Result<bool> {
+        Ok(self
+            .notification_store
+            .bill_notification_sent(bill_id, block_height, action)
+            .await?)
+    }
+
+    /// Stores that a notification was sent for the given bill id and action
+    async fn mark_bill_notification_sent(
+        &self,
+        bill_id: &str,
+        block_height: i32,
+        action: ActionType,
+    ) -> Result<()> {
+        self.notification_store
+            .set_bill_notification_sent(bill_id, block_height, action)
+            .await?;
+        Ok(())
     }
 }
 
