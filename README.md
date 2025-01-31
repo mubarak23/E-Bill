@@ -112,7 +112,7 @@ Launch the image:
 docker run -p 8000:8000 -p 1908:1908 -e RUST_LOG=info <image-name>
 ```
 
-You should be able to open the app at [http://127.0.0.1:8000/bitcredit/]([http://127.0.0.1:8000/bitcredit/])
+You should be able to open the app at [http://127.0.0.1:8000/]([http://127.0.0.1:8000/])
 
 #### Run with docker-compose
 
