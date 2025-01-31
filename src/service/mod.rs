@@ -1,3 +1,4 @@
+pub mod backup_service;
 pub mod bill_service;
 pub mod company_service;
 pub mod contact_service;
@@ -8,10 +9,12 @@ pub mod search_service;
 
 use super::{dht::Client, Config};
 use crate::external::bitcoin::BitcoinClient;
+use crate::persistence::db::SurrealDbConfig;
 use crate::persistence::DbContext;
 use crate::web::ErrorResponse;
 use crate::{blockchain, dht, external};
 use crate::{persistence, util};
+use backup_service::{BackupService, BackupServiceApi};
 use bill_service::{BillService, BillServiceApi};
 use company_service::{CompanyService, CompanyServiceApi};
 use contact_service::{ContactService, ContactServiceApi};
@@ -76,6 +79,10 @@ pub enum Error {
     /// errors that stem from interacting with a blockchain
     #[error("Blockchain error: {0}")]
     Blockchain(#[from] blockchain::Error),
+
+    /// std io
+    #[error("Io error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 /// Map from service errors directly to rocket status codes. This allows us to
@@ -125,6 +132,10 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
                 error!("{e}");
                 Status::InternalServerError.respond_to(req)
             }
+            Error::Io(e) => {
+                error!("{e}");
+                Status::InternalServerError.respond_to(req)
+            }
         }
     }
 }
@@ -155,6 +166,7 @@ pub struct ServiceContext {
     pub notification_service: Arc<dyn NotificationServiceApi>,
     pub push_service: Arc<dyn PushApi>,
     pub current_identity: Arc<RwLock<SwitchIdentityState>>,
+    pub backup_service: Arc<dyn BackupServiceApi>,
 }
 
 /// A structure describing the currently selected identity between the personal and multiple
@@ -260,6 +272,12 @@ pub async fn create_service_context(
         Arc::new(company_service.clone()),
     );
 
+    let backup_service = BackupService::new(
+        db.backup_store.clone(),
+        db.identity_store.clone(),
+        SurrealDbConfig::new(&config.surreal_db_connection),
+    );
+
     Ok(ServiceContext {
         config,
         dht_client: client,
@@ -277,5 +295,6 @@ pub async fn create_service_context(
             personal: local_node_id.to_owned(),
             company: None,
         })),
+        backup_service: Arc::new(backup_service),
     })
 }

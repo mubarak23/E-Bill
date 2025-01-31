@@ -72,6 +72,7 @@ pub fn rocket_main(context: ServiceContext) -> Rocket<Build> {
                 handlers::identity::recover_from_seed_phrase,
                 handlers::identity::get_file,
                 handlers::identity::upload_file,
+                handlers::identity::backup_identity,
             ],
         )
         .mount(
