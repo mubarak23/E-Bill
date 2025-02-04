@@ -1,3 +1,5 @@
+use std::env;
+
 use super::middleware::IdentityCheck;
 use crate::external;
 use crate::service::Result;
@@ -8,11 +10,12 @@ use crate::web::data::{
     UploadFilesResponse,
 };
 use crate::{service::identity_service::IdentityToReturn, service::ServiceContext};
+use log::info;
 use rocket::form::Form;
 use rocket::http::{ContentType, Status};
 use rocket::response::Responder;
 use rocket::serde::json::Json;
-use rocket::{get, post, put, Response, State};
+use rocket::{get, post, put, Response, Shutdown, State};
 
 #[get("/file/<file_name>")]
 pub async fn get_file(
@@ -263,6 +266,31 @@ pub async fn backup_identity(state: &State<ServiceContext>) -> Result<BinaryFile
         data: bytes,
         name: file_name.to_string(),
     })
+}
+
+#[utoipa::path(
+    post,
+    tag = "Identity",
+    path = "/identity/restore",
+    request_body(content_type = "multipart/form-data", content = UploadFileForm, description = "Backup file to upload"),
+    responses(
+        (status = 200, description = "Indentity has been restored")
+    )
+)]
+#[post("/restore", data = "<data>")]
+pub async fn restore_identity(
+    state: &State<ServiceContext>,
+    shutdown: Shutdown,
+    mut data: Form<UploadFileForm<'_>>,
+) -> Result<()> {
+    let dir = env::temp_dir();
+    let target = dir.join("restore.ecies");
+    data.file.persist_to(target.as_path()).await?;
+    state.backup_service.restore(target.as_path()).await?;
+    info!("Identity has been restored. Restarting system ...");
+    shutdown.notify();
+    state.shutdown();
+    Ok(())
 }
 
 /// Just a wrapper struct to allow setting a content disposition header
